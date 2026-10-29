@@ -1,6 +1,6 @@
-// 运行中视图：左边是这次编排的运行记录（按时间倒序），右边是「正在进行」——当前阶段的每次尝试与排队中的阶段。
+// 运行中视图：左边是项目的运行记录（重跑、打回都追加，按时间倒序），右边是「正在进行」——当前阶段的每次尝试与排队中的阶段。
 import { Hourglass, Info } from 'lucide-react';
-import { clock } from '../format.ts';
+import { stamp } from '../format.ts';
 import type { LogRun, StageCard } from '../types.ts';
 import s from './overview.module.css';
 
@@ -15,17 +15,17 @@ interface Entry {
   readonly sub?: string;
 }
 
-/** 运行与尝试 → 时间线条目：开始、每次没过的尝试、结束。 */
-function entries(log: readonly LogRun[], start: number): Entry[] {
+/** 运行与尝试 → 时间线条目：开始、每次没过的尝试、结束。at 是时刻（毫秒）。 */
+function entries(log: readonly LogRun[]): Entry[] {
   const out: Entry[] = [];
   for (const r of log) {
-    out.push({ at: Date.parse(r.startedAt) - start, tone: 'idle', stage: STAGE_TITLE[r.stage] ?? r.stage, text: `开始${r.episodeKey ? `（只跑 ${r.episodeKey.split(',').length} 集）` : ''}`, sub: `${r.skill} · ${r.model}` });
+    out.push({ at: Date.parse(r.startedAt), tone: 'idle', stage: STAGE_TITLE[r.stage] ?? r.stage, text: `开始${r.episodeKey ? `（只跑 ${r.episodeKey.split(',').length} 集）` : ''}`, sub: `${r.skill} · ${r.model}` });
     for (const a of r.attempts) {
-      if (a.violations.length && a.endedAt) out.push({ at: Date.parse(a.endedAt) - start, tone: 'err', stage: STAGE_TITLE[r.stage] ?? r.stage, text: `${a.step} 第 ${a.n} 次：${a.violations.length} 处违规`, sub: a.violations[0] });
+      if (a.violations.length && a.endedAt) out.push({ at: Date.parse(a.endedAt), tone: 'err', stage: STAGE_TITLE[r.stage] ?? r.stage, text: `${a.step} 第 ${a.n} 次：${a.violations.length} 处违规`, sub: a.violations[0] });
     }
     if (r.endedAt) {
       const ok = r.status === 'passed';
-      out.push({ at: Date.parse(r.endedAt) - start, tone: ok ? 'ok' : 'err', stage: STAGE_TITLE[r.stage] ?? r.stage, text: ok ? `通过 · ${r.attempts.length} 次模型调用` : `${r.status === 'needs_human' ? '转人工' : '失败'}：${r.error ?? ''}` });
+      out.push({ at: Date.parse(r.endedAt), tone: ok ? 'ok' : 'err', stage: STAGE_TITLE[r.stage] ?? r.stage, text: ok ? `通过 · ${r.attempts.length} 次模型调用` : `${r.status === 'needs_human' ? '转人工' : '失败'}：${r.error ?? ''}` });
     }
   }
   return out.sort((a, b) => b.at - a.at);
@@ -33,9 +33,9 @@ function entries(log: readonly LogRun[], start: number): Entry[] {
 
 const DOT = { ok: 'var(--ok)', err: 'var(--err)', idle: 'var(--text-3)' };
 
-export function RunLog({ log, startedAt }: { log: readonly LogRun[]; startedAt: string | null }) {
-  const start = startedAt ? Date.parse(startedAt) : Date.now();
-  const list = entries(log, start);
+/** 项目的全部运行（重跑、打回都追加在后面），新的在上。 */
+export function RunLog({ log }: { log: readonly LogRun[] }) {
+  const list = entries(log);
   return (
     <section className={s.log} aria-label="运行记录">
       <div className={s.tableTitle}>
@@ -44,7 +44,7 @@ export function RunLog({ log, startedAt }: { log: readonly LogRun[]; startedAt: 
       </div>
       {list.map((e, i) => (
         <div key={`${e.at}-${i}`} className={`${s.logRow} ${e.tone === 'err' ? s.logRowErr : ''}`}>
-          <span className={s.logTime}>{clock(e.at)}</span>
+          <span className={s.logTime}>{stamp(e.at)}</span>
           <span className={s.logDot} style={{ background: DOT[e.tone] }} />
           <span className={s.logText}>
             <b style={e.tone === 'err' ? { color: 'var(--err)' } : undefined}>{e.stage}</b>

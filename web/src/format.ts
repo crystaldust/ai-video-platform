@@ -29,6 +29,14 @@ export function when(iso: string | null | undefined): string {
   return today ? `${two(d.getHours())}:${two(d.getMinutes())}` : `${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}`;
 }
 
+/** 毫秒时间戳 → 运行记录里的时刻：今天的给「时:分:秒」，更早的带日期 */
+export function stamp(ms: number): string {
+  const d = new Date(ms);
+  const two = (n: number) => String(n).padStart(2, '0');
+  const time = `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  return new Date().toDateString() === d.toDateString() ? time : `${two(d.getMonth() + 1)}-${two(d.getDate())} ${time}`;
+}
+
 export const aspectLabel = (a: string | undefined): string | null => (a === '9:16' ? '竖屏 9:16' : a === '16:9' ? '横屏 16:9' : null);
 
 /** 「6 集 · 竖屏 9:16 · 小成本验证」：缺的项不显示 */

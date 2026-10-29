@@ -350,3 +350,24 @@ test('质量门缓存：同一份同时请求只跑一次；上游变了重新�
   project.close();
   rmSync(root, { recursive: true, force: true });
 });
+
+test('运行记录：重跑某个阶段、打回之后，之前的记录还在，新运行追加在后面', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  await h.call('POST', '/api/projects', { body: { name: '渡口', kind: 'novel', text: DUKO_BOOK, params: { episodes: 6, seconds: 120, genre: '悬疑' }, start: true } });
+  await h.app.jobs.settled('渡口');
+  const log = async () => (await h.call('GET', encodeURI('/api/p/渡口/overview'))).body.data.log as { id: number; stage: string }[];
+  assert.equal((await log()).length, 6, '一键跑：六个阶段各一次运行');
+
+  assert.equal((await h.call('POST', encodeURI('/api/p/渡口/go'), { body: { only: 'storyboard' } })).status, 200);
+  await h.app.jobs.settled('渡口');
+  const afterRerun = await log();
+  assert.deepEqual(afterRerun.map((r) => r.stage), ['outline', 'cast', 'art', 'script', 'staging', 'storyboard', 'storyboard'], '重跑分镜：追加，不清空');
+
+  assert.equal((await h.call('POST', encodeURI('/api/p/渡口/reject'), { body: { stage: 'script', episode: '1', note: '汽笛提前' } })).status, 200);
+  await h.app.jobs.settled('渡口');
+  const afterReject = await log();
+  assert.equal(afterReject.length, 8, '打回的运行（不属于编排）也在记录里');
+  assert.equal(afterReject.at(-1)!.stage, 'script');
+  assert.deepEqual(afterReject.map((r) => r.id), [...afterReject.map((r) => r.id)].sort((a, b) => a - b), '按时间先后');
+});

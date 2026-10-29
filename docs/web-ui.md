@@ -35,7 +35,7 @@ node src/cli.ts serve --skills ~/Development/ai-video/shuohao-skills/skills
 | GET | `/api/config` | 项目根目录、能否新建、预设、skill 包摘要 |
 | GET / POST | `/api/projects` | 项目列表 / 新建（`start: true` 建好就开跑） |
 | GET | `/api/p/:id/head` | 侧栏用的项目头 |
-| GET | `/api/p/:id/overview` | 全貌：阶段卡（质量门来自 skill 的 `checkup`）、运行摘要、估算（含按集拆开）、分集表、待处理项、最近一次编排的运行记录 |
+| GET | `/api/p/:id/overview` | 全貌：阶段卡（质量门来自 skill 的 `checkup`）、运行摘要、估算（含按集拆开）、分集表、待处理项、运行记录（项目的全部运行，按时间先后；重跑和打回都追加在后面，最多最近 200 次） |
 | GET | `/api/p/:id/events` | SSE：任务开始 / 结束、阶段、运行与每次尝试 |
 | GET | `/api/p/:id/episodes/:ep` | 单集详情（集 id 或集号） |
 | GET | `/api/p/:id/cast`、`/skills`、`/models`、`/gates/:gid` | 各页数据 |
