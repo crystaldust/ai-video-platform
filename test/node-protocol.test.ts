@@ -250,3 +250,10 @@ test('extractJson：前面有别的代码块、字符串里含 ``` 时仍能取�
   const nested = '```json\n{"prompt": "镜头一\\n```\\n镜头二"}\n```';
   assert.deepEqual(extractJson(nested), { ok: true, value: { prompt: '镜头一\n```\n镜头二' } });
 });
+
+test('frontmatter：版本写在 metadata 下一层（novel-characters、character-refs 的写法）也能读到', () => {
+  const md = ['---', 'name: novel-characters', 'description: |', '  拆角色', 'metadata:', '  license: Apache-2.0', '  version: 2.0.0', '---', ''].join('\n');
+  assert.equal(parseFrontmatter(md).version, '2.0.0');
+  const top = ['---', 'name: x', 'version: 3.0.0', 'metadata:', '  version: 9.9.9', '---', ''].join('\n');
+  assert.equal(parseFrontmatter(top).version, '3.0.0', '顶层 version 优先');
+});
