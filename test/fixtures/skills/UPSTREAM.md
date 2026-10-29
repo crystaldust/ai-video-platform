@@ -2,20 +2,22 @@
 
 只给测试用：平台运行时用 `pack register --root` 注册的真实目录，不读这里。
 
-- 来源：`crystaldust/shuohao-skills` 的 `main`，提交 `9dd7129`（合并 `feat/stable-ids`，内容同 `d1b0ad4`），skill 版本 3.0.0
-- 拷贝内容：`novel-outline`、`novel-script` 的 `SKILL.md`、`references/*.md`、`scripts/*.mjs`（不含 `selftest.mjs`）
+- 来源：`crystaldust/shuohao-skills` 的 `main`，提交 `9dd7129`（合并 `feat/stable-ids`，内容同 `d1b0ad4`），skill 版本 3.0.0（novel-characters 是 2.0.0：角色卡不带稳定 id，不受 3.0 主版本要求约束）
+- 拷贝内容：`novel-outline`、`novel-script`、`novel-characters`、`novel-art`、`novel-staging`、`novel-storyboard` 的 `SKILL.md`、`references/*.md`、`scripts/*.mjs`（不含 `selftest.mjs`）
 - `prompt-only/`：平台自己写的假 skill，只有 `SKILL.md`，用来测「只有提示词」的通用配方
 
 上游更新后重新拷贝（在平台仓库根目录执行，`U` 指向上游仓库）：
 
 ```bash
-for s in novel-outline novel-script; do
+for s in novel-outline novel-script novel-characters novel-art novel-staging novel-storyboard; do
   rm -rf test/fixtures/skills/$s && mkdir -p test/fixtures/skills/$s/references test/fixtures/skills/$s/scripts
   cp $U/skills/$s/SKILL.md test/fixtures/skills/$s/
   cp $U/skills/$s/references/*.md test/fixtures/skills/$s/references/
   cp $U/skills/$s/scripts/*.mjs test/fixtures/skills/$s/scripts/ && rm -f test/fixtures/skills/$s/scripts/selftest.mjs
 done
 ```
+
+另把 `$U/skills/novel-characters/examples/渡口.txt` 拷到 `test/fixtures/duko/渡口.txt`（角色卡的引文要逐字对原文）。
 
 然后更新本文件里的提交号，并跑 `pnpm test`。
 

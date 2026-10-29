@@ -13,6 +13,7 @@ import { characterKeyIndex, sceneEpisodeIndex } from '../repo/entities.ts';
 import { currentInput } from '../repo/inputs.ts';
 import { createRun, endAttempt, failInterruptedRuns, finishRun, runningRun, startAttempt } from '../repo/runs.ts';
 import { currentMount, type SkillRow } from '../repo/skills.ts';
+import { mergeScoped } from './scoped.ts';
 import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../skills/frontmatter.ts';
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
@@ -34,6 +35,12 @@ export interface RunNodeOptions {
   readonly onProgress?: (e: ProgressEvent) => void;
   /** 计价用的价格；不给就读本机价格来源，读不了就不计价（费用记 null） */
   readonly prices?: PriceSources | null;
+  /** 只重跑这几集（集 id）；配方不能按集跑时报错 */
+  readonly episodes?: readonly string[];
+  /** 在当前版本上改（打回、上游变了重跑）：底稿取这一阶段最新的整份产物，意见进每一遍的提示词。只重跑几集时总是带底稿 */
+  readonly revise?: { readonly note?: string; readonly requestId?: number };
+  /** 由哪次编排发起 */
+  readonly orchestrationId?: number;
 }
 
 /** 一次调用的实际费用：输入、输出 token 都查得到单价才算，否则 null（不猜）。 */
@@ -111,9 +118,28 @@ interface Prepared {
   readonly source: string | null;
   readonly md: string;
   readonly fm: SkillFrontmatter;
+  readonly episodes: readonly string[] | null;
+  readonly base: Doc | null;
 }
 
-function prepare(project: Project, stage: Stage): Prepared {
+/** 按集重跑时，集 id 要在哪份上游里找：剧本看大纲，站位、分镜看剧本。 */
+export const EPISODE_SOURCE: Partial<Record<Stage, Stage>> = { script: 'outline', staging: 'script', storyboard: 'script' };
+
+/** 上游文档里的集 id，按文档顺序。 */
+export const episodeIdsOf = (doc: unknown): string[] =>
+  (doc && typeof doc === 'object' && Array.isArray((doc as Doc)['episodes']) ? ((doc as Doc)['episodes'] as Doc[]) : []).flatMap((e) => (typeof e?.['id'] === 'string' ? [e['id'] as string] : []));
+
+/** 校验集 id 都在上游里，并按上游的集顺序排好（配方按它分批，乱序会拼出倒着的区间）。 */
+function orderEpisodes(stage: Stage, upstream: Partial<Record<Stage, Doc>>, episodes: readonly string[]): string[] {
+  const source = EPISODE_SOURCE[stage];
+  const known = episodeIdsOf(source ? upstream[source] : undefined);
+  const missing = episodes.filter((id) => !known.includes(id));
+  if (!episodes.length) throw new Error('按集重跑至少要给一集');
+  if (missing.length) throw new Error(`上游 ${source ?? '?'} 里没有这些集：${missing.join('、')}`);
+  return known.filter((id) => episodes.includes(id));
+}
+
+function prepare(project: Project, stage: Stage, opts: RunNodeOptions): Prepared {
   const { db } = project;
   const skill = currentMount(db, stage);
   if (!skill) throw new Error(`阶段 ${stage} 还没有挂载 skill（先运行 pack register 或 mount）`);
@@ -131,8 +157,12 @@ function prepare(project: Project, stage: Stage): Prepared {
     const a = latestArtifactDoc(db, s);
     if (a) upstream[s] = a.doc as Doc;
   }
+  if (opts.episodes && !recipe.perEpisode) throw new Error(`${stage} 是整份负责的（配方 ${recipe.name}），不能只重跑其中几集`);
+  const episodes = opts.episodes ? orderEpisodes(stage, upstream, opts.episodes) : null;
+  const base = opts.revise || episodes ? ((latestArtifactDoc(db, stage)?.doc as Doc | undefined) ?? null) : null;
+  if (episodes && !base) throw new Error(`${stage} 还没有产物，不能只重跑其中几集：先整阶段跑一次`);
   const md = readFileSync(join(skill.dir, 'SKILL.md'), 'utf8');
-  return { skill, recipeName: recipe.name, upstream, inputId: input?.id ?? null, params: input?.params ?? null, source: input?.text ?? null, md, fm: parseFrontmatter(md) };
+  return { skill, recipeName: recipe.name, upstream, inputId: input?.id ?? null, params: input?.params ?? null, source: input?.text ?? null, md, fm: parseFrontmatter(md), episodes, base };
 }
 
 /** 一次运行的状态与动作：调模型、过门、跑脚本、收尾。 */
@@ -182,7 +212,8 @@ class NodeRun {
     let pending = [...violations];
     let lastOutput = '';
     for (let i = 0; i < this.maxAttempts; i++) {
-      const prompt = buildPrompt({ ...parts, skillDescription: this.p.fm.description, boundary: boundarySection(this.p.md), violations: pending });
+      const note = parts.note ?? this.opts.revise?.note;
+      const prompt = buildPrompt({ ...parts, note, skillDescription: this.p.fm.description, boundary: boundarySection(this.p.md), violations: pending });
       const n = this.nextN(step);
       const attemptId = startAttempt(db, { runId: this.runId, step, n, system: prompt.system, user: prompt.user });
       let result;
@@ -271,6 +302,15 @@ class NodeRun {
         return this.gate(check, doc, repair, post);
       },
       skipHumanGate: (what) => this.skipped.push(what),
+      episodes: p.episodes,
+      base: p.base,
+      runMounted: async (stage, args) => {
+        const mounted = currentMount(this.project.db, stage);
+        if (!mounted?.script) throw new Error(`阶段 ${stage} 挂载的 skill 没有脚本，不能运行 ${args[0]}`);
+        const r = await runScript(join(mounted.dir, mounted.script), args, { cwd: this.dir });
+        if (r.code !== 0) throw new Error(describeFailure(`${mounted.name} ${args[0]}`, r));
+        return r.stdout;
+      },
     };
   }
 
@@ -291,6 +331,15 @@ class NodeRun {
     };
     const repair: AskParts = { task: '按违规修正 JSON，使它同时通过 skill 的质量门、能被平台导入；没被点到的内容不要改动。', schema: ctx.readFile('references/schema.md'), outputSpec: `输出修正后的整份 ${this.stage}.json。` };
     return this.gate(check, doc, repair, skillGate?.post);
+  }
+
+  /** 并回后的整份文档再过一次 skill 的门：只报告不阻断（例如剧本总时长），结果作为提示发出。 */
+  async reviewWhole(whole: Doc): Promise<void> {
+    const gate = this.lastSkillGate;
+    if (!gate) return;
+    writeFileSync(join(this.dir, 'out', `${this.stage}.whole.json`), JSON.stringify(whole, null, 2));
+    const violations = await gate.check.run(whole);
+    if (violations.length) this.emit({ type: 'notice', runId: this.runId, message: `并回整份后复查有 ${violations.length} 处问题（不阻断）：${violations[0]}` });
   }
 
   /** 转人工：留下最后一版能解析的文档、模型原始输出（若有）与违规。写不了文件（目录都没建起来）不影响收尾。 */
@@ -314,7 +363,10 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   const doc = await run.finalGate(ctx, await RECIPES[p.recipeName]!.run(ctx));
   const outPath = join(dir, 'out', `${stage}.json`);
   writeFileSync(outPath, JSON.stringify(doc, null, 2));
-  const imported = importArtifact(project, stage, doc, { skill: `${p.skill.name}@${p.skill.version}`, sourcePath: outPath });
+  // 只重跑几集：只对这几集负责地导入，产物版本存并回后的整份
+  const whole = p.episodes ? mergeScoped(stage, latestArtifactDoc(db, stage)?.doc, doc) : undefined;
+  if (whole) await run.reviewWhole(whole);
+  const imported = importArtifact(project, stage, doc, { skill: `${p.skill.name}@${p.skill.version}`, sourcePath: outPath, ...(whole ? { artifactDoc: whole } : {}) });
   finishRun(db, runId, { status: 'passed', artifactVersionId: imported.artifactId, skippedHumanGates: skipped });
   return { runId, status: 'passed', dir, artifactV: imported.artifactV, skippedHumanGates: skipped };
 }
@@ -365,8 +417,18 @@ export async function runNode(project: Project, stage: Stage, opts: RunNodeOptio
   failInterruptedRuns(db, (id) => active.has(id));
   const busy = runningRun(db, stage);
   if (busy) throw new Error(`阶段 ${stage} 已有运行中的任务（run ${busy.id}），等它结束再开；确认它已经不在跑了，用 runs unlock 解开`);
-  const p = prepare(project, stage);
-  const runId = createRun(db, { stage, skillId: p.skill.id, model: opts.model.id, inputId: p.inputId, maxAttempts });
+  const p = prepare(project, stage, opts);
+  const runId = createRun(db, {
+    stage,
+    skillId: p.skill.id,
+    model: opts.model.id,
+    inputId: p.inputId,
+    maxAttempts,
+    orchestrationId: opts.orchestrationId ?? null,
+    // 一次重跑几集时逗号分隔
+    episodeKey: p.episodes ? p.episodes.join(',') : null,
+    revisionRequestId: opts.revise?.requestId ?? null,
+  });
   active.add(runId);
   // 运行记录一建好，之后任何一步出错（建目录、写文件、进度回调、配方、导入）都要把它收尾，不能卡在 running
   const run = new NodeRun(project, stage, p, opts, maxAttempts, runId, join(project.dir, RUNS_DIR, String(runId)));

@@ -8,7 +8,10 @@ export const print = (x: unknown): void => {
   process.stdout.write(`${JSON.stringify(x, null, 2)}\n`);
 };
 
-/** 拆出 --flag value，其余为位置参数。 */
+/** 不带取值的开关：出现即为 'true'。 */
+export const BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['only-stale', 'keep']);
+
+/** 拆出 --flag value（开关类只有 --flag），其余为位置参数。 */
 export function parseArgs(argv: readonly string[]): { args: string[]; flags: Record<string, string> } {
   const args: string[] = [];
   const flags: Record<string, string> = {};
@@ -16,6 +19,10 @@ export function parseArgs(argv: readonly string[]): { args: string[]; flags: Rec
     const a = argv[i] ?? '';
     if (!a.startsWith('--')) {
       args.push(a);
+      continue;
+    }
+    if (BOOLEAN_FLAGS.has(a.slice(2))) {
+      flags[a.slice(2)] = 'true';
       continue;
     }
     const value = argv[i + 1];

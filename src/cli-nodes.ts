@@ -28,7 +28,7 @@ export interface CommandResult {
 
 const done = (output: unknown): CommandResult => ({ output, exitCode: 0 });
 
-const progressLine = (e: ProgressEvent): string => {
+export const progressLine = (e: ProgressEvent): string => {
   if (e.type === 'run-start') return `▸ ${e.stage} · ${e.skill} · ${e.model}（run ${e.runId}）`;
   if (e.type === 'attempt') return `  ${e.step} #${e.n} ${e.violations.length ? `✗ ${e.violations[0]}` : '✓'}`;
   if (e.type === 'notice') return `  ⚠ ${e.message}`;
