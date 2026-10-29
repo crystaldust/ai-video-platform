@@ -19,6 +19,18 @@ function frontmatterLines(md: string): string[] {
 
 const unquote = (v: string): string => v.trim().replace(/^(['"])(.*)\1$/, '$2');
 
+/** `metadata:` 块里紧跟一层缩进的标量，比如 `  version: 2.0.0`。 */
+function metadataScalar(lines: readonly string[], key: string): string {
+  const start = lines.findIndex((l) => /^metadata:\s*$/.test(l));
+  if (start < 0) return '';
+  for (const l of lines.slice(start + 1)) {
+    if (l.trim() && !/^\s/.test(l)) break;
+    const m = new RegExp(`^\\s+${key}:(.*)$`).exec(l);
+    if (m) return unquote(m[1] ?? '');
+  }
+  return '';
+}
+
 export function parseFrontmatter(md: string): SkillFrontmatter {
   const lines = frontmatterLines(md);
   const scalar = (key: string): string => {
@@ -37,7 +49,8 @@ export function parseFrontmatter(md: string): SkillFrontmatter {
     description = block.join('\n').trim();
   }
   const name = scalar('name');
-  const version = scalar('version');
+  // 版本有两种写法：顶层 `version:`，或写在 `metadata:` 块里（novel-characters、character-refs）；顶层优先
+  const version = scalar('version') || metadataScalar(lines, 'version');
   if (!name) throw new Error('SKILL.md 的 frontmatter 缺少 name');
   if (!/^\d+\.\d+\.\d+/.test(version)) throw new Error(`SKILL.md（${name}）的 version 不是语义化版本号：${version || '（空）'}`);
   return { name, version, description };
