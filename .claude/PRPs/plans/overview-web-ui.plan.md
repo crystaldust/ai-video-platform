@@ -53,7 +53,7 @@
 | Priority | File | Why |
 |---|---|---|
 | P0 | `designs/ai-short-video-platform.pen`（经 Pencil MCP） | 9 张画板、设计变量（颜色、字体） |
-| P0 | `.claude/PRPs/plans/orchestration-rerun.plan.md` | 全部后端数据与操作 |
+| P0 | `.claude/PRPs/plans/completed/orchestration-rerun.plan.md`、`docs/orchestration.md` | 全部后端数据与操作（实现见 `src/orchestrate/`；偏差见 `reports/orchestration-rerun-report.md`） |
 | P0 | `src/cli.ts` | 现有命令与库函数的映射——API 层照搬同样的调用 |
 | P1 | `.claude/PRPs/plans/model-adapters-presets-cost.plan.md` | 估算结果结构、凭据只读接口 |
 
