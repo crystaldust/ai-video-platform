@@ -13,7 +13,12 @@ export interface InputParams {
   readonly seconds: number;
   /** 题材：决定爽点类型，novel-outline 要求必填 */
   readonly genre: string;
+  /** 画幅：分镜与下游出图共同遵守；不给时分镜按 16:9 */
+  readonly aspect?: Aspect;
 }
+
+export const ASPECTS = ['16:9', '9:16'] as const;
+export type Aspect = (typeof ASPECTS)[number];
 
 export interface InputRow {
   readonly id: number;
@@ -35,8 +40,10 @@ export function validateParams(params: Partial<Record<keyof InputParams, unknown
   if (!inRange(params.seconds, LIMITS.seconds)) problems.push(`单集时长必须是 ${LIMITS.seconds.join('–')} 秒的整数：${String(params.seconds)}`);
   const genre = typeof params.genre === 'string' ? params.genre.trim() : '';
   if (!genre) problems.push('题材不能为空');
+  const aspect = params.aspect;
+  if (aspect !== undefined && !(ASPECTS as readonly unknown[]).includes(aspect)) problems.push(`画幅只能是 ${ASPECTS.join(' / ')}：${String(aspect)}`);
   if (problems.length) throw new Error(`输入参数不对：${problems.join('；')}`);
-  return { episodes: params.episodes as number, seconds: params.seconds as number, genre };
+  return { episodes: params.episodes as number, seconds: params.seconds as number, genre, ...(aspect !== undefined ? { aspect: aspect as Aspect } : {}) };
 }
 
 export function addInput(db: DatabaseSync, input: { kind: InputKind; text: string; params: InputParams }): InputRow {

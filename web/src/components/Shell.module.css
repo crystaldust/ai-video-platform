@@ -1,0 +1,84 @@
+.shell {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  min-height: 100%;
+}
+.side {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 20px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--accent);
+}
+.project {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 8px 16px;
+}
+.projectLabel {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.projectName {
+  font-size: 14px;
+  font-weight: 600;
+}
+.projectMeta {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+.nav:hover {
+  background: var(--bg);
+}
+.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.active:hover {
+  background: var(--accent-soft);
+}
+.disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+.disabled:hover {
+  background: transparent;
+}
+.soon {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-3);
+}
+.main {
+  padding: 0 28px 28px;
+  min-width: 0;
+}

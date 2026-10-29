@@ -45,9 +45,11 @@ export interface Capabilities {
   readonly ids: boolean;
   readonly validate: boolean;
   readonly blocking: boolean;
+  /** 逐门打印 ✓/✗（全貌页的质量门计数用）；4b 之前注册的记录里没有这一项 */
+  readonly checkup?: boolean;
 }
 
-export const NO_CAPABILITIES: Capabilities = { seed: false, ids: false, validate: false, blocking: false };
+export const NO_CAPABILITIES: Capabilities = { seed: false, ids: false, validate: false, blocking: false, checkup: false };
 
 export const PROBE_TIMEOUT_MS = 15_000;
 
@@ -56,7 +58,7 @@ export async function probeCapabilities(scriptPath: string, cwd: string, timeout
   const r = await runScript(scriptPath, [], { cwd, timeoutMs });
   const usage = `${r.stdout}\n${r.stderr}`;
   const has = (cmd: string) => new RegExp(`^\\s{2,}${cmd}\\s`, 'm').test(usage);
-  return { seed: has('seed'), ids: has('ids'), validate: has('validate'), blocking: has('blocking') };
+  return { seed: has('seed'), ids: has('ids'), validate: has('validate'), blocking: has('blocking'), checkup: has('checkup') };
 }
 
 export const scriptPathOf = (dir: string, script: string): string => join(dir, script);

@@ -184,3 +184,22 @@ export function currentMount(db: DatabaseSync, stage: Stage): SkillRow | null {
     .get(stage) as RawSkill | undefined;
   return row ? toSkillRow(row) : null;
 }
+
+export interface PackRow {
+  readonly id: number;
+  readonly name: string;
+  readonly root: string;
+  readonly description: string | null;
+  readonly registeredAt: string;
+  readonly skills: readonly SkillRow[];
+}
+
+/** 已注册的 skill 包（新的在前），各带自己的 skill。 */
+export function listPacks(db: DatabaseSync): PackRow[] {
+  const packs = db.prepare('SELECT id, name, root, manifest, registered_at FROM skill_pack ORDER BY id DESC').all() as { id: number; name: string; root: string; manifest: string; registered_at: string }[];
+  return packs.map((p) => {
+    const manifest = JSON.parse(p.manifest) as { description?: unknown };
+    const skills = (db.prepare('SELECT * FROM skill WHERE pack_id = ? ORDER BY id').all(p.id) as unknown as RawSkill[]).map(toSkillRow);
+    return { id: p.id, name: p.name, root: p.root, description: typeof manifest.description === 'string' ? manifest.description : null, registeredAt: p.registered_at, skills };
+  });
+}

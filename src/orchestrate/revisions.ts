@@ -32,16 +32,21 @@ export interface RejectResult {
   readonly pending: readonly MatrixCell[];
 }
 
-export async function reject(project: Project, stage: Stage, opts: RejectOptions): Promise<RejectResult> {
-  const { db } = project;
+/** 打回前的检查（界面在开后台任务前先调它，错误能直接回给请求）：意见非空、有产物、带集时配方能按集跑、集认得出。 */
+export function checkReject(db: DatabaseSync, stage: Stage, opts: { episode?: string; note: string }): { note: string; episode: string | null; baseId: number } {
   const note = opts.note.trim();
   if (!note) throw new Error('打回要写意见（--note）');
   const base = latestArtifact(db, stage);
   if (!base) throw new Error(`${stage} 还没有产物，没什么可打回的：先 go 或 run`);
   const recipe = RECIPES[currentMount(db, stage)?.recipe ?? ''];
   if (opts.episode !== undefined && !recipe?.perEpisode) throw new Error(`${stage} 是整份负责的，不能只打回其中一集（去掉 --ep）`);
-  const episode = opts.episode === undefined ? null : resolveEpisode(db, opts.episode);
-  const request = addRevisionRequest(db, { stage, episodeKey: episode, note, baseArtifactVersionId: base.id });
+  return { note, episode: opts.episode === undefined ? null : resolveEpisode(db, opts.episode), baseId: base.id };
+}
+
+export async function reject(project: Project, stage: Stage, opts: RejectOptions): Promise<RejectResult> {
+  const { db } = project;
+  const { note, episode, baseId } = checkReject(db, stage, opts);
+  const request = addRevisionRequest(db, { stage, episodeKey: episode, note, baseArtifactVersionId: baseId });
   const { episode: _e, note: _n, ...run } = opts;
   const outcome = await runNode(project, stage, { ...run, revise: { note, requestId: request.id }, ...(episode ? { episodes: [episode] } : {}) });
   return { request, outcome, pending: pendingCells(db) };

@@ -12,7 +12,12 @@
     "typecheck": "tsc -p .",
     "test": "node --test \"test/**/*.test.ts\"",
     "coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-exclude=\"src/cli.ts\" --test-coverage-lines=80 --test-coverage-branches=70 --test-coverage-functions=80 \"test/**/*.test.ts\"",
-    "cli": "node src/cli.ts"
+    "cli": "node src/cli.ts",
+    "web:install": "pnpm --dir web install",
+    "web:dev": "pnpm --dir web dev",
+    "web:build": "pnpm --dir web build",
+    "web:typecheck": "pnpm --dir web typecheck",
+    "test:e2e": "pnpm --dir web test:e2e"
   },
   "devDependencies": {
     "@types/node": "25.9.9",

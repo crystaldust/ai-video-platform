@@ -18,6 +18,8 @@ export interface NodeEstimate {
   readonly cost: Range | null;
   readonly prices: readonly string[];
   readonly assumptions: readonly string[];
+  /** 按集拆开的费用（关键帧、视频）；有价格才有 */
+  readonly episodes?: readonly { readonly episode: string; readonly ep: number; readonly cost: Range | null }[];
 }
 
 export interface ProjectEstimate {
@@ -75,7 +77,8 @@ export function estimateProject(db: DatabaseSync, opts: EstimateOptions = {}): P
     const resolved = resolveNodeModel(db, usage.node, { presets, ...(opts.preset ? { preset: opts.preset, ignoreOverrides: true } : {}) });
     presetName = resolved.preset;
     const { cost, notes } = usage.parts.length ? priceNode(usage, resolved.model, resolved.params, prices) : { cost: null, notes: ['没有用量可估'] };
-    return { node: usage.node, model: resolved.model, params: resolved.params, from: resolved.from, usage: usage.parts, cost, prices: notes, assumptions: usage.assumptions };
+    const episodes = usage.episodes?.map((e) => ({ episode: e.episode, ep: e.ep, cost: priceNode({ ...usage, parts: e.parts }, resolved.model, resolved.params, prices).cost }));
+    return { node: usage.node, model: resolved.model, params: resolved.params, from: resolved.from, usage: usage.parts, cost, prices: notes, assumptions: usage.assumptions, ...(episodes ? { episodes } : {}) };
   });
   const priced = nodes.filter((n) => n.cost);
   return {

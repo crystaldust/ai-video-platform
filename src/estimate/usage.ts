@@ -12,10 +12,17 @@ export interface Range {
 }
 
 /** 一个节点的用量：按计价单位拆开（文本是输入 / 输出 token，图片是出图 / 参考图，视频是秒 / 超额参考图）。 */
+export interface UsagePart {
+  readonly unit: 'token_in' | 'token_out' | 'image' | 'ref_image' | 'video_second' | 'ref_image_extra';
+  readonly qty: Range;
+}
+
 export interface NodeUsage {
   readonly node: Node;
-  readonly parts: readonly { readonly unit: 'token_in' | 'token_out' | 'image' | 'ref_image' | 'video_second' | 'ref_image_extra'; readonly qty: Range }[];
+  readonly parts: readonly UsagePart[];
   readonly assumptions: readonly string[];
+  /** 按集拆开的用量（关键帧、视频按分镜每集算；付费确认单按集勾选用）。分镜还没有的集不在里面 */
+  readonly episodes?: readonly { readonly episode: string; readonly ep: number; readonly parts: readonly UsagePart[] }[];
 }
 
 /**
@@ -99,26 +106,47 @@ function characterRefs(db: DatabaseSync): NodeUsage {
   };
 }
 
-interface StoryboardStats {
+interface SegmentStats {
   readonly cuts: number;
   readonly seconds: number;
   readonly extraRefs: number;
+}
+
+interface StoryboardStats extends SegmentStats {
   readonly episodes: number;
+  readonly perEpisode: readonly (SegmentStats & { readonly episode: string; readonly ep: number })[];
+}
+
+const cutsOf = (s: unknown): unknown[] => (isRecord(s) && Array.isArray(s['cuts']) ? s['cuts'] : []);
+const secondsOf = (s: unknown): number => cutsOf(s).reduce((a: number, c: unknown) => a + (isRecord(c) && typeof c['seconds'] === 'number' ? c['seconds'] : 0), 0);
+
+function segmentStats(segments: readonly unknown[]): SegmentStats {
+  return {
+    cuts: segments.reduce((a: number, s) => a + cutsOf(s).length, 0),
+    seconds: segments.reduce((a: number, s) => a + Math.max(MIN_VIDEO_SECONDS, secondsOf(s)), 0),
+    extraRefs: segments.reduce((a: number, s) => a + Math.max(0, cutsOf(s).length - FREE_REF_IMAGES), 0),
+  };
 }
 
 function storyboardStats(db: DatabaseSync): StoryboardStats | null {
   const sb = latestArtifactDoc(db, 'storyboard')?.doc;
   if (!isRecord(sb) || !Array.isArray(sb['episodes'])) return null;
-  const segments = sb['episodes'].flatMap((e: unknown) => (isRecord(e) && Array.isArray(e['segments']) ? e['segments'] : []));
-  const cutsOf = (s: unknown) => (isRecord(s) && Array.isArray(s['cuts']) ? s['cuts'] : []);
-  const secondsOf = (s: unknown) => cutsOf(s).reduce((a: number, c: unknown) => a + (isRecord(c) && typeof c['seconds'] === 'number' ? c['seconds'] : 0), 0);
-  return {
-    cuts: segments.reduce((a: number, s: unknown) => a + cutsOf(s).length, 0),
-    seconds: segments.reduce((a: number, s: unknown) => a + Math.max(MIN_VIDEO_SECONDS, secondsOf(s)), 0),
-    extraRefs: segments.reduce((a: number, s: unknown) => a + Math.max(0, cutsOf(s).length - FREE_REF_IMAGES), 0),
-    episodes: sb['episodes'].length,
-  };
+  const episodes = sb['episodes'].filter(isRecord);
+  const segmentsOf = (e: Record<string, any>): unknown[] => (Array.isArray(e['segments']) ? e['segments'] : []);
+  const perEpisode = episodes
+    .filter((e) => typeof e['id'] === 'string' && Number.isInteger(e['ep']))
+    .map((e) => ({ episode: e['id'] as string, ep: e['ep'] as number, ...segmentStats(segmentsOf(e)) }));
+  return { ...segmentStats(episodes.flatMap(segmentsOf)), episodes: sb['episodes'].length, perEpisode };
 }
+
+const keyframeParts = (cuts: Range): UsagePart[] => [
+  { unit: 'image', qty: cuts },
+  { unit: 'ref_image', qty: range(cuts.low * KEYFRAME_REFS, cuts.high * KEYFRAME_REFS) },
+];
+const videoParts = (s: SegmentStats): UsagePart[] => [
+  { unit: 'video_second', qty: range(s.seconds, s.seconds * VIDEO_REROLL) },
+  { unit: 'ref_image_extra', qty: range(s.extraRefs, s.extraRefs * VIDEO_REROLL) },
+];
 
 function keyframes(sb: StoryboardStats | null, eps: { n: number; why: string }): NodeUsage {
   const node: Node = 'image:keyframe';
@@ -126,11 +154,9 @@ function keyframes(sb: StoryboardStats | null, eps: { n: number; why: string }):
   const why = sb ? `分镜 ${sb.episodes} 集共 ${sb.cuts} 切，每切一张` : `${eps.why}，还没有分镜，按每集 ${CUTS_PER_EPISODE.low}–${CUTS_PER_EPISODE.high} 切估`;
   return {
     node,
-    parts: [
-      { unit: 'image', qty: cuts },
-      { unit: 'ref_image', qty: range(cuts.low * KEYFRAME_REFS, cuts.high * KEYFRAME_REFS) },
-    ],
+    parts: keyframeParts(cuts),
     assumptions: [why, `每张关键帧挂 ${KEYFRAME_REFS} 张参考图（角色、场景）`, '高位含 20% 重出'],
+    ...(sb ? { episodes: sb.perEpisode.map((e) => ({ episode: e.episode, ep: e.ep, parts: keyframeParts(range(e.cuts, e.cuts * REROLL)) })) } : {}),
   };
 }
 
@@ -139,10 +165,8 @@ function video(db: DatabaseSync, sb: StoryboardStats | null, eps: { n: number; w
   if (sb) {
     return {
       node,
-      parts: [
-        { unit: 'video_second', qty: range(sb.seconds, sb.seconds * VIDEO_REROLL) },
-        { unit: 'ref_image_extra', qty: range(sb.extraRefs, sb.extraRefs * VIDEO_REROLL) },
-      ],
+      parts: videoParts(sb),
+      episodes: sb.perEpisode.map((e) => ({ episode: e.episode, ep: e.ep, parts: videoParts(e) })),
       assumptions: [`分镜各段秒数之和 ${sb.seconds} 秒（每段至少 ${MIN_VIDEO_SECONDS} 秒）`, `每段参考图超出 ${FREE_REF_IMAGES} 张的部分另计`, '高位含 15% 重生成'],
     };
   }

@@ -1,0 +1,250 @@
+/* Skill 包、模型与预设两页共用 */
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  padding-top: 20px;
+  align-items: start;
+}
+.tableCard {
+  overflow: hidden;
+}
+.tableTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px;
+}
+.tableTitle b {
+  font-size: 15px;
+  font-weight: 600;
+}
+.tableTitle span {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.tableTitle em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--bg);
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.table td small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.dimRow td {
+  color: var(--text-3);
+}
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ver {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-left: 6px;
+}
+.caps {
+  display: flex;
+  gap: 4px;
+}
+.cap {
+  white-space: nowrap;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.capOff {
+  background: var(--lock-soft);
+  color: var(--text-3);
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.foot {
+  display: flex;
+  gap: 24px;
+  padding: 14px 16px;
+  background: var(--bg);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.foot b {
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--text-1);
+  margin-right: 4px;
+}
+.side {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.side h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.side p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+.pack {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.packOn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.packHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.packHead b {
+  font-family: var(--mono);
+  font-size: 14px;
+}
+.path {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  word-break: break-all;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.form input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 20px;
+}
+.preset {
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.presetOn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.preset header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.preset header b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.preset p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.preset small {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 2px 4px 2px 10px;
+  background: var(--surface);
+}
+.selectOver {
+  border-color: var(--accent);
+}
+.select select {
+  border: 0;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 5px 0;
+  max-width: 260px;
+}
+.cred {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.cred b {
+  font-size: 13px;
+  font-weight: 500;
+}
+.cred small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.credOff {
+  background: var(--bg);
+}
+.note {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  font-size: 11px;
+  line-height: 1.7;
+}

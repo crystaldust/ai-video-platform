@@ -70,8 +70,8 @@ test('脚本执行：validate 不过返回 exit 1 与违规行；能力探测读
   const r = await runScript(script, ['validate', join(tmp, 'o.json')], { cwd: tmp });
   assert.equal(r.code, 1);
   assert.ok(parseViolations(r.code, r.stdout, r.stderr).length > 0);
-  assert.deepEqual(await probeCapabilities(script, dir), { seed: false, ids: true, validate: true, blocking: false });
-  assert.deepEqual(await probeCapabilities(join(SKILLS, 'novel-script', 'scripts', 'novel-script.mjs'), dir), { seed: true, ids: true, validate: true, blocking: false });
+  assert.deepEqual(await probeCapabilities(script, dir), { seed: false, ids: true, validate: true, blocking: false, checkup: true });
+  assert.deepEqual(await probeCapabilities(join(SKILLS, 'novel-script', 'scripts', 'novel-script.mjs'), dir), { seed: true, ids: true, validate: true, blocking: false, checkup: true });
   rmSync(tmp, { recursive: true, force: true });
 });
 

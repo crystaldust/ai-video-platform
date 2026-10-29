@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { openDb } from '../src/db/connection.ts';
 import { failInterruptedOrchestrations, finishOrchestration, getOrchestration, listOrchestrations, startOrchestration } from '../src/repo/orchestrations.ts';
-import { createPaidGate, listPaidGates } from '../src/repo/paid-gates.ts';
+import { createPaidGate, decidePaidGate, listPaidGates } from '../src/repo/paid-gates.ts';
 import { addReviewAck, addRevisionRequest, cellKey, latestReviewAcks } from '../src/repo/revisions.ts';
 import type { ProjectEstimate } from '../src/estimate/estimate.ts';
 
@@ -51,5 +51,19 @@ test('打回意见与复核确认：同一格取最新一条', () => {
   const acks = latestReviewAcks(db);
   assert.equal(acks.size, 1);
   assert.deepEqual(acks.get(cellKey('staging', 'ep_aaaaaaaa'))?.snapshot, { 'script_scene/sc_x/script': 2 });
+  db.close();
+});
+
+test('付费确认单：确认写入勾选与上限，定了就不能再改；上限要是正数', () => {
+  const db = openDb(':memory:');
+  const g = createPaidGate(db, { orchestrationId: null, estimate: ESTIMATE });
+  assert.throws(() => decidePaidGate(db, g.id, { status: 'confirmed', budgetCap: -1 }), /单次上限要是正数/);
+  const done = decidePaidGate(db, g.id, { status: 'confirmed', selection: { 'video:segment': ['ep_a'] }, budgetCap: 50, currency: 'CNY' });
+  assert.equal(done.status, 'confirmed');
+  assert.deepEqual(done.selection, { 'video:segment': ['ep_a'] });
+  assert.equal(done.budgetCap, 50);
+  assert.equal(done.currency, 'CNY');
+  assert.throws(() => decidePaidGate(db, g.id, { status: 'cancelled' }), /已经是 confirmed/);
+  assert.throws(() => decidePaidGate(db, 99, { status: 'cancelled' }), /没有这张/);
   db.close();
 });
