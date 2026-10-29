@@ -35,6 +35,11 @@ export class ImportError extends Error {
 export interface ImportOptions {
   readonly skill?: string;
   readonly sourcePath?: string;
+  /**
+   * 存进产物版本库的原文，默认就是 doc。只重跑几集时 doc 只含这几集（只对它们负责），
+   * 这里给并回后的整份文档，下游拿最新产物当上游时看到的才是全集。
+   */
+  readonly artifactDoc?: unknown;
 }
 
 export interface ImportResult {
@@ -118,7 +123,7 @@ export function importArtifact(project: Project, stage: Stage, doc: unknown, opt
     const projection = PROJECTIONS[stage](doc, ctx);
     if (projection.problems.length) throw new ImportError(projection.problems);
 
-    const artifact = appendArtifactVersion(db, { stage, doc, skill: opts.skill, sourcePath: opts.sourcePath });
+    const artifact = appendArtifactVersion(db, { stage, doc: opts.artifactDoc ?? doc, skill: opts.skill, sourcePath: opts.sourcePath });
     const { written, created } = writeEntities(db, projection.entities, artifact.id);
     const retired = retireMissing(db, projection.covers, written, artifact.id);
     const refs = writeRefs(db, projection.refs, written);

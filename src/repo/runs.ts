@@ -13,6 +13,12 @@ export interface RunInput {
   readonly model: string;
   readonly inputId: number | null;
   readonly maxAttempts: number;
+  /** 由哪次编排发起（单独 run 时没有） */
+  readonly orchestrationId?: number | null;
+  /** 只重跑这一集（集 id）；整阶段运行时没有 */
+  readonly episodeKey?: string | null;
+  /** 因哪条打回意见而跑 */
+  readonly revisionRequestId?: number | null;
 }
 
 export interface RunRow {
@@ -25,6 +31,9 @@ export interface RunRow {
   readonly artifactVersionId: number | null;
   readonly skippedHumanGates: readonly string[];
   readonly error: string | null;
+  readonly orchestrationId: number | null;
+  readonly episodeKey: string | null;
+  readonly revisionRequestId: number | null;
   readonly startedAt: string;
   readonly endedAt: string | null;
 }
@@ -50,6 +59,9 @@ interface RawRun {
   artifact_version_id: number | null;
   skipped_human_gates: string;
   error: string | null;
+  orchestration_id: number | null;
+  episode_key: string | null;
+  revision_request_id: number | null;
   started_at: string;
   ended_at: string | null;
 }
@@ -64,11 +76,14 @@ const toRun = (r: RawRun): RunRow => ({
   artifactVersionId: r.artifact_version_id,
   skippedHumanGates: JSON.parse(r.skipped_human_gates),
   error: r.error,
+  orchestrationId: r.orchestration_id,
+  episodeKey: r.episode_key,
+  revisionRequestId: r.revision_request_id,
   startedAt: r.started_at,
   endedAt: r.ended_at,
 });
 
-const isAlive = (pid: number): boolean => {
+export const isAlive = (pid: number): boolean => {
   try {
     process.kill(pid, 0);
     return true;
@@ -99,8 +114,11 @@ export function runningRun(db: DatabaseSync, stage: Stage): RunRow | null {
 
 export function createRun(db: DatabaseSync, input: RunInput): number {
   const result = db
-    .prepare(`INSERT INTO node_run (stage, skill_id, model, input_id, status, max_attempts, pid, started_at) VALUES (?, ?, ?, ?, 'running', ?, ?, ?)`)
-    .run(input.stage, input.skillId, input.model, input.inputId, input.maxAttempts, process.pid, nowIso());
+    .prepare(
+      `INSERT INTO node_run (stage, skill_id, model, input_id, status, max_attempts, pid, orchestration_id, episode_key, revision_request_id, started_at)
+       VALUES (?, ?, ?, ?, 'running', ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(input.stage, input.skillId, input.model, input.inputId, input.maxAttempts, process.pid, input.orchestrationId ?? null, input.episodeKey ?? null, input.revisionRequestId ?? null, nowIso());
   return Number(result.lastInsertRowid);
 }
 

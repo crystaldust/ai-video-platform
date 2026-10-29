@@ -16,6 +16,12 @@ export interface PromptParts {
   readonly source?: string | undefined;
   /** 上游产物：阶段名 → JSON */
   readonly upstream?: Readonly<Record<string, unknown>> | undefined;
+  /** 本遍额外的材料（如同批其他角色、每场的开场走位句） */
+  readonly sections?: readonly { readonly title: string; readonly body: string }[] | undefined;
+  /** 打回时作者的意见，原文照抄 */
+  readonly note?: string | undefined;
+  /** 改这一版：这一遍对应的当前版本（打回或上游变了重跑时给），不是从空白重写 */
+  readonly base?: unknown;
   /** seed 骨架或当前要修复的整份 JSON */
   readonly draft?: unknown;
   readonly draftLabel?: string | undefined;
@@ -47,6 +53,9 @@ export function buildPrompt(p: PromptParts): { system: string; user: string } {
     p.params && section('项目参数', `总集数：${p.params.episodes}\n单集目标时长：${p.params.seconds} 秒\n题材：${p.params.genre}`),
     p.source && section('原文', p.source),
     ...Object.entries(p.upstream ?? {}).map(([stage, doc]) => section(`上游 ${stage}.json`, json(doc))),
+    ...(p.sections ?? []).map((s) => section(s.title, s.body)),
+    p.note && section('作者意见（这次重写要落实的修改）', p.note),
+    p.base !== undefined && section('底稿（当前版本：在它上面改，意见没说到的地方保持不变）', json(p.base)),
     p.draft !== undefined && section(p.draftLabel ?? '骨架', json(p.draft)),
     p.range && section('只写这几集', p.range),
     p.violations?.length && section('上一次的违规（逐条修正，其余内容不要动）', p.violations.map((v) => `- ${v}`).join('\n')),

@@ -93,12 +93,12 @@ test('注册 novel 包：版本、能力、哈希入库，有阶段的 skill 自
   const pack = { name: 'novel', requires: { major: 3 }, skills: [
     { name: 'novel-outline', stage: 'outline', script: 'scripts/novel-outline.mjs', recipe: 'novel-outline' },
     { name: 'novel-script', stage: 'script', script: 'scripts/novel-script.mjs', recipe: 'novel-script' },
-    { name: 'novel-art', stage: 'art', script: 'scripts/novel-art.mjs', recipe: 'single-pass' },
+    { name: 'novel-missing', stage: 'art', script: 'scripts/novel-missing.mjs', recipe: 'single-pass' },
   ] };
   const r = await registerPack(project.db, pack, SKILLS, RECIPE_NAMES);
   assert.deepEqual(r.mounted.map((m) => m.stage), ['outline', 'script']);
-  assert.equal(r.problems.length, 1, '副本里没有 novel-art：记问题但不阻断');
-  assert.match(r.problems[0] ?? '', /novel-art：找不到/);
+  assert.equal(r.problems.length, 1, '副本里没有 novel-missing：记问题但不阻断');
+  assert.match(r.problems[0] ?? '', /novel-missing：找不到/);
   const outline = currentMount(project.db, 'outline')!;
   assert.equal(outline.version, '3.0.0');
   assert.equal(outline.capabilities.ids, true);
@@ -124,7 +124,7 @@ test('挂载：只能挂到 skill 声明的阶段；换挂载后当前挂载随�
   assert.equal(currentMount(project.db, 'storyboard')?.name, 'prompt-only');
   assert.throws(() => mountSkill(project.db, 'outline', 'prompt-only'), /不能挂到 outline/);
   assert.throws(() => mountSkill(project.db, 'outline', 'nope'), /没有注册过/);
-  await assert.rejects(registerPack(project.db, { name: 'p', skills: [{ name: 'novel-art', stage: 'art', script: null, recipe: 'single-pass' }] }, SKILLS, RECIPE_NAMES), /没有一个 skill 能注册/);
+  await assert.rejects(registerPack(project.db, { name: 'p', skills: [{ name: 'novel-missing', stage: 'art', script: null, recipe: 'single-pass' }] }, SKILLS, RECIPE_NAMES), /没有一个 skill 能注册/);
   cleanup();
 });
 

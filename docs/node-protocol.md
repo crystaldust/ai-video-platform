@@ -45,7 +45,13 @@ cli runs ~/dramas/duko --id 1     # 某次运行的每次尝试（步骤、违�
 |---|---|
 | `novel-outline` | 骨架（outline-pass.md）→ `validate --stage beats` → 分集（episode-pass.md，每批 ≤10 集）→ `ids --write` → `validate` → 平台门 |
 | `novel-script` | 每批 ≤3 集：`seed <outline> --eps a-b` → 写（script-pass.md）→ 合并 → `ids --outline --write` → `validate --outline [--art]` → 平台门 |
+| `novel-characters` | `seed <outline>`（名单、分档由大纲定）→ 每个角色一张卡（profile-pass.md + sheet.md + 原文）→ 故事摘要 → 合并 → `validate <cast> <原文>` → 平台门 |
+| `novel-art` | `seed <outline>` → 场景（scene-pass.md）→ 道具（prop-pass.md）→ 合并 → `validate [--cast]` → 平台门 |
+| `novel-staging` | `seed <script> --art --outline` → 认图（read-pass.md，每个地点一次）→ 每批 ≤3 集排位（staging-pass.md）→ 合并 → `validate --script --art` → 平台门 |
+| `novel-storyboard` | `novel-staging blocking` 取每场开场走位句 → 每批 ≤2 集：`seed <script> --eps a-b` → 切镜（storyboard-pass / shot-writing / frame / h3-prompt）→ 合并 → `ids --script --write` → `validate` + **staging-carry 门** → 平台门 |
 | `single-pass` | （有 seed 就先 seed）→ 一次写完（SKILL.md 正文 + schema.md + 上游）→（有 ids 就补 id）→（有 validate 就校验）→ 平台门 |
+
+剧本、站位、分镜的配方能只重跑其中几集（打回单集、上游变了只改受影响的集），见 [orchestration.md](orchestration.md)。
 
 **平台门**：用导入时的投影干跑一遍（不写库），投影报的问题当违规；同时复查配方最后一道 skill 质量门，修复后也照样补 id。任何配方最后都过这一道，保证通过的产物既能导入、也满足 skill 的质量门。
 

@@ -4,11 +4,11 @@
   "requires": { "major": 3 },
   "skills": [
     { "name": "novel-outline", "stage": "outline", "script": "scripts/novel-outline.mjs", "recipe": "novel-outline" },
-    { "name": "novel-characters", "stage": "cast", "script": "scripts/novel-characters.mjs", "recipe": "single-pass" },
-    { "name": "novel-art", "stage": "art", "script": "scripts/novel-art.mjs", "recipe": "single-pass" },
+    { "name": "novel-characters", "stage": "cast", "script": "scripts/novel-characters.mjs", "recipe": "novel-characters" },
+    { "name": "novel-art", "stage": "art", "script": "scripts/novel-art.mjs", "recipe": "novel-art" },
     { "name": "novel-script", "stage": "script", "script": "scripts/novel-script.mjs", "recipe": "novel-script" },
-    { "name": "novel-staging", "stage": "staging", "script": "scripts/novel-staging.mjs", "recipe": "single-pass" },
-    { "name": "novel-storyboard", "stage": "storyboard", "script": "scripts/novel-storyboard.mjs", "recipe": "single-pass" },
+    { "name": "novel-staging", "stage": "staging", "script": "scripts/novel-staging.mjs", "recipe": "novel-staging" },
+    { "name": "novel-storyboard", "stage": "storyboard", "script": "scripts/novel-storyboard.mjs", "recipe": "novel-storyboard" },
     { "name": "character-refs", "stage": null, "script": "scripts/character-refs.mjs", "recipe": null }
   ]
 }

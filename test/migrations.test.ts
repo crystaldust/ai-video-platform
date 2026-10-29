@@ -88,3 +88,15 @@ test('迁移到最新后节点协议的表都在，node_run 的状态受 CHECK �
   );
   db.close();
 });
+
+test('v5：编排、打回、复核、付费确认单的表都在；node_run 新列可写', () => {
+  const db = openDb(':memory:');
+  const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((r) => r.name);
+  for (const t of ['orchestration', 'revision_request', 'review_ack', 'paid_gate']) assert.ok(tables.includes(t), `缺表 ${t}`);
+  const cols = (db.prepare('PRAGMA table_info(node_run)').all() as { name: string }[]).map((c) => c.name);
+  for (const c of ['orchestration_id', 'episode_key', 'revision_request_id']) assert.ok(cols.includes(c), `node_run 缺列 ${c}`);
+  assert.throws(() => db.exec(`INSERT INTO orchestration (mode, status, started_at) VALUES ('weird', 'running', 'now')`), /CHECK/);
+  assert.throws(() => db.exec(`INSERT INTO paid_gate (status, estimate, created_at) VALUES ('awaiting_confirmation', 'nope', 'now')`), /CHECK/);
+  assert.throws(() => db.exec(`INSERT INTO revision_request (stage, note, base_artifact_version_id, created_at) VALUES ('script', 'x', 999, 'now')`), /FOREIGN KEY/);
+  db.close();
+});

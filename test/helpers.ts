@@ -13,6 +13,7 @@ const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'd
 export const DUKO = {
   ep1: 'ep_mtg51p27',
   ep2: 'ep_vt1jgnz6',
+  ep3: 'ep_t4vnthc9',
   ep6: 'ep_4207pqxh',
   /** 第 1 集第 1、2 场 */
   sc11: 'sc_x3xq2c82',
@@ -54,3 +55,6 @@ export function tempProject(name = '渡口'): TempProject {
     },
   };
 }
+
+/** 渡口原文（novel-characters 的样例）：角色卡的引文要逐字对得上它。 */
+export const DUKO_BOOK: string = readFileSync(join(FIXTURE_DIR, '渡口.txt'), 'utf8');

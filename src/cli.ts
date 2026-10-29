@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// 平台命令行：项目数据层（导入、追溯、过期、素材库）与节点协议（skill 包、输入、运行）。结果写 stdout（JSON），问题写 stderr。
+// 平台命令行：项目数据层（导入、追溯、过期、素材库）、节点协议（skill 包、输入、运行）与编排（一键跑、打回、复核）。结果写 stdout（JSON），问题写 stderr。
 import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ENTITY_KINDS, STAGES, isEntityKind, isFacet, type Facet } from './domain/types.ts';
 import { MODEL_USAGE, modelCommand } from './cli-models.ts';
 import { NODE_USAGE, nodeCommand } from './cli-nodes.ts';
+import { ORCHESTRATE_USAGE, orchestrateCommand } from './cli-orchestrate.ts';
 import { intFlag, need, parseArgs, print, readJson, stageArg, withProject } from './cli-shared.ts';
 import { ImportError, importArtifact } from './import/import-artifact.ts';
 import { createProject } from './project.ts';
@@ -24,6 +25,7 @@ const USAGE = `cli.ts — AI 短剧平台
   media add <dir> <file>                        素材入库（按 sha256 存放）
   media verify <dir>                            重算哈希，核验素材
 ${NODE_USAGE}
+${ORCHESTRATE_USAGE}
 ${MODEL_USAGE}`;
 
 function cmdImport(args: string[], flags: Record<string, string>) {
@@ -73,7 +75,7 @@ async function main(argv: readonly string[]): Promise<number> {
   else if (cmd === 'stale') print(await withProject(need(args[0], 'stale <dir>'), (p) => findStaleRefs(p.db)));
   else if (cmd === 'media') print(await cmdMedia(args));
   else {
-    const result = (await nodeCommand(cmd, args, flags)) ?? (await modelCommand(cmd, args, flags));
+    const result = (await nodeCommand(cmd, args, flags)) ?? (await orchestrateCommand(cmd, args, flags)) ?? (await modelCommand(cmd, args, flags));
     if (!result) throw new Error(`未知命令 ${cmd}\n\n${USAGE}`);
     print(result.output);
     return result.exitCode;

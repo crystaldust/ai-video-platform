@@ -158,3 +158,38 @@ test('模型与费用命令：models / preset / model / estimate / prices / cred
   assert.equal(go(['cred', 'set', 'nope']).status, 1);
   rmSync(root, { recursive: true, force: true });
 });
+
+test('编排命令：go 一键跑到付费前 → matrix / gates → reject 单集 → review --keep（临时配置目录）', () => {
+  const root = mkdtempSync(join(tmpdir(), 'avp-cli-'));
+  const dir = join(root, 'p');
+  const env: NodeJS.ProcessEnv = { ...process.env, AVP_CONFIG_DIR: join(root, 'cfg') };
+  const cli = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env });
+  const here = dirname(fileURLToPath(import.meta.url));
+  const modelCmd = `${process.execPath} ${join(here, 'support', 'duko-cmd.ts')}`;
+  assert.equal(cli('init', dir, '--name', '渡口').status, 0);
+  assert.equal(cli('pack', 'register', dir, join(here, '..', 'packs', 'novel.pack.json'), '--root', join(here, 'fixtures', 'skills')).status, 0);
+  assert.equal(cli('input', dir, join(here, 'fixtures', 'duko', '渡口.txt'), '--kind', 'novel', '--episodes', '6', '--seconds', '120', '--genre', '悬疑').status, 0);
+
+  const go = cli('go', dir, '--model-cmd', modelCmd, '--concurrency', '2');
+  assert.equal(go.status, 0, go.stderr);
+  assert.match(go.stderr, /▸ cast ∥ art ∥ script/);
+  assert.match(go.stderr, /■ 停在付费阶段之前：确认单 #1/);
+  assert.equal(JSON.parse(go.stdout).status, 'done');
+  assert.deepEqual(JSON.parse(cli('matrix', dir).stdout), []);
+  assert.equal(JSON.parse(cli('gates', dir).stdout)[0].status, 'awaiting_confirmation');
+
+  const again = cli('go', dir, '--only-stale', '--model-cmd', modelCmd);
+  assert.equal(again.status, 0, again.stderr);
+  assert.ok(JSON.parse(again.stdout).stages.every((s: { status: string }) => s.status === 'skipped'), '没有需复核的就全部跳过');
+
+  const rej = cli('reject', dir, 'script', '--ep', '3', '--note', '汽笛提前', '--model-cmd', modelCmd);
+  assert.equal(rej.status, 0, rej.stderr);
+  assert.equal(JSON.parse(rej.stdout).request.note, '汽笛提前');
+  assert.equal(cli('reject', dir, 'art', '--ep', '3', '--note', 'x', '--model-cmd', modelCmd).status, 1);
+  const review = cli('review', dir, 'staging', '--ep', '3', '--keep');
+  assert.equal(review.status, 1, '原样重跑没有改动，没有需复核的地方');
+  assert.match(review.stderr, /没有需复核的地方/);
+  assert.match(cli('review', dir, 'staging').stderr, /只支持 --keep/);
+  assert.match(cli('go', dir, '--only-stale', '--only', 'script').stderr, /不能同时给/);
+  rmSync(root, { recursive: true, force: true });
+});

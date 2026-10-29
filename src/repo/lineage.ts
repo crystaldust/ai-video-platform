@@ -77,7 +77,8 @@ export function getLineage(
 }
 
 export interface StaleRef {
-  readonly from: { kind: EntityKind; key: string; facet: Facet; v: number };
+  /** episode：引用方当前版本记的所属集（跨集共用的对象为 null） */
+  readonly from: { kind: EntityKind; key: string; facet: Facet; v: number; episode: string | null };
   readonly role: string;
   readonly to: { kind: EntityKind; key: string; facet: Facet };
   readonly pinnedV: number;
@@ -87,7 +88,7 @@ export interface StaleRef {
 // 只看引用方当前有效的版本（旧版本过期理所当然，不该报）、只看生效的引用。
 // 被引用方退役时，它的当前版本就是退役版本——引用方照样报出来：它依赖的东西没了
 const STALE_SQL = `
-SELECT fe.kind AS from_kind, fe.key AS from_key, fv.facet AS from_facet, fv.v AS from_v, r.role,
+SELECT fe.kind AS from_kind, fe.key AS from_key, fv.facet AS from_facet, fv.v AS from_v, fv.episode_key AS from_episode, r.role,
   te.kind AS to_kind, te.key AS to_key, tv.facet AS to_facet, tv.v AS pinned_v, cur.v AS current_v
 FROM live_ref r
 JOIN current_version fv ON fv.id = r.from_version_id AND fv.retired = 0
@@ -103,6 +104,7 @@ interface RawStale {
   from_key: string;
   from_facet: Facet;
   from_v: number;
+  from_episode: string | null;
   role: string;
   to_kind: EntityKind;
   to_key: string;
@@ -114,7 +116,7 @@ interface RawStale {
 export function findStaleRefs(db: DatabaseSync): StaleRef[] {
   const rows = db.prepare(STALE_SQL).all() as unknown as RawStale[];
   return rows.map((r) => ({
-    from: { kind: r.from_kind, key: r.from_key, facet: r.from_facet, v: r.from_v },
+    from: { kind: r.from_kind, key: r.from_key, facet: r.from_facet, v: r.from_v, episode: r.from_episode },
     role: r.role,
     to: { kind: r.to_kind, key: r.to_key, facet: r.to_facet },
     pinnedV: r.pinned_v,
