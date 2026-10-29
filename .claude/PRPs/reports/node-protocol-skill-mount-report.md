@@ -35,7 +35,7 @@ skill 包清单与注册（读 SKILL.md 的名称版本、记哈希、探测脚�
 | Coverage | Pass | 全部文件 行 98.2% / 分支 88.6% / 函数 95.8% |
 | Build | N/A | 无构建步骤（Node 直接跑 TS） |
 | 变异验证 | Pass | 7 处关键判断逐一改坏，补测试后全部被抓到：修复不设上限、跳过平台门、不查并发、不查版本、不查越界路径、不记跳过的拍板、任意运行可结案 |
-| 真实模型手工验证 | **未做** | 计划里的「`cli run … --model-cmd "claude -p"` 跑出 outline 与 script」没有执行：会消耗模型额度，留给作者确认后执行 |
+| 真实模型验证 | Pass | 2026-10-29，DeepSeek `deepseek-flash`，见下节「真实模型验证」 |
 
 ## Files Changed
 
@@ -64,6 +64,15 @@ skill 包清单与注册（读 SKILL.md 的名称版本、记哈希、探测脚�
 
 ## Issues Encountered
 - 无阻塞问题。所有执行器集成测试第一次运行即通过；变异验证发现「任意状态的运行都能结案」没被测到，已补测试。
+
+## 真实模型验证（Phase 2 success signal）
+
+- 环境：本分支代码；skill 包 `crystaldust/shuohao-skills@9dd7129`（7 个 skill 全部注册、6 个文本阶段挂载）；输入《渡口》原文 812 字，6 集 × 60 秒，题材悬疑；模型 `deepseek-flash`，经 `--model-cmd` 接一个临时的命令行包装（读 `~/.config/ai-video-platform/deepseek.key`，不进仓库）
+- **outline**（run 1）：passed。骨架 1 次输出被截断后重问通过 → `validate --stage beats` ✓ → 6 集一批写完 → 补 id → `validate` ✓ → 平台门 ✓；skill `checkup` 全部通过；跳过的人工拍板 1 处已记录
+- **script**（run 3）：passed。1–3、4–6 两批写完 → 补 id → `validate` 两轮修复后 ✓ → 平台门 ✓；skill `checkup --outline` 全部通过（没有美术产物，对账美术一项跳过）
+- 用量：10 次调用（含失败尝试），输入 102,411 tokens（缓存命中 63,872）、输出 111,829（其中推理 46,013）；按第三方参考价约 $0.17
+- 验证中发现并修复：`SKILL.md` 的版本写在 `metadata.version`（novel-characters、character-refs）时注册失败 → frontmatter 解析支持 `metadata` 块，顶层优先，补测试
+- 验证中发现、留给 Phase 3：推理模型的推理 token 计入 `max_tokens`，上限不够时正文为空、`finish_reason: length`，执行器只能看到「没找到 JSON」并原样重试（run 2 因此转人工，提高上限后 run 3 通过）。改法已写进 `model-adapters-presets-cost.plan.md`「截断要单独处理」
 
 ## Code Review 修复（10 条全部修复）
 
@@ -96,6 +105,6 @@ skill 包清单与注册（读 SKILL.md 的名称版本、记哈希、探测脚�
 | `test/migrations.test.ts` | +1 | v3 表与 CHECK 约束 |
 
 ## Next Steps
-- [ ] 真实模型验证：`cli run <dir> outline --model-cmd "claude -p"`、`script` 各一次（Phase 2 success signal）
+- [x] 真实模型验证（DeepSeek，见上）
 - [ ] Code review
 - [ ] 提交并发 PR（分支 `feat/node-protocol`，基于 `feat/project-data-layer`）

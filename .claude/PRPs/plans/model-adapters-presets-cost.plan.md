@@ -70,6 +70,7 @@ $ cli run duko outline            # 不再需要 --model-cmd：用当前预设�
 |---|---|---|
 | DeepSeek API | https://api-docs.deepseek.com/ （查询于 2026-10-29） | OpenAI 兼容，base `https://api.deepseek.com`；当前模型名 `deepseek-flash`（由 DeepSeek-V4.1-Flash-1017 提供）与 `deepseek-v4-pro`；旧名 `deepseek-v4-flash` 仍可用但已退役、按 Flash 计价。**单价不在快速开始页**，实施时到 Models & Pricing 页核对 |
 | MiniMax 视频定价 | https://platform.minimax.io/docs/guides/pricing-video.md （查询于 2026-10-29） | H3 按输出秒计费：H3 768P $0.08/s、2K $0.13/s；H3-Highspeed 768P $0.06/s；H3-Lite 768P $0.04/s、480P $0.025/s；每任务 5 张参考图免费，超出 $0.04/张；所有任务类型同价 |
+| 阿里云百炼 Qwen-Image | https://www.alibabacloud.com/help/en/model-studio/qwen-image-2-0-pro （查询于 2026-10-29） | 按张计费、有地域差异与免费额度；具体价格实施时核对控制台 |
 | OpenRouter models API | https://openrouter.ai/api/v1/models | 公开、免 key；`pricing.prompt` / `pricing.completion` 是**字符串**，单位 USD/token（第三方资料，实施时以官方 API 参考为准） |
 
 ```
@@ -125,6 +126,10 @@ export interface ModelInfo {
 - 注册表 `src/model/registry.ts`：内置 `ModelInfo` 列表 + 文本模型工厂 `createTextModel(id, deps, creds)`。图片 / 视频本阶段**只登记能力**，调用实现在 Phase 5。
 - `openai-compatible` 文本适配器：`POST {base}/chat/completions`，`messages: [{role:'system'},{role:'user'}]`，`response_format: {type:'json_object'}`（caps.json 为真时）；读 `usage.prompt_tokens / completion_tokens`。超时 120 s；429 / 5xx 重试 3 次，指数退避加抖动，遵守 `Retry-After`；401/403 立即失败并提示 `cred set <provider>`。错误分类成 `ModelError { kind: 'auth' | 'rate' | 'server' | 'bad_request' | 'network' | 'timeout' }`。
 - `cmd:` 前缀的模型 id 保留给 Phase 2 的 `CommandTextModel`（`cmd:claude -p`）。
+- **截断要单独处理**（Phase 2 真实模型验证中发现）：`deepseek-flash` 是推理模型，`usage.completion_tokens_details.reasoning_tokens` 也计入 `max_tokens`；剧本一批 3 集时 8192 的上限被推理吃光，`content` 为空、`finish_reason: length`，执行器只看到「没找到 JSON」，用同样的提示词重试三次结果相同。改法：
+  - `TextResult` 增加 `finishReason`（`stop` / `length` / `content_filter` / …）与 `usage.reasoningTokens`；`TextCaps` 增加 `reasoning: boolean`，推理模型默认 `max_tokens` 取能力上限而不是保守值。
+  - 执行器遇到 `length`：违规写明「输出被截断（已用 N tokens，其中推理 M）」，**不**原样重试；配方支持的话把批次减半再问（剧本 3 集 → 1–2 集），否则直接转人工并说明需要更大的输出上限或换模型。
+  - `node_attempt.usage` 记下 `reasoningTokens` 与 `finishReason`，估算器按实际推理开销校准文本节点用量。
 
 ### 2. 节点与预设
 节点（node）是「平台里要选模型的位置」，与 stage 不完全一一对应：
@@ -137,12 +142,12 @@ image:character-refs image:keyframe video:segment
 { "name": "budget", "title": "小成本验证", "description": "先跑通再说",
   "nodes": {
     "text:*": { "model": "deepseek:deepseek-flash" },
-    "image:character-refs": { "model": "<实施时定>", "params": { "quality": "low" } },
-    "image:keyframe": { "model": "<实施时定>" },
+    "image:character-refs": { "model": "dashscope:qwen-image" },
+    "image:keyframe": { "model": "dashscope:qwen-image-edit" },
     "video:segment": { "model": "minimax:MiniMax-H3-Lite", "params": { "resolution": "480P" } } } }
 ```
 - `text:*` 通配，具体节点优先。
-- 图片模型在实施时按当时可用的 API 选定（候选：DashScope Qwen Image、OpenAI GPT Image）；要求能力里 `maxRefImages ≥ 1`（关键帧要挂参考图）。
+- **选型（作者 2026-10-29 确认）**：文本 DeepSeek；图片 Qwen-Image（阿里云百炼 DashScope，角色参考图用文生图、关键帧用能挂参考图的编辑版，具体模型名以实施当天的百炼文档为准，要求 `maxRefImages ≥ 1`）；视频 MiniMax H3-Lite 480P（小成本）/ H3 768P（生产级）。备选：图片 Seedream 4.x，视频 Seedance。
 - 生产级：文本 `deepseek:deepseek-v4-pro`，视频 `minimax:MiniMax-H3` 768P。
 - 校验：预设引用的模型 id 必须在注册表里，参数值必须在 `ModelInfo.params` 允许范围内；能力不匹配（例如给 `video:segment` 配了文本模型）拒绝。
 
@@ -344,4 +349,4 @@ EXPECT: 零类型错误；全部通过；覆盖率达标；测试全程不出网
 
 ## Notes
 - 设计稿「模型与预设」页里写的 `deepseek-chat`、视频 ¥27–37 都是示意，按本计划的注册表和价格表在 Phase 4 更新。
-- 图片模型的选型留到实施当天：以「能挂参考图、有官方按张计价」为准，选定后写进 `prices/builtin.json` 和两套预设。
+- 图片模型已选定 Qwen-Image（见关键设计 2）；百炼的具体模型名与按张单价在实施当天核对官方价目表后写进 `prices/builtin.json`（2026-10 第三方转述：标准版约 ¥0.18/张，Pro 1K ¥0.25、2K ¥0.5，未核对）。
