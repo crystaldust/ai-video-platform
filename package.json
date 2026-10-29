@@ -1,0 +1,21 @@
+{
+  "name": "ai-video-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "开源 AI 短剧制作平台：人和 AI 共同创作、可追踪、可局部重做",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-exclude=\"src/cli.ts\" --test-coverage-lines=80 --test-coverage-branches=70 --test-coverage-functions=80 \"test/**/*.test.ts\"",
+    "cli": "node src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.9",
+    "typescript": "7.0.2"
+  }
+}
