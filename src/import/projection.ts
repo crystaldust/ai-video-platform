@@ -29,13 +29,9 @@ export function optionalArray(obj: Record<string, unknown>, name: string, proble
   return [];
 }
 
-export const entity = (kind: EntityKind, key: string, title: string, facet: Facet, payload: unknown): EntityDraft => ({
-  kind,
-  key,
-  title,
-  facet,
-  payload,
-});
+/** 一个对象侧面；按集负责的侧面要给 episode（集的稳定 id）。 */
+export const entity = (kind: EntityKind, key: string, title: string, facet: Facet, payload: unknown, episode?: string): EntityDraft =>
+  episode === undefined ? { kind, key, title, facet, payload } : { kind, key, title, facet, payload, episode };
 
 export const ref = (
   from: FacetRef,
@@ -89,8 +85,8 @@ export function idItems(
 export const coverAll = (facet: Facet, kinds: readonly EntityKind[]): Coverage[] =>
   kinds.map((kind) => ({ kind, facet, episodes: 'all' }));
 
-/** 按集负责：只对文档里出现的集负责，分批写的其他集不受影响。 */
-export const coverEpisodes = (facet: Facet, kinds: readonly EntityKind[], episodes: readonly number[]): Coverage[] =>
+/** 按集负责：只对文档里出现的集（按集 id）负责，分批写的其他集不受影响。 */
+export const coverEpisodes = (facet: Facet, kinds: readonly EntityKind[], episodes: readonly string[]): Coverage[] =>
   kinds.map((kind) => ({ kind, facet, episodes: [...new Set(episodes)] }));
 
 /** 收尾：同一份文档里同一对象的同一侧面只能出现一次。 */

@@ -33,6 +33,11 @@ export interface FacetRef extends EntityRef {
 export interface EntityDraft extends FacetRef {
   readonly title: string;
   readonly payload: unknown;
+  /**
+   * 这个侧面属于哪一集（集的稳定 id）。按集负责的侧面必须给，退役靠它判断范围；
+   * 跨集共用的对象（人物、场景、站位认图）不给。
+   */
+  readonly episode?: string;
 }
 
 /** 投影产出的一条引用，目标侧面按 toFacets 顺序取第一个已存在的。 */
@@ -49,11 +54,12 @@ export interface RefDraft {
 /*
  * 覆盖范围：这份产物对哪些 (kind, facet) 负完整责任。范围内、库里还有效、
  * 但这次没出现的对象会被退役。剧本、分镜可能按集分批写，所以只对文档里出现的集负责。
+ * 集按稳定 id 认，不按集号：插一集、集号后移，范围也不会框错集。
  */
 export interface Coverage {
   readonly kind: EntityKind;
   readonly facet: Facet;
-  readonly episodes: readonly number[] | 'all';
+  readonly episodes: readonly string[] | 'all';
 }
 
 export interface Projection {
@@ -68,6 +74,8 @@ export interface ProjectionContext {
   readonly characterKeyByName: ReadonlyMap<string, string>;
   /** 大纲里不止一个人用的名字：拿它匹配会对错人，宁可拒绝。 */
   readonly ambiguousNames: ReadonlySet<string>;
+  /** 剧本场次 id → 所属集 id（剧本侧面的当前版本）；站位只写了 sceneRef，靠它知道是哪一集。 */
+  readonly sceneEpisode: ReadonlyMap<string, string>;
 }
 
 export type ProjectFn = (doc: unknown, ctx: ProjectionContext) => Projection;

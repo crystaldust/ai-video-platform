@@ -4,7 +4,7 @@ import { ImportError, importArtifact } from '../src/import/import-artifact.ts';
 import { countArtifacts } from '../src/repo/artifacts.ts';
 import { currentVersion, listVersions } from '../src/repo/entities.ts';
 import { findStaleRefs } from '../src/repo/lineage.ts';
-import { importAll, loadFixture, tempProject } from './helpers.ts';
+import { DUKO, importAll, loadFixture, tempProject } from './helpers.ts';
 
 const refTargets = (db: import('node:sqlite').DatabaseSync, fromVersionId: number, role: string) =>
   db
@@ -46,7 +46,7 @@ test('同一份产物重复导入不产生新版本', () => {
   const again = importArtifact(project, 'script', loadFixture('script'));
   assert.equal(again.unchanged, true);
   assert.equal(countArtifacts(project.db, 'script'), 1);
-  assert.equal(listVersions(project.db, 'script_scene', 'E01-SC01', 'script').length, 1);
+  assert.equal(listVersions(project.db, 'script_scene', DUKO.sc11, 'script').length, 1);
   cleanup();
 });
 
@@ -58,15 +58,15 @@ test('改一句台词只让那一场长出 v2，其余场次不动', () => {
   beat.line = `${beat.line}（改）`;
   const result = importArtifact(project, 'script', doc);
   assert.deepEqual([result.artifactV, result.created], [2, 1]);
-  assert.equal(currentVersion(project.db, 'script_scene', 'E01-SC01', 'script')?.v, 2);
-  assert.equal(currentVersion(project.db, 'script_scene', 'E01-SC02', 'script')?.v, 1);
+  assert.equal(currentVersion(project.db, 'script_scene', DUKO.sc11, 'script')?.v, 2);
+  assert.equal(currentVersion(project.db, 'script_scene', DUKO.sc12, 'script')?.v, 1);
   cleanup();
 });
 
 test('新版本的引用钉在被引用方当时的当前版本上', () => {
   const { project, cleanup } = tempProject();
   importAll(project);
-  const sc = currentVersion(project.db, 'script_scene', 'E01-SC01', 'script');
+  const sc = currentVersion(project.db, 'script_scene', DUKO.sc11, 'script');
   assert.ok(sc);
   assert.deepEqual(refTargets(project.db, sc.id, 'location'), [{ kind: 'location', key: 'S02', facet: 'art', v: 1 }]);
   assert.deepEqual(
@@ -86,14 +86,14 @@ test('引用了不存在的场景时整体回滚，并点名', () => {
     (e: unknown) => e instanceof ImportError && e.problems.some((p) => p.includes('S09')),
   );
   assert.equal(countArtifacts(project.db, 'script'), 0);
-  assert.equal(currentVersion(project.db, 'script_scene', 'E01-SC01', 'script'), null, '其他场次也没有写进去');
+  assert.equal(currentVersion(project.db, 'script_scene', DUKO.sc11, 'script'), null, '其他场次也没有写进去');
   cleanup();
 });
 
 test('没导入 cast 时，分镜的人物引用回退到大纲侧面', () => {
   const { project, cleanup } = tempProject();
   importAll(project, ['outline', 'art', 'script', 'storyboard']);
-  const cut = currentVersion(project.db, 'cut', 'E01-01.c1', 'storyboard');
+  const cut = currentVersion(project.db, 'cut', DUKO.cut11, 'storyboard');
   assert.ok(cut);
   assert.deepEqual(refTargets(project.db, cut.id, 'cast'), [{ kind: 'character', key: 'C01', facet: 'outline', v: 1 }]);
   assert.deepEqual(refTargets(project.db, cut.id, 'prop'), [{ kind: 'prop', key: 'P01', facet: 'art', v: 1 }]);
@@ -103,7 +103,7 @@ test('没导入 cast 时，分镜的人物引用回退到大纲侧面', () => {
 test('没导入 staging 时，段的站位引用直接跳过', () => {
   const { project, cleanup } = tempProject();
   importAll(project, ['outline', 'art', 'script', 'storyboard']);
-  const seg = currentVersion(project.db, 'segment', 'E01-01', 'storyboard');
+  const seg = currentVersion(project.db, 'segment', DUKO.seg1, 'storyboard');
   assert.ok(seg);
   assert.deepEqual(refTargets(project.db, seg.id, 'staging'), []);
   assert.equal(refTargets(project.db, seg.id, 'scene').length, 1);
@@ -134,10 +134,10 @@ test('剧本删掉一场：那一场退役，引用它的段报过期', () => {
   doc.episodes[0].scenes.pop();
   const result = importArtifact(project, 'script', doc);
   assert.equal(result.retired, 1);
-  assert.equal(currentVersion(project.db, 'script_scene', 'E01-SC02', 'script'), null);
-  const versions = listVersions(project.db, 'script_scene', 'E01-SC02', 'script');
+  assert.equal(currentVersion(project.db, 'script_scene', DUKO.sc12, 'script'), null);
+  const versions = listVersions(project.db, 'script_scene', DUKO.sc12, 'script');
   assert.deepEqual(versions.map((v) => [v.v, v.retired]), [[1, false], [2, true]]);
-  const stale = findStaleRefs(project.db).filter((s) => s.to.key === 'E01-SC02');
+  const stale = findStaleRefs(project.db).filter((s) => s.to.key === DUKO.sc12);
   assert.ok(stale.some((s) => s.from.kind === 'segment' && s.role === 'scene'), '引用被删场次的段要报出来');
   cleanup();
 });
@@ -150,7 +150,7 @@ test('引用了已退役场次的分镜不能原样重新导入', () => {
   importArtifact(project, 'script', doc);
   assert.throws(
     () => importArtifact(project, 'storyboard', loadFixture('storyboard')),
-    (e: unknown) => e instanceof ImportError && e.problems.some((p) => p.includes('E01-SC02')),
+    (e: unknown) => e instanceof ImportError && e.problems.some((p) => p.includes(DUKO.sc12)),
   );
   cleanup();
 });
@@ -162,7 +162,7 @@ test('删掉的场次恢复后长出新的有效版本', () => {
   doc.episodes[0].scenes.pop();
   importArtifact(project, 'script', doc);
   importArtifact(project, 'script', loadFixture('script'));
-  assert.equal(currentVersion(project.db, 'script_scene', 'E01-SC02', 'script')?.v, 3);
+  assert.equal(currentVersion(project.db, 'script_scene', DUKO.sc12, 'script')?.v, 3);
   cleanup();
 });
 
@@ -174,8 +174,8 @@ test('只含部分集的剧本批次不会让其他集退役', () => {
   batch.episodes[0].scenes[0].flow[0].action = '改过的开场动作。';
   const result = importArtifact(project, 'script', batch);
   assert.equal(result.retired, 0);
-  assert.equal(currentVersion(project.db, 'script_scene', 'E06-SC02', 'script')?.v, 1);
-  assert.equal(currentVersion(project.db, 'episode', 'E06', 'script')?.v, 1);
+  assert.equal(currentVersion(project.db, 'script_scene', DUKO.sc62, 'script')?.v, 1);
+  assert.equal(currentVersion(project.db, 'episode', DUKO.ep6, 'script')?.v, 1);
   cleanup();
 });
 

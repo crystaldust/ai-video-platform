@@ -17,6 +17,8 @@ export interface VersionRow {
   readonly artifactVersionId: number | null;
   readonly retired: boolean;
   readonly createdAt: string;
+  /** 所属集的稳定 id；跨集共用的侧面为 null。 */
+  readonly episodeKey: string | null;
 }
 
 /** 退役版本的内容指纹：不是任何 JSON 的哈希，所以恢复出来的内容一定会长出新版本。 */
@@ -35,10 +37,11 @@ interface RawVersion {
   artifact_version_id: number | null;
   retired: number;
   created_at: string;
+  episode_key: string | null;
 }
 
 const VERSION_SELECT = `SELECT ev.id, ev.entity_id, e.kind, e.key, e.title, ev.facet, ev.v, ev.payload,
-  ev.content_hash, ev.artifact_version_id, ev.retired, ev.created_at
+  ev.content_hash, ev.artifact_version_id, ev.retired, ev.created_at, ev.episode_key
   FROM entity_version ev JOIN entity e ON e.id = ev.entity_id`;
 
 const toVersionRow = (r: RawVersion): VersionRow => ({
@@ -54,6 +57,7 @@ const toVersionRow = (r: RawVersion): VersionRow => ({
   artifactVersionId: r.artifact_version_id,
   retired: r.retired === 1,
   createdAt: r.created_at,
+  episodeKey: r.episode_key,
 });
 
 /**
@@ -81,16 +85,19 @@ export interface VersionInput {
   readonly facet: Facet;
   readonly payload: unknown;
   readonly artifactVersionId: number | null;
+  /** 所属集的稳定 id；跨集共用的侧面不给。 */
+  readonly episode?: string | undefined;
 }
 
-/** 追加一个侧面版本；内容与当前版本相同则复用（created: false）。 */
+/** 追加一个侧面版本；内容和所属集都与当前版本相同则复用（created: false）。 */
 export function appendEntityVersion(db: DatabaseSync, input: VersionInput): { id: number; v: number; created: boolean } {
   const hash = contentHash(input.payload);
+  const episodeKey = input.episode ?? null;
   const latest = db
-    .prepare('SELECT id, v, content_hash FROM entity_version WHERE entity_id = ? AND facet = ? ORDER BY v DESC LIMIT 1')
-    .get(input.entityId, input.facet) as { id: number; v: number; content_hash: string } | undefined;
-  if (latest && latest.content_hash === hash) return { id: latest.id, v: latest.v, created: false };
-  const row = { ...input, v: (latest?.v ?? 0) + 1, payloadJson: canonicalJson(input.payload), hash, retired: false };
+    .prepare('SELECT id, v, content_hash, episode_key FROM entity_version WHERE entity_id = ? AND facet = ? ORDER BY v DESC LIMIT 1')
+    .get(input.entityId, input.facet) as { id: number; v: number; content_hash: string; episode_key: string | null } | undefined;
+  if (latest && latest.content_hash === hash && latest.episode_key === episodeKey) return { id: latest.id, v: latest.v, created: false };
+  const row = { ...input, v: (latest?.v ?? 0) + 1, payloadJson: canonicalJson(input.payload), hash, retired: false, episodeKey };
   return { ...insertVersion(db, row), created: true };
 }
 
@@ -102,15 +109,16 @@ interface NewVersionRow {
   readonly hash: string;
   readonly artifactVersionId: number | null;
   readonly retired: boolean;
+  readonly episodeKey: string | null;
 }
 
 function insertVersion(db: DatabaseSync, row: NewVersionRow): { id: number; v: number } {
   const result = db
     .prepare(
-      `INSERT INTO entity_version (entity_id, facet, v, payload, content_hash, artifact_version_id, retired, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO entity_version (entity_id, facet, v, payload, content_hash, artifact_version_id, retired, created_at, episode_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(row.entityId, row.facet, row.v, row.payloadJson, row.hash, row.artifactVersionId, row.retired ? 1 : 0, nowIso());
+    .run(row.entityId, row.facet, row.v, row.payloadJson, row.hash, row.artifactVersionId, row.retired ? 1 : 0, nowIso(), row.episodeKey);
   return { id: Number(result.lastInsertRowid), v: row.v };
 }
 
@@ -122,10 +130,12 @@ export function retireEntityVersion(
   artifactVersionId: number | null,
 ): { id: number; v: number } {
   const latest = db
-    .prepare('SELECT v FROM entity_version WHERE entity_id = ? AND facet = ? ORDER BY v DESC LIMIT 1')
-    .get(entityId, facet) as { v: number } | undefined;
+    .prepare('SELECT v, episode_key FROM entity_version WHERE entity_id = ? AND facet = ? ORDER BY v DESC LIMIT 1')
+    .get(entityId, facet) as { v: number; episode_key: string | null } | undefined;
   const v = (latest?.v ?? 0) + 1;
-  return insertVersion(db, { entityId, facet, v, payloadJson: 'null', hash: RETIRED_HASH, artifactVersionId, retired: true });
+  // 退役版本沿用原来的集：历史上它是哪一集的，退役后也查得到
+  const episodeKey = latest?.episode_key ?? null;
+  return insertVersion(db, { entityId, facet, v, payloadJson: 'null', hash: RETIRED_HASH, artifactVersionId, retired: true, episodeKey });
 }
 
 /** 当前有效版本；已退役的视为没有。 */
@@ -136,15 +146,28 @@ export function currentVersion(db: DatabaseSync, kind: EntityKind, key: string, 
   return row && row.retired === 0 ? toVersionRow(row) : null;
 }
 
-/** 某个侧面下当前有效的全部对象：{ entityId, key }。 */
-export function liveEntities(db: DatabaseSync, kind: EntityKind, facet: Facet): { entityId: number; key: string }[] {
+export interface LiveEntity {
+  readonly entityId: number;
+  readonly key: string;
+  readonly episodeKey: string | null;
+}
+
+/** 某个侧面下当前有效的全部对象，连同当前版本记的所属集。 */
+export function liveEntities(db: DatabaseSync, kind: EntityKind, facet: Facet): LiveEntity[] {
   const rows = db
     .prepare(
-      `SELECT e.id, e.key FROM current_version cv JOIN entity e ON e.id = cv.entity_id
+      `SELECT e.id, e.key, cv.episode_key FROM current_version cv JOIN entity e ON e.id = cv.entity_id
        WHERE e.kind = ? AND cv.facet = ? AND cv.retired = 0 ORDER BY e.key`,
     )
-    .all(kind, facet) as unknown as { id: number; key: string }[];
-  return rows.map((r) => ({ entityId: r.id, key: r.key }));
+    .all(kind, facet) as unknown as { id: number; key: string; episode_key: string | null }[];
+  return rows.map((r) => ({ entityId: r.id, key: r.key, episodeKey: r.episode_key }));
+}
+
+/** 剧本场次 id → 所属集 id，取剧本侧面的当前有效版本；站位投影靠它知道场次属于哪一集。 */
+export function sceneEpisodeIndex(db: DatabaseSync): Map<string, string> {
+  return new Map(
+    liveEntities(db, 'script_scene', 'script').flatMap((e) => (e.episodeKey ? [[e.key, e.episodeKey] as const] : [])),
+  );
 }
 
 export function listVersions(db: DatabaseSync, kind: EntityKind, key: string, facet?: Facet): VersionRow[] {

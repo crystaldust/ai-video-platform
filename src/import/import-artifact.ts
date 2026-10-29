@@ -6,7 +6,6 @@
 // 同一份产物内部的引用也总是彼此一致，不会对自己报过期。
 import type { DatabaseSync } from 'node:sqlite';
 import { withTransaction } from '../db/transaction.ts';
-import { episodeOfKey } from '../domain/keys.ts';
 import { isStage, type Coverage, type EntityDraft, type RefDraft, type Stage } from '../domain/types.ts';
 import type { Project } from '../project.ts';
 import { appendArtifactVersion } from '../repo/artifacts.ts';
@@ -18,6 +17,8 @@ import {
   insertRef,
   liveEntities,
   retireEntityVersion,
+  sceneEpisodeIndex,
+  type LiveEntity,
 } from '../repo/entities.ts';
 import { PROJECTIONS } from './projections/index.ts';
 
@@ -57,26 +58,24 @@ function writeEntities(db: DatabaseSync, drafts: readonly EntityDraft[], artifac
   const written = new Map<string, number>();
   for (const d of drafts) {
     const entityId = ensureEntity(db, d.kind, d.key, d.title, d.facet === 'outline');
-    const version = appendEntityVersion(db, { entityId, facet: d.facet, payload: d.payload, artifactVersionId });
+    const version = appendEntityVersion(db, { entityId, facet: d.facet, payload: d.payload, artifactVersionId, episode: d.episode });
     written.set(facetId(d), version.id);
     if (version.created) created += 1;
   }
   return { written: written as Written, created };
 }
 
-const inScope = (c: Coverage, key: string): boolean => {
-  if (c.episodes === 'all') return true;
-  const ep = episodeOfKey(key);
-  return ep !== null && c.episodes.includes(ep);
-};
+// 按集负责时，只看当前版本记的所属集；没记集的（跨集共用）不在任何一集的范围里
+const inScope = (c: Coverage, live: LiveEntity): boolean =>
+  c.episodes === 'all' || (live.episodeKey !== null && c.episodes.includes(live.episodeKey));
 
 /** 覆盖范围内、库里仍有效、这次却没出现的对象：退役。 */
 function retireMissing(db: DatabaseSync, covers: readonly Coverage[], written: Written, artifactVersionId: number): number {
   let retired = 0;
   for (const c of covers) {
-    for (const { entityId, key } of liveEntities(db, c.kind, c.facet)) {
-      if (!inScope(c, key) || written.has(facetId({ kind: c.kind, key, facet: c.facet }))) continue;
-      retireEntityVersion(db, entityId, c.facet, artifactVersionId);
+    for (const live of liveEntities(db, c.kind, c.facet)) {
+      if (!inScope(c, live) || written.has(facetId({ kind: c.kind, key: live.key, facet: c.facet }))) continue;
+      retireEntityVersion(db, live.entityId, c.facet, artifactVersionId);
       retired += 1;
     }
   }
@@ -113,7 +112,8 @@ export function importArtifact(project: Project, stage: Stage, doc: unknown, opt
   const { db } = project;
   return withTransaction(db, () => {
     const index = characterKeyIndex(db);
-    const projection = PROJECTIONS[stage](doc, { characterKeyByName: index.byName, ambiguousNames: index.ambiguous });
+    const ctx = { characterKeyByName: index.byName, ambiguousNames: index.ambiguous, sceneEpisode: sceneEpisodeIndex(db) };
+    const projection = PROJECTIONS[stage](doc, ctx);
     if (projection.problems.length) throw new ImportError(projection.problems);
 
     const artifact = appendArtifactVersion(db, { stage, doc, skill: opts.skill, sourcePath: opts.sourcePath });

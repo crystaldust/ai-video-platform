@@ -1,52 +1,56 @@
-// script.json → 集的剧本侧面 + 剧本场次。场次没有编号，按"第几集第几场"定键。
-import { episodeKey, scriptSceneKey } from '../../domain/keys.ts';
+// script.json → 集的剧本侧面 + 剧本场次。集和场次都按上游稳定 id（ep_/sc_）定键；
+// 场次顺序由集侧面的 sceneKeys 表达，场次自己的 payload 不带位置——插一场不会让别的场次长出新版本。
+import { isValidKey } from '../../domain/keys.ts';
 import type { EntityDraft, FacetRef, Projection, ProjectionContext, RefDraft } from '../../domain/types.ts';
 import {
   arrayField,
   coverEpisodes,
   entity,
   finish,
-  isPositiveInt,
   isRecord,
   notObject,
   optionalArray,
   refsTo,
   type Problems,
 } from '../projection.ts';
+import { episodeTitle } from './outline.ts';
 
 const FACET = 'script';
+const IDS_HINT = '（3.0 起必填，先运行 novel-script 的 ids --write）';
 
-type Part = { entities: EntityDraft[]; refs: RefDraft[]; ep?: number };
+type Part = { entities: EntityDraft[]; refs: RefDraft[]; ep?: string };
+const EMPTY: Part = { entities: [], refs: [] };
 
-function sceneParts(ep: number, sc: unknown, index: number, problems: Problems): Part {
-  const key = scriptSceneKey(ep, index);
-  const where = `第 ${ep} 集第 ${index} 场（${key}）`;
-  if (!isRecord(sc)) {
-    problems.push(`${where}不是对象`);
-    return { entities: [], refs: [] };
+function sceneParts(ep: string, label: string, sc: unknown, index: number, problems: Problems): Part {
+  if (!isRecord(sc) || !isValidKey('script_scene', sc['id'])) {
+    problems.push(`${label}第 ${index} 场缺少合法的场次 id${IDS_HINT}`);
+    return EMPTY;
   }
+  const key = sc['id'];
+  const where = `${label}第 ${index} 场（${key}）`;
   const from: FacetRef = { kind: 'script_scene', key, facet: FACET };
   const refs = [
-    ...refsTo(from, 'episode', 'episode', [episodeKey(ep)], [FACET], where, problems),
+    ...refsTo(from, 'episode', 'episode', [ep], [FACET], where, problems),
     ...refsTo(from, 'location', 'location', [sc['sceneId']], ['art', 'outline'], where, problems),
     ...refsTo(from, 'cast', 'character', arrayField(sc, 'characters', problems, where), ['outline'], where, problems),
     ...refsTo(from, 'prop', 'prop', optionalArray(sc, 'props', problems, where), ['art', 'outline'], where, problems),
   ];
-  return { entities: [entity('script_scene', key, '', FACET, { ...sc, ep, index })], refs };
+  return { entities: [entity('script_scene', key, '', FACET, sc, ep)], refs };
 }
 
 function episodeParts(item: unknown, i: number, problems: Problems): Part {
-  if (!isRecord(item) || !isPositiveInt(item['ep'])) {
-    problems.push(`剧本第 ${i + 1} 集缺少正整数 ep`);
-    return { entities: [], refs: [] };
+  if (!isRecord(item) || !isValidKey('episode', item['id'])) {
+    problems.push(`剧本第 ${i + 1} 集缺少合法的集 id${IDS_HINT}`);
+    return EMPTY;
   }
-  const ep = item['ep'];
+  const ep = item['id'];
+  const label = `${episodeTitle(item['ep']) || `剧本第 ${i + 1} 集`}（${ep}）`;
   const { scenes: _scenes, ...rest } = item;
-  const scenes = arrayField(item, 'scenes', problems, `第 ${ep} 集`);
-  const parts = scenes.map((sc, j) => sceneParts(ep, sc, j + 1, problems));
-  const sceneKeys = scenes.map((_, j) => scriptSceneKey(ep, j + 1));
+  const scenes = arrayField(item, 'scenes', problems, label);
+  const parts = scenes.map((sc, j) => sceneParts(ep, label, sc, j + 1, problems));
+  const sceneKeys = parts.flatMap((p) => p.entities.map((e) => e.key));
   return {
-    entities: [entity('episode', episodeKey(ep), `第${ep}集`, FACET, { ...rest, sceneKeys }), ...parts.flatMap((p) => p.entities)],
+    entities: [entity('episode', ep, episodeTitle(item['ep']), FACET, { ...rest, sceneKeys }, ep), ...parts.flatMap((p) => p.entities)],
     refs: parts.flatMap((p) => p.refs),
     ep,
   };

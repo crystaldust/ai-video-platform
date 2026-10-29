@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { STAGES } from '../src/domain/types.ts';
-import { fixturePath, loadFixture } from './helpers.ts';
+import { DUKO, fixturePath, loadFixture } from './helpers.ts';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli.ts');
 const run = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
@@ -24,7 +24,7 @@ test('init → 依次导入 6 份 → lineage → stale → media', () => {
     assert.equal(r.status, 0, `${stage}: ${r.stderr}`);
   }
 
-  const lineage = run('lineage', dir, 'cut', 'E01-02.c1', '--facet', 'storyboard');
+  const lineage = run('lineage', dir, 'cut', DUKO.cut21, '--facet', 'storyboard');
   assert.equal(lineage.status, 0, lineage.stderr);
   assert.match(lineage.stdout, /"key": "C01"/);
 

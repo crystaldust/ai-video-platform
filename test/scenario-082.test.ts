@@ -8,7 +8,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { currentVersion } from '../src/repo/entities.ts';
 import { addMediaFile } from '../src/repo/media.ts';
-import { importAll, tempProject } from './helpers.ts';
+import { DUKO, importAll, tempProject } from './helpers.ts';
 
 const NOW = '2026-10-26T00:00:00.000Z';
 
@@ -32,9 +32,9 @@ test('082 旧版不合格、新版选用、081 不动，旧剪辑保持原样', 
   const { dir, project, cleanup } = tempProject();
   const { db } = project;
   importAll(project);
-  const seg81 = currentVersion(db, 'segment', 'E01-01', 'storyboard');
-  const seg82 = currentVersion(db, 'segment', 'E01-02', 'storyboard');
-  const ep1 = db.prepare(`SELECT id FROM entity WHERE kind = 'episode' AND key = 'E01'`).get() as { id: number };
+  const seg81 = currentVersion(db, 'segment', DUKO.seg1, 'storyboard');
+  const seg82 = currentVersion(db, 'segment', DUKO.seg2, 'storyboard');
+  const ep1 = db.prepare(`SELECT id FROM entity WHERE kind = 'episode' AND key = ?`).get(DUKO.ep1) as { id: number };
   assert.ok(seg81 && seg82);
 
   const media = await Promise.all(
@@ -100,7 +100,7 @@ test('剪辑片段的出点必须晚于入点', () => {
   const { project, cleanup } = tempProject();
   const { db } = project;
   importAll(project, ['outline']);
-  const ep1 = db.prepare(`SELECT id FROM entity WHERE key = 'E01'`).get() as { id: number };
+  const ep1 = db.prepare(`SELECT id FROM entity WHERE key = ?`).get(DUKO.ep1) as { id: number };
   const editId = insertId(db, 'INSERT INTO edit_version (episode_entity_id, v, created_at) VALUES (?, 1, ?)', ep1.id, NOW);
   db.exec('PRAGMA foreign_keys = OFF'); // 只测 CHECK，不备候选素材
   assert.throws(

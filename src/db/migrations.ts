@@ -1,9 +1,10 @@
 // 迁移：按 PRAGMA user_version 记录跑到第几个。只追加新迁移，已发布的不改。
 import type { DatabaseSync } from 'node:sqlite';
 import { SCHEMA_V1 } from './schema-v1.ts';
+import { SCHEMA_V2 } from './schema-v2.ts';
 import { withTransaction } from './transaction.ts';
 
-export const MIGRATIONS: readonly string[] = [SCHEMA_V1];
+export const MIGRATIONS: readonly string[] = [SCHEMA_V1, SCHEMA_V2];
 
 export function schemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;

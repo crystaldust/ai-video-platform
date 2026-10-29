@@ -1,6 +1,7 @@
 // outline.json → 集 / 人物 / 场景 / 道具 / 爽点 的大纲侧面。
 // 大纲是人物清单、场景清单的权威来源；分集靠 C/S/P 编号引用它们。
-import { episodeKey } from '../../domain/keys.ts';
+// 集按稳定 id（ep_…）认，集号 ep 只用来拼显示名。
+import { isValidKey } from '../../domain/keys.ts';
 import type { EntityDraft, FacetRef, Projection, ProjectionContext, RefDraft } from '../../domain/types.ts';
 import {
   arrayField,
@@ -19,6 +20,10 @@ import {
 } from '../projection.ts';
 
 const FACET = 'outline';
+const IDS_HINT = '（3.0 起必填，先运行 novel-outline 的 ids --write）';
+
+/** 显示名：「第3集」。集号只是显示，缺了也不影响身份。 */
+export const episodeTitle = (ep: unknown): string => (isPositiveInt(ep) ? `第${ep}集` : '');
 
 function catalog(doc: Record<string, unknown>, problems: Problems): EntityDraft[] {
   const characters = idItems(arrayField(doc, 'characters', problems, 'outline '), 'character', 'id', '人物表', problems);
@@ -35,13 +40,13 @@ function beats(doc: Record<string, unknown>, problems: Problems): { entities: En
   const items = idItems(arrayField(doc, 'beats', problems, 'outline '), 'beat', 'id', '爽点表', problems);
   const entities = items.map(({ key, item }) => entity('beat', key, str(item['type']), FACET, item));
   const refs = items.flatMap(({ key, item }) => {
-    const ep = item['episode'];
-    if (!isPositiveInt(ep)) {
-      problems.push(`爽点 ${key} 的 episode 必须是正整数`);
+    const episodeRef = item['episodeRef'];
+    if (!isValidKey('episode', episodeRef)) {
+      problems.push(`爽点 ${key} 的 episodeRef 不是合法的集 id：${String(episodeRef)}${IDS_HINT}`);
       return [];
     }
     const from: FacetRef = { kind: 'beat', key, facet: FACET };
-    return [ref(from, 'episode', { kind: 'episode', key: episodeKey(ep) }, [FACET], `爽点 ${key}`)];
+    return [ref(from, 'episode', { kind: 'episode', key: episodeRef }, [FACET], `爽点 ${key}`)];
   });
   return { entities, refs };
 }
@@ -49,19 +54,19 @@ function beats(doc: Record<string, unknown>, problems: Problems): { entities: En
 function episodes(doc: Record<string, unknown>, problems: Problems): { entities: EntityDraft[]; refs: RefDraft[] } {
   const list = arrayField(doc, 'episodes', problems, 'outline ');
   const parts = list.flatMap((item, i) => {
-    if (!isRecord(item) || !isPositiveInt(item['ep'])) {
-      problems.push(`分集第 ${i + 1} 条缺少正整数 ep`);
+    if (!isRecord(item) || !isValidKey('episode', item['id'])) {
+      problems.push(`分集第 ${i + 1} 条缺少合法的集 id${IDS_HINT}`);
       return [];
     }
-    const key = episodeKey(item['ep']);
-    const where = `第 ${item['ep']} 集`;
+    const key = item['id'];
+    const where = `${episodeTitle(item['ep']) || `分集第 ${i + 1} 条`}（${key}）`;
     const from: FacetRef = { kind: 'episode', key, facet: FACET };
     const refs = [
       ...refsTo(from, 'cast', 'character', optionalArray(item, 'characterIds', problems, where), [FACET], where, problems),
       ...refsTo(from, 'location', 'location', optionalArray(item, 'sceneIds', problems, where), [FACET], where, problems),
       ...refsTo(from, 'prop', 'prop', optionalArray(item, 'propIds', problems, where), [FACET], where, problems),
     ];
-    return [{ entity: entity('episode', key, `第${item['ep']}集`, FACET, item), refs }];
+    return [{ entity: entity('episode', key, episodeTitle(item['ep']), FACET, item), refs }];
   });
   return { entities: parts.map((p) => p.entity), refs: parts.flatMap((p) => p.refs) };
 }

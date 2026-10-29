@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { openDb } from '../src/db/connection.ts';
 import { MIGRATIONS, migrate, schemaVersion } from '../src/db/migrations.ts';
+import { SCHEMA_V1 } from '../src/db/schema-v1.ts';
 import { withTransaction } from '../src/db/transaction.ts';
 
 test('新库迁移到最新版本，重复迁移不报错', () => {
@@ -56,4 +57,21 @@ test('事务内抛错会回滚', () => {
   const row = db.prepare('SELECT COUNT(*) AS n FROM project_meta').get() as { n: number };
   assert.equal(row.n, 0);
   db.close();
+});
+
+test('v1 库升到最新：已有版本行保留，所属集为空', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'avp-mig-'));
+  const path = join(dir, 'x.sqlite');
+  const raw = new DatabaseSync(path);
+  raw.exec(SCHEMA_V1);
+  raw.exec(`INSERT INTO entity (kind, key, created_at) VALUES ('character', 'C01', 'now')`);
+  raw.exec(`INSERT INTO entity_version (entity_id, facet, v, payload, content_hash, created_at) VALUES (1, 'outline', 1, '{}', 'h', 'now')`);
+  raw.exec('PRAGMA user_version = 1');
+  raw.close();
+  const db = openDb(path);
+  assert.equal(schemaVersion(db), MIGRATIONS.length);
+  const row = db.prepare('SELECT v, episode_key FROM entity_version').get();
+  assert.deepEqual({ ...row }, { v: 1, episode_key: null });
+  db.close();
+  rmSync(dir, { recursive: true, force: true });
 });

@@ -11,7 +11,7 @@ import {
   listVersions,
   retireEntityVersion,
 } from '../src/repo/entities.ts';
-import { tempProject } from './helpers.ts';
+import { DUKO, tempProject } from './helpers.ts';
 
 test('同样内容追加两次只有 v1；改内容出现 v2，v1 仍可读', () => {
   const { project, cleanup } = tempProject();
@@ -75,7 +75,7 @@ test('引用重复插入只记一条；人名索引来自大纲侧面', () => {
   const { db } = project;
   const c = ensureEntity(db, 'character', 'C01', '沈知微');
   const cv = appendEntityVersion(db, { entityId: c, facet: 'outline', payload: { name: '沈知微' }, artifactVersionId: null });
-  const s = ensureEntity(db, 'script_scene', 'E01-SC01', '');
+  const s = ensureEntity(db, 'script_scene', DUKO.sc11, '');
   const sv = appendEntityVersion(db, { entityId: s, facet: 'script', payload: {}, artifactVersionId: null });
   insertRef(db, sv.id, 'cast', cv.id);
   insertRef(db, sv.id, 'cast', cv.id);
@@ -105,5 +105,20 @@ test('退役后当前版本视为没有；内容恢复时长出新版本', () =>
   assert.equal(currentVersion(db, 'prop', 'P01', 'art'), null);
   const back = appendEntityVersion(db, { entityId: id, facet: 'art', payload: { a: 1 }, artifactVersionId: null });
   assert.deepEqual([back.v, back.created], [3, true]);
+  cleanup();
+});
+
+test('内容相同但所属集变了也算新版本；没给集时记为 null', () => {
+  const { project, cleanup } = tempProject();
+  const { db } = project;
+  const id = ensureEntity(db, 'script_scene', DUKO.sc11, '');
+  const v1 = appendEntityVersion(db, { entityId: id, facet: 'script', payload: { a: 1 }, artifactVersionId: null, episode: DUKO.ep1 });
+  const same = appendEntityVersion(db, { entityId: id, facet: 'script', payload: { a: 1 }, artifactVersionId: null, episode: DUKO.ep1 });
+  const moved = appendEntityVersion(db, { entityId: id, facet: 'script', payload: { a: 1 }, artifactVersionId: null, episode: DUKO.ep2 });
+  assert.deepEqual([v1.created, same.created, moved.created, moved.v], [true, false, true, 2]);
+  assert.equal(currentVersion(db, 'script_scene', DUKO.sc11, 'script')?.episodeKey, DUKO.ep2);
+  const c = ensureEntity(db, 'character', 'C01', '');
+  appendEntityVersion(db, { entityId: c, facet: 'outline', payload: {}, artifactVersionId: null });
+  assert.equal(currentVersion(db, 'character', 'C01', 'outline')?.episodeKey, null);
   cleanup();
 });
