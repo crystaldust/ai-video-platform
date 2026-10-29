@@ -265,3 +265,79 @@ test('建好运行记录之后任何一步出错（如进度回调抛错）都�
   assert.equal(again.status, 'passed', '同一进程里马上能再跑');
   cleanup();
 });
+
+const truncatedModel = (texts: (string | { length: true })[]) => {
+  const requests: string[] = [];
+  return {
+    requests,
+    id: 'deepseek:deepseek-flash',
+    async complete(req: { user: string }) {
+      requests.push(req.user);
+      const next = texts.shift();
+      if (next === undefined) throw new Error('没有更多预设输出');
+      return typeof next === 'string'
+        ? { text: next, finishReason: 'stop' as const, usage: { inputTokens: 1000, outputTokens: 500 } }
+        : { text: '', finishReason: 'length' as const, usage: { inputTokens: 1000, outputTokens: 8192, reasoningTokens: 8192 } };
+    },
+  };
+};
+
+const PRICES = {
+  user: [],
+  cache: [],
+  cacheFetchedAt: null,
+  builtin: [
+    { model: 'deepseek:deepseek-flash', unit: 'token_in' as const, price: 0.3, currency: 'USD', source: 't', checkedAt: '2026-10-29', verified: false },
+    { model: 'deepseek:deepseek-flash', unit: 'token_out' as const, price: 1.2, currency: 'USD', source: 't', checkedAt: '2026-10-29', verified: false },
+  ],
+};
+
+test('截断：不原样重试，把分集批次对半拆开再写；每次尝试记下费用与结束原因', async () => {
+  const { project, cleanup } = tempProject();
+  await setup(project);
+  const all = outlineEpisodes().episodes;
+  const part = (from: number, to: number) => fenced({ episodes: all.filter((e: { ep: number }) => e.ep >= from && e.ep <= to) });
+  // 骨架；1–6 集一批被截断 → 拆成 1–3、4–6
+  const model = truncatedModel([fenced(skeleton()), { length: true }, part(1, 3), part(4, 6)]);
+  const out = await runNode(project, 'outline', { model, prices: PRICES });
+
+  assert.equal(out.status, 'passed', out.message);
+  const attempts = listAttempts(project.db, out.runId);
+  assert.deepEqual(attempts.map((a) => a.step), ['skeleton', 'episodes:1-6', 'episodes:1-3', 'episodes:4-6']);
+  assert.match(attempts[1]!.violations[0] ?? '', /输出被截断.*已用 8192 tokens，其中推理 8192/);
+  const rows = project.db.prepare('SELECT finish_reason, cost, cost_currency FROM node_attempt WHERE run_id = ? ORDER BY id').all(out.runId) as { finish_reason: string; cost: number; cost_currency: string }[];
+  assert.deepEqual(rows.map((r) => r.finish_reason), ['stop', 'length', 'stop', 'stop']);
+  assert.equal(rows[0]!.cost, (1000 * 0.3 + 500 * 1.2) / 1e6);
+  assert.equal(rows[0]!.cost_currency, 'USD');
+  cleanup();
+});
+
+test('截断：拆到一集还截断就转人工并说明原因；没有价格时费用记 null', async () => {
+  const { project, cleanup } = tempProject();
+  addInput(project.db, { kind: 'synopsis', text: 'x', params: { episodes: 1, seconds: 60, genre: '悬疑' } });
+  await registerPack(project.db, PACK, SKILLS, RECIPE_NAMES);
+  const model = truncatedModel([fenced(skeleton()), { length: true }]);
+  const out = await runNode(project, 'outline', { model, prices: null });
+  assert.equal(out.status, 'needs_human');
+  assert.match(out.message ?? '', /episodes:1-1：输出被截断.*已拆到最小批次，需要更大的输出上限或换模型/);
+  const costs = project.db.prepare('SELECT cost FROM node_attempt WHERE run_id = ?').all(out.runId) as { cost: number | null }[];
+  assert.ok(costs.every((c) => c.cost === null));
+  cleanup();
+});
+
+test('评审修复：不分批的步骤截断时如实说「这一步不分批」；缓存命中有单价就按它计；模型没单价时提示', async () => {
+  const { project, cleanup } = tempProject();
+  await setup(project);
+  const events: ProgressEvent[] = [];
+  const out = await runNode(project, 'outline', { model: truncatedModel([{ length: true }]), prices: PRICES, onProgress: (e) => events.push(e) });
+  assert.match(out.message ?? '', /skeleton：输出被截断.*这一步不分批/);
+  const cachedPrices = { ...PRICES, builtin: [...PRICES.builtin, { model: 'deepseek:deepseek-flash', unit: 'token_in_cached' as const, price: 0.03, currency: 'USD', source: 't', checkedAt: '2026-10-29', verified: false }] };
+  const { attemptCost } = await import('../src/executor/run-node.ts');
+  const c = attemptCost('deepseek:deepseek-flash', { text: '', usage: { inputTokens: 1000, outputTokens: 0, cachedInputTokens: 800 } }, cachedPrices);
+  assert.equal(c?.amount, (200 * 0.3 + 800 * 0.03) / 1e6);
+  const none = { ...PRICES, builtin: [] };
+  const ev2: ProgressEvent[] = [];
+  await runNode(project, 'outline', { model: truncatedModel([{ length: true }]), prices: none, onProgress: (e) => ev2.push(e) });
+  assert.ok(ev2.some((e) => e.type === 'notice' && /没有单价，本次不记费用/.test(e.message)));
+  cleanup();
+});

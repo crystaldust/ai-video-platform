@@ -3,9 +3,10 @@ import type { DatabaseSync } from 'node:sqlite';
 import { SCHEMA_V1 } from './schema-v1.ts';
 import { SCHEMA_V2 } from './schema-v2.ts';
 import { SCHEMA_V3 } from './schema-v3.ts';
+import { SCHEMA_V4 } from './schema-v4.ts';
 import { withTransaction } from './transaction.ts';
 
-export const MIGRATIONS: readonly string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3];
+export const MIGRATIONS: readonly string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4];
 
 export function schemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;

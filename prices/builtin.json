@@ -1,0 +1,21 @@
+{
+  "note": "单位：token_in / token_out 为每百万 token；image、ref_image 为每张；video_second 为每输出秒；ref_image_extra 为超出免费额度后每张参考图。verified=false 表示没能在官方页面核对，只是参考。",
+  "entries": [
+    { "model": "deepseek:deepseek-flash", "unit": "token_in", "price": 0.30, "currency": "USD", "source": "https://anotherwrapper.com/llm-pricing/deepseek-v4.1-flash", "checkedAt": "2026-10-29", "verified": false, "openrouterId": "deepseek/deepseek-v4.1-flash" },
+    { "model": "deepseek:deepseek-flash", "unit": "token_out", "price": 1.20, "currency": "USD", "source": "https://anotherwrapper.com/llm-pricing/deepseek-v4.1-flash", "checkedAt": "2026-10-29", "verified": false, "openrouterId": "deepseek/deepseek-v4.1-flash" },
+
+    { "model": "dashscope:qwen-image-3.0", "params": { "size": "1k" }, "unit": "image", "price": 0.03, "currency": "USD", "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing", "checkedAt": "2026-10-29", "verified": true, "note": "新加坡（国际站）" },
+    { "model": "dashscope:qwen-image-3.0", "params": { "size": "2k" }, "unit": "image", "price": 0.03, "currency": "USD", "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing", "checkedAt": "2026-10-29", "verified": true, "note": "新加坡（国际站）" },
+    { "model": "dashscope:qwen-image-3.0", "unit": "ref_image", "price": 0.003, "currency": "USD", "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing", "checkedAt": "2026-10-29", "verified": true, "note": "输入图片按张计；新加坡（国际站）" },
+    { "model": "dashscope:qwen-image-3.0-pro", "params": { "size": "1k" }, "unit": "image", "price": 0.04, "currency": "USD", "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing", "checkedAt": "2026-10-29", "verified": true, "note": "新加坡（国际站）" },
+    { "model": "dashscope:qwen-image-3.0-pro", "params": { "size": "2k" }, "unit": "image", "price": 0.075, "currency": "USD", "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing", "checkedAt": "2026-10-29", "verified": true, "note": "新加坡（国际站）" },
+    { "model": "dashscope:qwen-image-3.0-pro", "unit": "ref_image", "price": 0.003, "currency": "USD", "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing", "checkedAt": "2026-10-29", "verified": true, "note": "输入图片按张计；新加坡（国际站）" },
+
+    { "model": "minimax:MiniMax-H3", "params": { "resolution": "768P" }, "unit": "video_second", "price": 0.08, "currency": "USD", "source": "https://platform.minimax.io/docs/guides/pricing-video.md", "checkedAt": "2026-10-29", "verified": true },
+    { "model": "minimax:MiniMax-H3", "params": { "resolution": "2K" }, "unit": "video_second", "price": 0.13, "currency": "USD", "source": "https://platform.minimax.io/docs/guides/pricing-video.md", "checkedAt": "2026-10-29", "verified": true },
+    { "model": "minimax:MiniMax-H3", "unit": "ref_image_extra", "price": 0.04, "currency": "USD", "source": "https://platform.minimax.io/docs/guides/pricing-video.md", "checkedAt": "2026-10-29", "verified": true, "note": "每任务 5 张免费" },
+    { "model": "minimax:MiniMax-H3-Lite", "params": { "resolution": "480P" }, "unit": "video_second", "price": 0.025, "currency": "USD", "source": "https://platform.minimax.io/docs/guides/pricing-video.md", "checkedAt": "2026-10-29", "verified": true },
+    { "model": "minimax:MiniMax-H3-Lite", "params": { "resolution": "768P" }, "unit": "video_second", "price": 0.04, "currency": "USD", "source": "https://platform.minimax.io/docs/guides/pricing-video.md", "checkedAt": "2026-10-29", "verified": true },
+    { "model": "minimax:MiniMax-H3-Lite", "unit": "ref_image_extra", "price": 0.02, "currency": "USD", "source": "https://platform.minimax.io/docs/guides/pricing-video.md", "checkedAt": "2026-10-29", "verified": true, "note": "每任务 5 张免费" }
+  ]
+}

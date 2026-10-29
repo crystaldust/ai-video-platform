@@ -1,0 +1,11 @@
+{
+  "name": "budget",
+  "title": "小成本验证",
+  "description": "先跑通再说：文本 DeepSeek Flash，图片 Qwen-Image 3.0 1K，视频 H3-Lite 480P",
+  "nodes": {
+    "text:*": { "model": "deepseek:deepseek-flash" },
+    "image:character-refs": { "model": "dashscope:qwen-image-3.0", "params": { "size": "1k" } },
+    "image:keyframe": { "model": "dashscope:qwen-image-3.0", "params": { "size": "1k" } },
+    "video:segment": { "model": "minimax:MiniMax-H3-Lite", "params": { "resolution": "480P" } }
+  }
+}

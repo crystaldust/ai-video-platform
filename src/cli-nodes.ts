@@ -3,7 +3,8 @@
 import { intFlag, need, readJson, readText, stageArg, withProject } from './cli-shared.ts';
 import { RECIPE_NAMES } from './executor/recipes.ts';
 import { runNode, type ProgressEvent } from './executor/run-node.ts';
-import { CommandTextModel } from './model/command-model.ts';
+import { createTextModel } from './model/registry.ts';
+import { resolveNodeModel } from './repo/models.ts';
 import { INPUT_KINDS, addInput, type InputKind } from './repo/inputs.ts';
 import { getRun, listAttempts, listRuns, unlockRun } from './repo/runs.ts';
 import { mountSkill, registerPack } from './repo/skills.ts';
@@ -13,8 +14,9 @@ export const NODE_USAGE = `  pack register <dir> <manifest.json> --root <skills 
   mount <dir> <stage> <skill>                   把阶段挂到另一个已注册的 skill
   input <dir> <file.txt> --episodes N --seconds S --genre <题材> [--kind synopsis|novel]
                                                 设置项目输入（梗概或小说正文 + 参数）
-  run <dir> <stage> --model-cmd "<命令>" [--max-attempts 3]
-                                                用平台执行器跑一个阶段；命令从 stdin 读提示词、stdout 输出
+  run <dir> <stage> [--model-cmd "<命令>"] [--max-attempts 3]
+                                                用平台执行器跑一个阶段；不给 --model-cmd 就用预设或节点覆盖里
+                                                text:<stage> 的模型；--model-cmd 从 stdin 读提示词、stdout 输出
                                                 （按空白切分参数，不支持引号）；转人工时退出码 2
   runs <dir> [--id N]                           列出运行记录；--id 看某次运行的每次尝试
   runs unlock <dir> --id N                      把卡在 running 的运行标为失败（进程已不在但没被认出来时用）`;
@@ -29,6 +31,7 @@ const done = (output: unknown): CommandResult => ({ output, exitCode: 0 });
 const progressLine = (e: ProgressEvent): string => {
   if (e.type === 'run-start') return `▸ ${e.stage} · ${e.skill} · ${e.model}（run ${e.runId}）`;
   if (e.type === 'attempt') return `  ${e.step} #${e.n} ${e.violations.length ? `✗ ${e.violations[0]}` : '✓'}`;
+  if (e.type === 'notice') return `  ⚠ ${e.message}`;
   if (e.type === 'gate') return `  门 ${e.gate} ${e.violations.length ? `✗ ${e.violations.length} 处违规` : '✓'}`;
   return `${e.status === 'passed' ? '✓' : '✗'} run ${e.runId} ${e.status}`;
 };
@@ -59,13 +62,14 @@ async function cmdInput(args: string[], flags: Record<string, string>): Promise<
 }
 
 async function cmdRun(args: string[], flags: Record<string, string>): Promise<CommandResult> {
-  const usage = 'run <dir> <stage> --model-cmd "<命令>" [--max-attempts 3]';
+  const usage = 'run <dir> <stage> [--model-cmd "<命令>"] [--max-attempts 3]';
   const [dir, stage] = [need(args[0], usage), stageArg(need(args[1], usage))];
-  const model = new CommandTextModel(need(flags['model-cmd'], usage));
   const maxAttempts = intFlag(flags['max-attempts'], '--max-attempts');
-  const out = await withProject(dir, (p) =>
-    runNode(p, stage, { model, ...(maxAttempts === undefined ? {} : { maxAttempts }), onProgress: (e) => process.stderr.write(`${progressLine(e)}\n`) }),
-  );
+  const out = await withProject(dir, (p) => {
+    const modelId = flags['model-cmd'] ? `cmd:${flags['model-cmd']}` : resolveNodeModel(p.db, `text:${stage}`).model;
+    const model = createTextModel(modelId);
+    return runNode(p, stage, { model, ...(maxAttempts === undefined ? {} : { maxAttempts }), onProgress: (e) => process.stderr.write(`${progressLine(e)}\n`) });
+  });
   if (out.status === 'needs_human') {
     process.stderr.write(`  最后一版：${out.dir}/out/${stage}.json，违规：${out.dir}/violations.txt\n`);
     process.stderr.write(`  修好后：import ${dir} ${stage} <修好的文件> --run ${out.runId}\n`);

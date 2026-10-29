@@ -4,6 +4,7 @@ import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ENTITY_KINDS, STAGES, isEntityKind, isFacet, type Facet } from './domain/types.ts';
+import { MODEL_USAGE, modelCommand } from './cli-models.ts';
 import { NODE_USAGE, nodeCommand } from './cli-nodes.ts';
 import { intFlag, need, parseArgs, print, readJson, stageArg, withProject } from './cli-shared.ts';
 import { ImportError, importArtifact } from './import/import-artifact.ts';
@@ -22,7 +23,8 @@ const USAGE = `cli.ts — AI 短剧平台
   stale <dir>                                   列出过期引用
   media add <dir> <file>                        素材入库（按 sha256 存放）
   media verify <dir>                            重算哈希，核验素材
-${NODE_USAGE}`;
+${NODE_USAGE}
+${MODEL_USAGE}`;
 
 function cmdImport(args: string[], flags: Record<string, string>) {
   const usage = 'import <dir> <stage> <file.json> [--skill <name@ver>] [--run <id>]';
@@ -71,7 +73,7 @@ async function main(argv: readonly string[]): Promise<number> {
   else if (cmd === 'stale') print(await withProject(need(args[0], 'stale <dir>'), (p) => findStaleRefs(p.db)));
   else if (cmd === 'media') print(await cmdMedia(args));
   else {
-    const result = await nodeCommand(cmd, args, flags);
+    const result = (await nodeCommand(cmd, args, flags)) ?? (await modelCommand(cmd, args, flags));
     if (!result) throw new Error(`未知命令 ${cmd}\n\n${USAGE}`);
     print(result.output);
     return result.exitCode;

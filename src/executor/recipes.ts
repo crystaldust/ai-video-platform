@@ -8,6 +8,27 @@ import type { PromptParts } from './prompt.ts';
 
 export type Doc = Record<string, unknown>;
 
+/** 模型输出撞上上限被截断：不能原样重试。分批的配方把批次对半拆开再问，拆到一集还截断就交给人。 */
+export class OutputTruncated extends Error {
+  readonly step: string;
+  constructor(step: string, message: string) {
+    super(message);
+    this.name = 'OutputTruncated';
+    this.step = step;
+  }
+}
+
+/** 写 [a, b] 这一批；输出被截断就对半拆开分别写，结果按顺序拼起来。 */
+export async function writeSplitting(a: number, b: number, write: (a: number, b: number) => Promise<Doc[]>): Promise<Doc[]> {
+  try {
+    return await write(a, b);
+  } catch (error) {
+    if (!(error instanceof OutputTruncated) || a >= b) throw error;
+    const mid = Math.floor((a + b) / 2);
+    return [...(await writeSplitting(a, mid, write)), ...(await writeSplitting(mid + 1, b, write))];
+  }
+}
+
 /** 交给模型的一遍：执行器补上 skill 简介、边界和违规清单。 */
 export type AskParts = Omit<PromptParts, 'skillDescription' | 'boundary' | 'violations'>;
 
@@ -110,7 +131,7 @@ const novelOutline: Recipe = {
 
     const total = ctx.params?.episodes ?? 0;
     let episodes: Doc[] = [];
-    for (const [a, b] of batches(total, OUTLINE_BATCH)) {
+    const writeEpisodes = async (a: number, b: number): Promise<Doc[]> => {
       const part = await ctx.ask(`episodes:${a}-${b}`, {
         ...base,
         task: ctx.readFile('references/episode-pass.md'),
@@ -119,7 +140,10 @@ const novelOutline: Recipe = {
         range: `第 ${a}–${b} 集`,
         outputSpec: '只输出 {"episodes": [...]}，每集写 ep（集号）及 schema 要求的字段。',
       });
-      episodes = mergeEpisodes(episodes, episodesOf(part));
+      return episodesOf(part) as Doc[];
+    };
+    for (const [a, b] of batches(total, OUTLINE_BATCH)) {
+      episodes = mergeEpisodes(episodes, await writeSplitting(a, b, writeEpisodes));
     }
     const post = (d: Doc) => withIds(ctx, 'outline.json', d, []);
     const doc = await post({ ...skeleton, episodes });
@@ -140,10 +164,11 @@ const novelScript: Recipe = {
     const upstream = { outline, ...(ctx.upstream.art ? { art: ctx.upstream.art } : {}) };
     let head: Doc = {};
     let episodes: Doc[] = [];
-    for (const [a, b] of batches(eps.length, SCRIPT_BATCH)) {
+    // a、b 是大纲里的位置（1 起）；seed 的 --eps 用集号
+    const writeEpisodes = async (a: number, b: number): Promise<Doc[]> => {
       const [from, to] = [eps[a - 1]!, eps[b - 1]!];
       const seed = JSON.parse(await ctx.runSkill(['seed', ctx.inPath('outline'), '--eps', `${from}-${to}`])) as Doc;
-      if (!episodes.length) head = Object.fromEntries(Object.entries(seed).filter(([k]) => k !== 'episodes'));
+      if (!Object.keys(head).length) head = Object.fromEntries(Object.entries(seed).filter(([k]) => k !== 'episodes'));
       const part = await ctx.ask(`episodes:${from}-${to}`, {
         schema,
         task,
@@ -154,7 +179,10 @@ const novelScript: Recipe = {
         range: `第 ${from}–${to} 集`,
         outputSpec: '只输出 {"episodes": [...]}，沿用骨架里每集的 ep 与 id，补全 scenes。',
       });
-      episodes = mergeEpisodes(episodes, episodesOf(part));
+      return episodesOf(part) as Doc[];
+    };
+    for (const [a, b] of batches(eps.length, SCRIPT_BATCH)) {
+      episodes = mergeEpisodes(episodes, await writeSplitting(a, b, writeEpisodes));
     }
     const post = (d: Doc) => withIds(ctx, 'script.json', d, ['--outline', ctx.inPath('outline')]);
     const doc = await post({ ...head, episodes });
