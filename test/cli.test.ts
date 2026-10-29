@@ -1,7 +1,7 @@
 // CLI 冒烟：真起一个 node 进程跑命令，看退出码和输出。
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -66,4 +66,59 @@ test('参数错误给出中文提示', () => {
   assert.match(run('init', '/tmp/x', '--name').stderr, /--name 后面缺少取值/);
   assert.match(run('stale', join(tmpdir(), 'avp-no-such-dir')).stderr, /不是项目目录/);
   assert.match(run('import', '/tmp', 'outline', join(tmpdir(), 'avp-no-such.json')).stderr, /读不了 .*avp-no-such\.json/);
+});
+
+test('节点协议：pack register → input → run（回放模型）→ runs → 转人工后 import --run 结案', () => {
+  const root = mkdtempSync(join(tmpdir(), 'avp-cli-'));
+  const dir = join(root, 'p');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const replay = join(root, 'replay');
+  mkdirSync(replay);
+  const outline = loadFixture('outline');
+  const { episodes, ...skeleton } = outline;
+  const fence = (d: unknown) => `\`\`\`json\n${JSON.stringify(d)}\n\`\`\``;
+  writeFileSync(join(replay, '1.txt'), fence({ ...skeleton, beats: skeleton.beats.map(({ episodeRef: _r, ...b }: Record<string, unknown>) => b) }));
+  writeFileSync(join(replay, '2.txt'), fence({ episodes: episodes.map(({ id: _id, ...e }: Record<string, unknown>) => e) }));
+  const manifest = join(root, 'pack.json');
+  writeFileSync(manifest, JSON.stringify({ name: 'novel', requires: { major: 3 }, skills: [{ name: 'novel-outline', stage: 'outline', script: 'scripts/novel-outline.mjs', recipe: 'novel-outline' }] }));
+  const synopsis = join(root, 'synopsis.txt');
+  writeFileSync(synopsis, '民国年间，一条无名河上的老渡船……');
+
+  assert.equal(run('init', dir, '--name', '渡口').status, 0);
+  const reg = run('pack', 'register', dir, manifest, '--root', join(here, 'fixtures', 'skills'));
+  assert.equal(reg.status, 0, reg.stderr);
+  assert.deepEqual(JSON.parse(reg.stdout).mounted, [{ stage: 'outline', skill: 'novel-outline' }]);
+  assert.equal(run('input', dir, synopsis, '--episodes', '6', '--seconds', '60', '--genre', '悬疑').status, 0);
+  assert.equal(run('input', dir, synopsis, '--episodes', 'x', '--seconds', '60', '--genre', '悬疑').status, 1);
+
+  const ok = run('run', dir, 'outline', '--model-cmd', `${process.execPath} ${join(here, 'support', 'replay-model.mjs')} ${replay}`);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(JSON.parse(ok.stdout).status, 'passed');
+  assert.match(ok.stderr, /▸ outline · novel-outline@3\.0\.0/);
+  const runs = JSON.parse(run('runs', dir, '--id', '1').stdout);
+  assert.deepEqual(runs.attempts.map((a: { step: string }) => a.step), ['skeleton', 'episodes:1-6']);
+
+  // 第二次：模型输出始终不是 JSON → 转人工（退出码 2）→ 修好的文件 import --run 结案
+  writeFileSync(join(replay, '.n'), '100');
+  for (const n of [101, 102, 103]) writeFileSync(join(replay, `${n}.txt`), '不是 JSON');
+  const bad = run('run', dir, 'outline', '--model-cmd', `${process.execPath} ${join(here, 'support', 'replay-model.mjs')} ${replay}`);
+  assert.equal(bad.status, 2, bad.stderr);
+  assert.match(bad.stderr, /--run 2/);
+  assert.equal(run('import', dir, 'script', fixturePath('outline'), '--run', '2').status, 1, '阶段不对时不导入');
+  const fixed = run('import', dir, 'outline', fixturePath('outline'), '--run', '2');
+  assert.equal(fixed.status, 0, fixed.stderr);
+  assert.equal(JSON.parse(run('runs', dir, '--id', '2').stdout).status, 'resolved');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('pack register：清单不是合法 JSON 时点名文件', () => {
+  const root = mkdtempSync(join(tmpdir(), 'avp-cli-'));
+  const dir = join(root, 'p');
+  run('init', dir, '--name', 'x');
+  const bad = join(root, 'bad.json');
+  writeFileSync(bad, '{ not json');
+  const r = run('pack', 'register', dir, bad, '--root', root);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, new RegExp(`${bad.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} 不是合法 JSON`));
+  rmSync(root, { recursive: true, force: true });
 });

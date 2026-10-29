@@ -39,6 +39,8 @@ export interface ImportOptions {
 
 export interface ImportResult {
   readonly stage: Stage;
+  /** artifact_version.id */
+  readonly artifactId: number;
   readonly artifactV: number;
   /** 产物原文与上一版完全相同（仍会重新复核引用）。 */
   readonly unchanged: boolean;
@@ -122,6 +124,6 @@ export function importArtifact(project: Project, stage: Stage, doc: unknown, opt
     const refs = writeRefs(db, projection.refs, written);
     if (refs.problems.length) throw new ImportError(refs.problems);
 
-    return { stage, artifactV: artifact.v, unchanged: artifact.unchanged, created, reused: written.size - created, retired, refs: refs.count };
+    return { stage, artifactId: artifact.id, artifactV: artifact.v, unchanged: artifact.unchanged, created, reused: written.size - created, retired, refs: refs.count };
   });
 }

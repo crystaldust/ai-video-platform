@@ -75,3 +75,16 @@ test('v1 库升到最新：已有版本行保留，所属集为空', () => {
   db.close();
   rmSync(dir, { recursive: true, force: true });
 });
+
+test('迁移到最新后节点协议的表都在，node_run 的状态受 CHECK 约束', () => {
+  const db = openDb(':memory:');
+  const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((r) => r.name);
+  for (const t of ['project_input', 'skill_pack', 'skill', 'stage_mount', 'node_run', 'node_attempt']) assert.ok(tables.includes(t), `缺表 ${t}`);
+  db.exec(`INSERT INTO skill_pack (name, root, manifest, registered_at) VALUES ('p', '/x', '{}', 'now')`);
+  db.exec(`INSERT INTO skill (pack_id, name, version, dir, capabilities, skill_md_hash) VALUES (1, 's', '1.0.0', '/x', '{}', 'h')`);
+  assert.throws(
+    () => db.exec(`INSERT INTO node_run (stage, skill_id, model, status, max_attempts, started_at) VALUES ('outline', 1, 'm', 'weird', 3, 'now')`),
+    /CHECK/,
+  );
+  db.close();
+});
