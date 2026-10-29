@@ -17,11 +17,21 @@ export interface ArtifactVersionRef {
   readonly unchanged: boolean;
 }
 
+function latestRow(db: DatabaseSync, stage: Stage): { id: number; v: number; content_hash: string; doc: string } | undefined {
+  return db.prepare('SELECT id, v, content_hash, doc FROM artifact_version WHERE stage = ? ORDER BY v DESC LIMIT 1').get(stage) as
+    | { id: number; v: number; content_hash: string; doc: string }
+    | undefined;
+}
+
 export function latestArtifact(db: DatabaseSync, stage: Stage): { id: number; v: number; contentHash: string } | null {
-  const row = db
-    .prepare('SELECT id, v, content_hash FROM artifact_version WHERE stage = ? ORDER BY v DESC LIMIT 1')
-    .get(stage) as { id: number; v: number; content_hash: string } | undefined;
+  const row = latestRow(db, stage);
   return row ? { id: row.id, v: row.v, contentHash: row.content_hash } : null;
+}
+
+/** 某阶段最新一版产物的原文；没有就是 null。 */
+export function latestArtifactDoc(db: DatabaseSync, stage: Stage): { id: number; v: number; doc: unknown } | null {
+  const row = latestRow(db, stage);
+  return row ? { id: row.id, v: row.v, doc: JSON.parse(row.doc) } : null;
 }
 
 export function appendArtifactVersion(db: DatabaseSync, input: ArtifactInput): ArtifactVersionRef {

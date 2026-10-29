@@ -8,6 +8,8 @@ import { nowIso } from './domain/clock.ts';
 
 export const DB_FILE = 'project.sqlite';
 export const MEDIA_DIR = 'media';
+/** 节点运行的工作目录：runs/<runId>/{in,work,out} */
+export const RUNS_DIR = 'runs';
 /** 库文件本身加 WAL 模式的两个伴随文件。 */
 const DB_SIDE_FILES = ['', '-wal', '-shm'] as const;
 

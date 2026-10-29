@@ -1,73 +1,41 @@
 #!/usr/bin/env node
-// 项目数据层的命令行：手工验证导入、追溯、过期与素材库。结果写 stdout（JSON），问题写 stderr。
-import { readFileSync, realpathSync } from 'node:fs';
+// 平台命令行：项目数据层（导入、追溯、过期、素材库）与节点协议（skill 包、输入、运行）。结果写 stdout（JSON），问题写 stderr。
+import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ENTITY_KINDS, STAGES, isEntityKind, isFacet, isStage, type Facet } from './domain/types.ts';
+import { ENTITY_KINDS, STAGES, isEntityKind, isFacet, type Facet } from './domain/types.ts';
+import { NODE_USAGE, nodeCommand } from './cli-nodes.ts';
+import { intFlag, need, parseArgs, print, readJson, stageArg, withProject } from './cli-shared.ts';
 import { ImportError, importArtifact } from './import/import-artifact.ts';
-import { createProject, openProject, type Project } from './project.ts';
+import { createProject } from './project.ts';
 import { findStaleRefs, getLineage } from './repo/lineage.ts';
 import { addMediaFile, verifyMedia } from './repo/media.ts';
+import { assertResolvable, resolveRun } from './repo/runs.ts';
 
-const USAGE = `cli.ts — AI 短剧平台项目数据层
+const USAGE = `cli.ts — AI 短剧平台
 
   init <dir> --name <名称>                      新建项目目录
-  import <dir> <stage> <file.json> [--skill <name@ver>]
+  import <dir> <stage> <file.json> [--skill <name@ver>] [--run <id>]
                                                 导入一份 skill 产物（stage: ${STAGES.join(' / ')}）
+                                                --run：人工修好转人工的运行后导入，并结案该运行
   lineage <dir> <kind> <key> [--facet <facet>]  追溯上游（kind: ${ENTITY_KINDS.join(' / ')}）
   stale <dir>                                   列出过期引用
   media add <dir> <file>                        素材入库（按 sha256 存放）
-  media verify <dir>                            重算哈希，核验素材`;
-
-const print = (x: unknown) => process.stdout.write(`${JSON.stringify(x, null, 2)}\n`);
-
-/** 拆出 --flag value，其余为位置参数。 */
-function parseArgs(argv: readonly string[]): { args: string[]; flags: Record<string, string> } {
-  const args: string[] = [];
-  const flags: Record<string, string> = {};
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i] ?? '';
-    if (!a.startsWith('--')) {
-      args.push(a);
-      continue;
-    }
-    const value = argv[i + 1];
-    if (value === undefined || value.startsWith('--')) throw new Error(`${a} 后面缺少取值`);
-    flags[a.slice(2)] = value;
-    i += 1;
-  }
-  return { args, flags };
-}
-
-function need(value: string | undefined, usage: string): string {
-  if (!value) throw new Error(`用法：${usage}`);
-  return value;
-}
-
-async function withProject<T>(dir: string, fn: (p: Project) => T | Promise<T>): Promise<T> {
-  const project = openProject(dir);
-  try {
-    return await fn(project);
-  } finally {
-    project.close();
-  }
-}
-
-function readJson(path: string): unknown {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch (error) {
-    throw new Error(`读不了 ${path}：${error instanceof Error ? error.message : String(error)}`);
-  }
-}
+  media verify <dir>                            重算哈希，核验素材
+${NODE_USAGE}`;
 
 function cmdImport(args: string[], flags: Record<string, string>) {
-  const usage = 'import <dir> <stage> <file.json> [--skill <name@ver>]';
-  const [dir, stage, file] = [need(args[0], usage), need(args[1], usage), need(args[2], usage)];
-  if (!isStage(stage)) throw new Error(`不认识的 stage：${stage}（可选 ${STAGES.join(' / ')}）`);
+  const usage = 'import <dir> <stage> <file.json> [--skill <name@ver>] [--run <id>]';
+  const [dir, stage, file] = [need(args[0], usage), stageArg(need(args[1], usage)), need(args[2], usage)];
   const sourcePath = resolve(file);
   const doc = readJson(sourcePath);
-  return withProject(dir, (p) => importArtifact(p, stage, doc, { sourcePath, ...(flags['skill'] ? { skill: flags['skill'] } : {}) }));
+  const runId = intFlag(flags['run'], '--run');
+  return withProject(dir, (p) => {
+    if (runId !== undefined) assertResolvable(p.db, runId, stage);
+    const result = importArtifact(p, stage, doc, { sourcePath, ...(flags['skill'] ? { skill: flags['skill'] } : {}) });
+    if (runId !== undefined) resolveRun(p.db, runId, stage, result.artifactId);
+    return result;
+  });
 }
 
 function cmdLineage(args: string[], flags: Record<string, string>) {
@@ -102,7 +70,12 @@ async function main(argv: readonly string[]): Promise<number> {
   else if (cmd === 'lineage') print(await cmdLineage(args, flags));
   else if (cmd === 'stale') print(await withProject(need(args[0], 'stale <dir>'), (p) => findStaleRefs(p.db)));
   else if (cmd === 'media') print(await cmdMedia(args));
-  else throw new Error(`未知命令 ${cmd}\n\n${USAGE}`);
+  else {
+    const result = await nodeCommand(cmd, args, flags);
+    if (!result) throw new Error(`未知命令 ${cmd}\n\n${USAGE}`);
+    print(result.output);
+    return result.exitCode;
+  }
   return 0;
 }
 
