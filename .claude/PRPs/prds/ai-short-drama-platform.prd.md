@@ -171,13 +171,13 @@
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
 | 1 | 项目数据层 | SQLite schema：项目/剧集/场景/角色/资产版本/镜头/任务/候选/审阅/剪辑，稳定 ID、引用、只追加的版本 | complete | - | - | [plan](../plans/completed/project-data-layer.plan.md) · [report](../reports/project-data-layer-report.md) |
-| 2 | 节点协议与 skill 挂载 | skill 包规范与注册；seed → LLM → validate → 重试的执行器；接入 novel-* 链 | pending | with 3 | 1 | - |
-| 3 | 模型适配、预设与费用估算 | 文本/图片/视频适配器接口与能力声明；两套预设；价格拉取与兜底；估算器 | pending | with 2 | 1 | - |
-| 4 | 一键编排与全貌视图 | 文本阶段自动编排、付费确认点、全貌界面、单项打回重跑与"需复核"标记 | pending | - | 2, 3 | - |
-| 5 | 图片/视频生成与可靠任务 | 一条图片和视频链路；任务状态机、断线续查、去重防重复付费、实际参数与成本记录 | pending | - | 3, 4 | - |
-| 6 | 审阅、三态与局部重做 | 镜头审阅、合格/选用标记、修订路径、影响追踪、版本对比 | pending | with 7 | 5 | - |
-| 7 | 基础剪辑与导出 | 镜序、入出点、字幕、声音轨；引用素材的具体版本；ffmpeg 导出成片 | pending | with 6 | 5 | - |
-| 8 | 端到端验收 | 梗概 → 30–60 秒成片；082 局部返工案例；度量基线采集 | pending | - | 6, 7 | - |
+| 2 | 节点协议与 skill 挂载 | skill 包规范与注册；seed → LLM → validate → 重试的执行器；接入 novel-* 链 | in-progress | with 3 | 1 | [plan](../plans/completed/node-protocol-skill-mount.plan.md) · [report](../reports/node-protocol-skill-mount-report.md)（代码完成，待真实模型验证） |
+| 3 | 模型适配、预设与费用估算 | 文本/图片/视频适配器接口与能力声明；两套预设；价格拉取与兜底；估算器 | pending | with 2 | 1 | [plan](../plans/model-adapters-presets-cost.plan.md) |
+| 4 | 一键编排与全貌视图 | 文本阶段自动编排、付费确认点、全貌界面、单项打回重跑与"需复核"标记 | pending | - | 2, 3 | [4a 编排](../plans/orchestration-rerun.plan.md) · [4b 界面](../plans/overview-web-ui.plan.md) |
+| 5 | 图片/视频生成与可靠任务 | 一条图片和视频链路；任务状态机、断线续查、去重防重复付费、实际参数与成本记录 | pending | - | 3, 4 | [plan](../plans/image-video-generation.plan.md) |
+| 6 | 审阅、三态与局部重做 | 镜头审阅、合格/选用标记、修订路径、影响追踪、版本对比 | pending | with 7 | 5 | [plan](../plans/review-tristate-redo.plan.md) |
+| 7 | 基础剪辑与导出 | 镜序、入出点、字幕、声音轨；引用素材的具体版本；ffmpeg 导出成片 | pending | with 6 | 5 | [plan](../plans/edit-export.plan.md) |
+| 8 | 端到端验收 | 梗概 → 30–60 秒成片；082 局部返工案例；度量基线采集 | pending | - | 6, 7 | [plan](../plans/e2e-acceptance.plan.md) |
 
 ### Phase Details
 
