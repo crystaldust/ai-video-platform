@@ -1,0 +1,351 @@
+.crumbs {
+  font-size: 12px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.nav > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 10px;
+  color: var(--text-2);
+}
+.nav > span {
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  color: var(--text-1);
+}
+.navOff {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  font-size: 12px;
+}
+.stats {
+  display: flex;
+  gap: 32px;
+  padding: 16px 0;
+}
+.body {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+.tree {
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.treeTitle {
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 0 6px 6px;
+}
+.scene {
+  padding: 8px 6px 4px;
+}
+.scene b {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.scene small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.changed {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 500;
+}
+.seg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 7px 8px 7px 12px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.seg:hover {
+  background: var(--bg);
+}
+.seg[aria-current='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.seg small {
+  margin-left: auto;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.center {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.segHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.segHead b {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 500;
+  margin-right: 8px;
+}
+.segHead span {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.segHead small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.blocking {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+.cuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+.cut {
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  padding: 4px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.cut[aria-current='true'] {
+  border-color: var(--accent);
+}
+.frame {
+  aspect-ratio: 9 / 13;
+  border-radius: 6px;
+  background: var(--lock-soft);
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  font-size: 11px;
+  text-align: center;
+  gap: 4px;
+  align-content: center;
+}
+.frameWide {
+  aspect-ratio: 16 / 10;
+}
+.cutMeta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.cutMeta b {
+  font-family: var(--mono);
+}
+.cutMeta span {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.cutSize {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.cutShot {
+  font-size: 12px;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.timeline {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 6px 8px;
+  font-size: 11px;
+  color: var(--text-2);
+  align-items: center;
+}
+.track {
+  display: flex;
+  gap: 3px;
+}
+.slot {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.slotOn {
+  background: var(--accent);
+  color: #fff;
+}
+.slotLine {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-family: var(--font);
+}
+.slotEmpty {
+  background: transparent;
+}
+.ticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+.prompt {
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 12px 14px;
+}
+.prompt header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.prompt pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text-2);
+  max-height: 260px;
+  overflow: auto;
+}
+.detail {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 16px;
+}
+.detail h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.detail h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.kv {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 6px 10px;
+  font-size: 12px;
+}
+.kv dt {
+  color: var(--text-3);
+}
+.kv dd {
+  margin: 0;
+}
+.text {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-2);
+  margin: 0;
+}
+.beat {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.beat small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+.refs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.ref {
+  font-size: 11px;
+}
+.ref div {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--lock-soft);
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+.ref small {
+  display: block;
+  color: var(--text-3);
+}
+.detailActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}

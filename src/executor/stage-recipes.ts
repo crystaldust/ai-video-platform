@@ -223,7 +223,7 @@ const novelStoryboard: Recipe = {
     let episodes: Doc[] = [];
     const writeEpisodes = async (a: number, b: number): Promise<Doc[]> => {
       const [from, to] = [nums[a - 1]!, nums[b - 1]!];
-      const seed = await seedOf(ctx, ['seed', ctx.inPath('script'), '--eps', `${from}-${to}`]);
+      const seed = await seedOf(ctx, ['seed', ctx.inPath('script'), '--eps', `${from}-${to}`, ...(ctx.params?.aspect ? ['--aspect', ctx.params.aspect] : [])]);
       if (!Object.keys(head).length) head = omit(seed, ['episodes']);
       const seedEps = listOf(seed, 'episodes').filter((e) => nums.includes(e['ep'] as number));
       const sceneRefs = seedEps.flatMap((e) => listOf(e, 'seedScenes').map((s) => s['sceneRef']));

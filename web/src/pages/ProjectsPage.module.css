@@ -1,0 +1,108 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 20px;
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 140px 16px;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.row:hover {
+  border-color: var(--text-3);
+}
+.titleLine {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.meta {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.headline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.path {
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.phases {
+  display: flex;
+  gap: 6px;
+}
+.phase {
+  width: 96px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--lock-soft);
+  color: var(--text-3);
+}
+.phase small {
+  display: block;
+  font-size: 10px;
+}
+.phase b {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+.cost {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.cost small {
+  display: block;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.chev {
+  color: var(--text-3);
+}
+.open {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.open b {
+  color: var(--text-1);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.openPath {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.broken {
+  color: var(--err);
+}

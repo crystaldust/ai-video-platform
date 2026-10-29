@@ -1,0 +1,188 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.dark {
+  background: var(--text-1);
+  border-color: var(--text-1);
+  color: #fff;
+}
+.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+  padding: 4px 6px;
+}
+.block {
+  width: 100%;
+  justify-content: center;
+}
+.btnHint {
+  font-family: var(--mono);
+  font-size: 12px;
+  opacity: 0.75;
+  font-weight: 400;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badgePlain::before {
+  display: none;
+}
+.tone-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.tone-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.tone-err {
+  background: var(--err-soft);
+  color: var(--err);
+}
+.tone-run {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.tone-idle {
+  background: var(--lock-soft);
+  color: var(--text-3);
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.pageHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.pageTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.pageSub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.pageActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-2);
+}
+.stateTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 6px;
+}
+.errorBox {
+  border: 1px solid var(--err);
+  background: var(--err-soft);
+  color: var(--err);
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.errorBox ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  max-width: 420px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--text-1);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
+  z-index: 50;
+}
+.toastErr {
+  background: var(--err);
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 7px;
+  background: var(--lock-soft);
+}
+.segmented button {
+  border: 0;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.segmented button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text-1);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}

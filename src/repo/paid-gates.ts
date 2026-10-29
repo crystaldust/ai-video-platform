@@ -62,3 +62,29 @@ export function getPaidGate(db: DatabaseSync, id: number): PaidGateRow | null {
 export function listPaidGates(db: DatabaseSync): PaidGateRow[] {
   return (db.prepare('SELECT * FROM paid_gate ORDER BY id').all() as unknown as RawGate[]).map(toRow);
 }
+
+export interface GateDecision {
+  readonly status: 'confirmed' | 'cancelled';
+  /** 确认时勾选的节点 × 集 */
+  readonly selection?: unknown;
+  /** 单次上限与它的币种（界面按人民币填） */
+  readonly budgetCap?: number;
+  readonly currency?: string;
+}
+
+/** 确认或取消：只有还在等确认的单子能改，改过就定了。 */
+export function decidePaidGate(db: DatabaseSync, id: number, d: GateDecision): PaidGateRow {
+  const gate = getPaidGate(db, id);
+  if (!gate) throw new Error(`没有这张付费确认单：${id}`);
+  if (gate.status !== 'awaiting_confirmation') throw new Error(`确认单 #${id} 已经是 ${gate.status}，不能再改`);
+  if (d.budgetCap !== undefined && !(Number.isFinite(d.budgetCap) && d.budgetCap > 0)) throw new Error(`单次上限要是正数：${d.budgetCap}`);
+  db.prepare('UPDATE paid_gate SET status = ?, selection = ?, budget_cap = ?, currency = COALESCE(?, currency), decided_at = ? WHERE id = ?').run(
+    d.status,
+    d.selection === undefined ? null : JSON.stringify(d.selection),
+    d.budgetCap ?? null,
+    d.currency ?? null,
+    nowIso(),
+    id,
+  );
+  return getPaidGate(db, id)!;
+}

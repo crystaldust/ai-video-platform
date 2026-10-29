@@ -1,0 +1,21 @@
+/* 由 scripts/tokens-from-pen.mjs 从 design/tokens.json 生成，不要手改 */
+:root {
+  --bg: #F7F6F3;
+  --surface: #FFFFFF;
+  --border: #E4E1DA;
+  --text-1: #1C1B19;
+  --text-2: #5F5B53;
+  --text-3: #8F8A80;
+  --accent: #1F5F55;
+  --accent-soft: #E3EFEC;
+  --ok: #2E7D4F;
+  --ok-soft: #E6F2EA;
+  --warn: #A86414;
+  --warn-soft: #FBF0DD;
+  --err: #B3362C;
+  --err-soft: #F8E5E2;
+  --lock: #8F8A80;
+  --lock-soft: #EFEDE8;
+  --font: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
