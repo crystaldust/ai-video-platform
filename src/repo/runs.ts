@@ -178,11 +178,24 @@ export function startAttempt(db: DatabaseSync, a: AttemptInput): number {
   return Number(result.lastInsertRowid);
 }
 
-export function endAttempt(db: DatabaseSync, attemptId: number, end: { output: string | null; violations: readonly string[]; usage: TextUsage | null }): void {
-  db.prepare('UPDATE node_attempt SET output = ?, violations = ?, usage = ?, ended_at = ? WHERE id = ?').run(
+export interface AttemptEnd {
+  readonly output: string | null;
+  readonly violations: readonly string[];
+  readonly usage: TextUsage | null;
+  readonly finishReason?: string | null;
+  /** 按用量 × 单价算出的实际费用；用量或价格缺失就是 null，不猜 */
+  readonly cost?: { readonly amount: number; readonly currency: string; readonly priceRef: string } | null;
+}
+
+export function endAttempt(db: DatabaseSync, attemptId: number, end: AttemptEnd): void {
+  db.prepare('UPDATE node_attempt SET output = ?, violations = ?, usage = ?, finish_reason = ?, cost = ?, cost_currency = ?, price_ref = ?, ended_at = ? WHERE id = ?').run(
     end.output,
     JSON.stringify(end.violations),
     end.usage ? JSON.stringify(end.usage) : null,
+    end.finishReason ?? null,
+    end.cost?.amount ?? null,
+    end.cost?.currency ?? null,
+    end.cost?.priceRef ?? null,
     nowIso(),
     attemptId,
   );

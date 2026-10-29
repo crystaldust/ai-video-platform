@@ -8,11 +8,20 @@ export interface TextRequest {
 export interface TextUsage {
   readonly inputTokens: number | null;
   readonly outputTokens: number | null;
+  /** 输入里命中缓存的部分（计价更低）；不知道就省略 */
+  readonly cachedInputTokens?: number | null;
+  /** 推理模型的推理 token，也计入输出上限；不知道就省略 */
+  readonly reasoningTokens?: number | null;
 }
+
+/** 为什么停：length 表示撞上输出上限被截断，执行器要单独处理，不能原样重试。 */
+export type FinishReason = 'stop' | 'length' | 'content_filter' | 'other';
 
 export interface TextResult {
   readonly text: string;
   readonly usage: TextUsage;
+  /** 不知道（如命令行模型）就省略 */
+  readonly finishReason?: FinishReason;
 }
 
 export interface TextModel {

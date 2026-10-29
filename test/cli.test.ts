@@ -122,3 +122,39 @@ test('pack register：清单不是合法 JSON 时点名文件', () => {
   assert.match(r.stderr, new RegExp(`${bad.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} 不是合法 JSON`));
   rmSync(root, { recursive: true, force: true });
 });
+
+test('模型与费用命令：models / preset / model / estimate / prices / cred（临时配置目录）', () => {
+  const root = mkdtempSync(join(tmpdir(), 'avp-cli-'));
+  const dir = join(root, 'p');
+  const { DEEPSEEK_API_KEY: _ignored, ...base } = process.env;
+  const env: NodeJS.ProcessEnv = { ...base, AVP_CONFIG_DIR: join(root, 'cfg') };
+  const go = (args: string[], input?: string) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env, ...(input !== undefined ? { input } : {}) });
+  assert.equal(go(['init', dir, '--name', 'x']).status, 0);
+  for (const stage of STAGES) assert.equal(go(['import', dir, stage, fixturePath(stage)]).status, 0);
+
+  assert.ok(JSON.parse(go(['models', '--capability', 'video']).stdout).every((m: { capability: string }) => m.capability === 'video'));
+  assert.equal(go(['models', '--capability', 'audio']).status, 1);
+  assert.deepEqual(JSON.parse(go(['preset', 'list']).stdout).map((p: { name: string }) => p.name), ['budget', 'production']);
+  assert.equal(JSON.parse(go(['preset', 'use', dir, 'production']).stdout).preset, 'production');
+  assert.equal(JSON.parse(go(['model', 'set', dir, 'video:segment', 'minimax:MiniMax-H3-Lite', '--param', 'resolution=480P']).stdout).from, 'override');
+  const shown = JSON.parse(go(['model', 'show', dir]).stdout);
+  assert.equal(shown.nodes.find((n: { node: string }) => n.node === 'video:segment').model, 'minimax:MiniMax-H3-Lite');
+  assert.equal(JSON.parse(go(['model', 'clear', dir, 'video:segment']).stdout).from, 'preset');
+  assert.equal(go(['model', 'set', dir, 'video:segment', 'deepseek:deepseek-flash']).status, 1);
+
+  const est = go(['estimate', dir, '--preset', 'all']);
+  assert.equal(est.status, 0, est.stderr);
+  assert.equal(JSON.parse(est.stdout).length, 2);
+  assert.match(est.stderr, /合计/);
+  assert.match(est.stderr, /仅供参考/);
+  const prices = go(['prices', 'show', '--model', 'minimax:MiniMax-H3-Lite']);
+  assert.match(prices.stderr, /480P.*video_second.*0\.025/);
+
+  assert.equal(go(['cred', 'set', 'deepseek'], 'sk-test-abcd\n').status, 0);
+  const listed = go(['cred', 'list']);
+  assert.match(listed.stderr, /deepseek\s+····abcd（file）/);
+  assert.doesNotMatch(listed.stdout + listed.stderr, /sk-test/);
+  assert.equal(JSON.parse(go(['cred', 'rm', 'deepseek']).stdout).removed, true);
+  assert.equal(go(['cred', 'set', 'nope']).status, 1);
+  rmSync(root, { recursive: true, force: true });
+});

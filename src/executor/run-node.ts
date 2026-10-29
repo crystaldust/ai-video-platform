@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import type { Stage } from '../domain/types.ts';
 import { ImportError, importArtifact } from '../import/import-artifact.ts';
 import { PROJECTIONS } from '../import/projections/index.ts';
-import type { TextModel } from '../model/text-model.ts';
+import type { TextModel, TextResult } from '../model/text-model.ts';
+import { describeHit, loadPriceSources, lookupPrice, type PriceSources } from '../pricing/prices.ts';
 import { RUNS_DIR, type Project } from '../project.ts';
 import { latestArtifactDoc } from '../repo/artifacts.ts';
 import { characterKeyIndex, sceneEpisodeIndex } from '../repo/entities.ts';
@@ -16,7 +17,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { RECIPES, type AskParts, type Check, type Doc, type RecipeContext } from './recipes.ts';
+import { OutputTruncated, RECIPES, type AskParts, type Check, type Doc, type RecipeContext } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -24,13 +25,36 @@ export type ProgressEvent =
   | { readonly type: 'run-start'; readonly runId: number; readonly stage: Stage; readonly skill: string; readonly model: string }
   | { readonly type: 'attempt'; readonly runId: number; readonly step: string; readonly n: number; readonly violations: readonly string[] }
   | { readonly type: 'gate'; readonly runId: number; readonly gate: string; readonly violations: readonly string[] }
+  | { readonly type: 'notice'; readonly runId: number; readonly message: string }
   | { readonly type: 'run-end'; readonly runId: number; readonly status: RunOutcome['status'] };
 
 export interface RunNodeOptions {
   readonly model: TextModel;
   readonly maxAttempts?: number;
   readonly onProgress?: (e: ProgressEvent) => void;
+  /** 计价用的价格；不给就读本机价格来源，读不了就不计价（费用记 null） */
+  readonly prices?: PriceSources | null;
 }
+
+/** 一次调用的实际费用：输入、输出 token 都查得到单价才算，否则 null（不猜）。 */
+export function attemptCost(modelId: string, result: TextResult, prices: PriceSources | null): { amount: number; currency: string; priceRef: string } | null {
+  const { inputTokens, outputTokens } = result.usage;
+  if (!prices || inputTokens === null || outputTokens === null) return null;
+  const pin = lookupPrice(prices, modelId, 'token_in');
+  const pout = lookupPrice(prices, modelId, 'token_out');
+  if (!pin || !pout || pin.entry.currency !== pout.entry.currency) return null;
+  // 命中缓存的输入有单独单价就按它算；没有就按全价（宁可高估，不猜折扣）
+  const pcache = lookupPrice(prices, modelId, 'token_in_cached');
+  const cached = pcache && pcache.entry.currency === pin.entry.currency ? Math.min(result.usage.cachedInputTokens ?? 0, inputTokens) : 0;
+  const amount = ((inputTokens - cached) * pin.entry.price + cached * (pcache?.entry.price ?? 0) + outputTokens * pout.entry.price) / 1_000_000;
+  return { amount: Math.round(amount * 1e6) / 1e6, currency: pin.entry.currency, priceRef: `in ${pin.entry.price} / out ${pout.entry.price} 每百万，${describeHit(pout)}，${pout.entry.source}` };
+}
+
+const truncationMessage = (r: TextResult): string => {
+  const { outputTokens, reasoningTokens } = r.usage;
+  const used = outputTokens === null ? '' : `已用 ${outputTokens} tokens${reasoningTokens ? `，其中推理 ${reasoningTokens}` : ''}`;
+  return `输出被截断（撞上输出上限${used ? `：${used}` : ''}），原样重试结果相同`;
+};
 
 export interface RunOutcome {
   readonly runId: number;
@@ -125,6 +149,9 @@ class NodeRun {
   private readonly maxAttempts: number;
   readonly runId: number;
   readonly dir: string;
+  readonly prices: PriceSources | null;
+  /** 价格读不了的原因；运行开始时提示一次 */
+  readonly priceProblem: string | null;
 
   constructor(project: Project, stage: Stage, p: Prepared, opts: RunNodeOptions, maxAttempts: number, runId: number, dir: string) {
     this.project = project;
@@ -134,6 +161,9 @@ class NodeRun {
     this.maxAttempts = maxAttempts;
     this.runId = runId;
     this.dir = dir;
+    const loaded = opts.prices !== undefined ? { prices: opts.prices, problem: null } : loadPricesQuietly();
+    this.prices = loaded.prices;
+    this.priceProblem = loaded.problem;
   }
 
   emit(e: ProgressEvent): void {
@@ -163,9 +193,16 @@ class NodeRun {
         throw error;
       }
       lastOutput = result.text;
+      const cost = attemptCost(this.opts.model.id, result, this.prices);
+      if (result.finishReason === 'length') {
+        const msg = truncationMessage(result);
+        endAttempt(db, attemptId, { output: result.text, violations: [msg], usage: result.usage, finishReason: 'length', cost });
+        this.emit({ type: 'attempt', runId: this.runId, step, n, violations: [msg] });
+        throw new OutputTruncated(step, msg);
+      }
       const parsed = extractJson(result.text);
       const bad = parsed.ok ? [] : [parsed.violation];
-      endAttempt(db, attemptId, { output: result.text, violations: bad, usage: result.usage });
+      endAttempt(db, attemptId, { output: result.text, violations: bad, usage: result.usage, finishReason: result.finishReason ?? null, cost });
       this.emit({ type: 'attempt', runId: this.runId, step, n, violations: bad });
       if (parsed.ok) return parsed.value as Doc;
       pending = bad;
@@ -186,6 +223,8 @@ class NodeRun {
       } catch (error) {
         // 修复时模型一直给不出 JSON：交给人的应该是最后一版能用的文档，而不是那段解析不了的输出
         if (error instanceof NeedsHuman) throw new NeedsHuman(check.name, current, [...violations, ...error.violations], error.raw);
+        // 修复时被截断：同样交出最后一版能用的文档，而不是空手转人工
+        if (error instanceof OutputTruncated) throw new NeedsHuman(check.name, current, [...violations, error.message]);
         throw error;
       }
       if (post) current = await post(current);
@@ -269,6 +308,8 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   for (const sub of ['in', 'work', 'out']) mkdirSync(join(dir, sub), { recursive: true });
   for (const [s, doc] of Object.entries(p.upstream)) writeFileSync(join(dir, 'in', `${s}.json`), JSON.stringify(doc, null, 2));
   run.emit({ type: 'run-start', runId, stage, skill: `${p.skill.name}@${p.skill.version}`, model: run.opts.model.id });
+  const notice = run.priceProblem ?? unpricedNotice(run.opts.model.id, run.prices);
+  if (notice) run.emit({ type: 'notice', runId, message: notice });
   const ctx = run.context();
   const doc = await run.finalGate(ctx, await RECIPES[p.recipeName]!.run(ctx));
   const outPath = join(dir, 'out', `${stage}.json`);
@@ -278,8 +319,31 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   return { runId, status: 'passed', dir, artifactV: imported.artifactV, skippedHumanGates: skipped };
 }
 
+/** 计价是附带的：价格文件坏了不影响运行，只是不记费用——但要说出来，不能让人以为一直在记。 */
+function loadPricesQuietly(): { prices: PriceSources | null; problem: string | null } {
+  try {
+    return { prices: loadPriceSources(), problem: null };
+  } catch (error) {
+    return { prices: null, problem: `价格文件读不了，本次不记费用：${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+/** 这个模型查不到单价时的提示（命令行模型不计价，不提示）。 */
+function unpricedNotice(modelId: string, prices: PriceSources | null): string | null {
+  if (!prices || modelId.startsWith('cmd:')) return null;
+  return lookupPrice(prices, modelId, 'token_in') && lookupPrice(prices, modelId, 'token_out') ? null : `${modelId} 没有单价，本次不记费用（可在 <配置目录>/prices.json 补上）`;
+}
+
 function settle(run: NodeRun, project: Project, error: unknown, maxAttempts: number): RunOutcome {
   const { runId, dir, skipped } = run;
+  if (error instanceof OutputTruncated) {
+    // 已经拆到一集还截断：换更大输出上限的模型，或把这一阶段的单集内容减量
+    const batched = /^episodes:\d+-\d+$/.test(error.step);
+    const message = `${error.step}：${error.message}；${batched ? '已拆到最小批次' : '这一步不分批'}，需要更大的输出上限或换模型`;
+    run.handOver([message], null, null);
+    finishRun(project.db, runId, { status: 'needs_human', skippedHumanGates: skipped, error: message });
+    return { runId, status: 'needs_human', dir, message, violations: [message], skippedHumanGates: skipped };
+  }
   if (error instanceof NeedsHuman || error instanceof ImportError) {
     const violations = error instanceof NeedsHuman ? error.violations : error.problems;
     if (error instanceof NeedsHuman) run.handOver(violations, error.doc, error.raw);

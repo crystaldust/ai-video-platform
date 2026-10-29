@@ -1,0 +1,11 @@
+{
+  "name": "production",
+  "title": "生产级",
+  "description": "交付用：文本 DeepSeek V4 Pro，图片 Qwen-Image 3.0 Pro 2K，视频 H3 768P",
+  "nodes": {
+    "text:*": { "model": "deepseek:deepseek-v4-pro" },
+    "image:character-refs": { "model": "dashscope:qwen-image-3.0-pro", "params": { "size": "2k" } },
+    "image:keyframe": { "model": "dashscope:qwen-image-3.0-pro", "params": { "size": "2k" } },
+    "video:segment": { "model": "minimax:MiniMax-H3", "params": { "resolution": "768P" } }
+  }
+}
