@@ -19,11 +19,13 @@ import {
   type Doc,
   type Recipe,
   type RecipeContext,
+  type RepairSplit,
 } from './recipe-kit.ts';
 import type { Stage } from '../domain/types.ts';
 
 const STAGING_BATCH = 3;
-const STORYBOARD_BATCH = 2;
+/** 推理模型的推理也算进输出上限：写 2 集一批几乎必然截断（实测推理 30k+），一上来就按单集写 */
+const STORYBOARD_BATCH = 1;
 
 const deps = (stage: Stage) => ({ needs: () => STAGE_DEPS[stage].needs, optional: () => STAGE_DEPS[stage].optional });
 const json = (x: unknown): string => JSON.stringify(x, null, 2);
@@ -207,6 +209,131 @@ const openingSection = (opening: ReadonlyMap<string, string>, sceneRefs: readonl
   body: sceneRefs.flatMap((r) => (opening.has(r as string) ? [`${String(r)}：${opening.get(r as string)}`] : [])).join('\n') || '（这几场没有站位）',
 });
 
+/** 分镜要的角色「形象要点」：认人与外貌，不要出图提示词、版面指令和音色。 */
+const PERSONA_KEYS = ['gender', 'ageRange', 'identity', 'appearance'];
+const only = (doc: Doc, keys: readonly string[]): Doc => Object.fromEntries(keys.flatMap((k) => (doc[k] === undefined ? [] : [[k, doc[k]]])));
+const idSet = (scenes: readonly Doc[], key: string): Set<string> => new Set(scenes.flatMap((s) => [s[key]].flat()).filter((x) => x !== undefined).map(String));
+
+/**
+ * 写这几场分镜要带的上游（SKILL.md：该集的场景卡 + 角色卡的形象要点）：只带这几场出场的人物、用到的场景与道具，
+ * 去掉出图相关字段。整份带上的话 20 集的项目单批就有 5 万 token，推理也跟着拉长，单集都会撞上输出上限。
+ */
+function storyboardUpstream(ctx: RecipeContext, seedScenes: readonly Doc[]): Record<string, Doc> {
+  const [characters, scenes, props] = [idSet(seedScenes, 'characters'), idSet(seedScenes, 'sceneId'), idSet(seedScenes, 'props')];
+  // 旧角色卡没有 id：按大纲名单认名字
+  const names = new Set(listOf(ctx.upstream.outline ?? null, 'characters').filter((c) => characters.has(String(c['id']))).map((c) => c['name']));
+  const out: Record<string, Doc> = {};
+  if (ctx.upstream.cast) {
+    const cards = listOf(ctx.upstream.cast, 'characters').filter((c) => characters.has(String(c['id'])) || names.has(c['name']));
+    out['cast'] = { characters: cards.map((c) => ({ ...only(c, ['id', 'name', 'aliases', 'oneLiner']), persona: only(isDoc(c['persona']) ? c['persona'] : {}, PERSONA_KEYS) })) };
+  }
+  if (ctx.upstream.art) {
+    out['art'] = {
+      scenes: listOf(ctx.upstream.art, 'scenes').filter((x) => scenes.has(String(x['id']))).map((x) => omit(x, ['image', 'usage'])),
+      props: listOf(ctx.upstream.art, 'props').filter((x) => props.has(String(x['id']))).map((x) => omit(x, ['image', 'usage', 'relatedScenes', 'carriedBy'])),
+    };
+  }
+  return out;
+}
+
+/** 改一版时的底稿：这几集；只写其中几场时，段也只留这几场的。 */
+function storyboardBase(ctx: RecipeContext, seedEps: readonly Doc[], sceneRefs: ReadonlySet<unknown> | null): Doc[] | undefined {
+  const eps = baseEpisodes(ctx.base, new Set(seedEps.map((e) => e['id'])));
+  return sceneRefs && eps ? eps.map((e) => ({ ...e, segments: listOf(e, 'segments').filter((g) => sceneRefs.has(g['sceneRef'])) })) : eps;
+}
+
+/** 写分镜的一遍要用的、整次运行不变的东西。head 是 seed 去掉 episodes（source、aspectRatio）。 */
+interface StoryboardPass {
+  readonly ctx: RecipeContext;
+  readonly task: string;
+  readonly schema: string;
+  readonly opening: ReadonlyMap<string, string>;
+  readonly head: Doc;
+}
+
+/** 问一遍：这几集（seedScenes 已按要写的场次裁好）；onlyScenes 表示只写这一集的其中几场。 */
+async function askStoryboard(sb: StoryboardPass, step: string, [from, to]: readonly [unknown, unknown], seedEps: readonly Doc[], onlyScenes: boolean): Promise<Doc[]> {
+  const seedScenes = seedEps.flatMap((e) => listOf(e, 'seedScenes'));
+  const sceneRefs = seedScenes.map((x) => x['sceneRef']);
+  const part = await sb.ctx.ask(step, {
+    task: sb.task,
+    schema: sb.schema,
+    upstream: storyboardUpstream(sb.ctx, seedScenes),
+    sections: [openingSection(sb.opening, sceneRefs), ...(onlyScenes ? [{ title: '只写这几场（这一集的其余场次另外写，这里只交回这几场的段）', body: sceneRefs.join('\n') }] : [])],
+    base: storyboardBase(sb.ctx, seedEps, onlyScenes ? new Set(sceneRefs) : null),
+    draft: { ...sb.head, episodes: seedEps },
+    draftLabel: '分镜底稿（seed 预填：场次、节拍与每拍秒数）',
+    range: `第 ${String(from)}–${String(to)} 集`,
+    outputSpec: '只输出 {"episodes": [...]}：沿用骨架里每集的 id 与 ep；每段写 sceneRef，每切写 beatIds（从 seedScenes 照抄），不写段 id 和切 id；输出里不要 seedScenes。',
+  });
+  return (episodesOf(part).filter(isDoc) as Doc[]).map((e) => omit(e, ['seedScenes']));
+}
+
+/**
+ * 一集：先整集写；被截断就按场次对半拆开写，段按场次顺序拼回这一集（拆开写时只认分到的那几场的段）。
+ * 一段都没写出来就当模型没交回这一集（同分批时一样不造空集），交给 validate 报缺。
+ */
+async function writeStoryboardEpisode(sb: StoryboardPass, seedEp: Doc): Promise<Doc[]> {
+  const scenes = listOf(seedEp, 'seedScenes');
+  const n = String(seedEp['ep']);
+  const write = async (x: number, y: number): Promise<Doc[]> => {
+    const whole = x === 1 && y >= scenes.length;
+    const slice = scenes.slice(x - 1, y);
+    const refs = new Set(slice.map((sc) => sc['sceneRef']));
+    const eps = await askStoryboard(sb, whole ? `episodes:${n}-${n}` : `episodes:${n}-${n}:scenes:${x}-${y}`, [n, n], [{ ...seedEp, seedScenes: slice }], !whole);
+    const segments = eps.filter((e) => e['id'] === seedEp['id'] || e['ep'] === seedEp['ep']).flatMap((e) => listOf(e, 'segments'));
+    return whole ? segments : segments.filter((g) => refs.has(g['sceneRef']));
+  };
+  const segments = await writeSplitting(1, Math.max(1, scenes.length), write);
+  return segments.length ? [{ id: seedEp['id'], ep: seedEp['ep'], segments }] : [];
+}
+
+/** 这一集的 seed（场次与节拍）：写和修都从这里抄 beatIds。 */
+async function seedEpisode(ctx: RecipeContext, ep: number): Promise<Doc | null> {
+  const seed = await seedOf(ctx, ['seed', ctx.inPath('script'), '--eps', `${ep}-${ep}`, ...(ctx.params?.aspect ? ['--aspect', ctx.params.aspect] : [])]);
+  return listOf(seed, 'episodes').find((e) => e['ep'] === ep) ?? null;
+}
+
+/**
+ * 违规落在哪几集（ep2 这样的键）：段标签 E02-01 / E02 第 1 场，或违规里提到的段 id、场次 id 所在的集。
+ * known 是剧本里还有的集号：剧本里已经没有的集没有节拍底稿，按集修不了。
+ */
+export function storyboardKeysOf(violation: string, doc: Doc, known?: ReadonlySet<number>): string[] {
+  const eps = listOf(doc, 'episodes');
+  const byLabel = [...violation.matchAll(/\bE(\d+)(?!\d)/g)].map((m) => Number(m[1]));
+  const byId = eps.filter((e) => listOf(e, 'segments').some((g) => [g['id'], g['sceneRef']].some((x) => typeof x === 'string' && violation.includes(x)))).map((e) => e['ep']);
+  return [...new Set([...byLabel, ...byId])].filter((n) => eps.some((e) => e['ep'] === n) && (!known || known.has(n as number))).map((n) => `ep${String(n)}`);
+}
+
+/** 分镜按集修：只给这一集的当前版本、节拍底稿和它用到的上游，只交回这一集，并回时 id、ep 以原集为准。 */
+function storyboardSplit(sb: Omit<StoryboardPass, 'head'>): RepairSplit {
+  const known = new Set(listOf(sb.ctx.upstream.script ?? null, 'episodes').map((e) => e['ep'] as number));
+  return {
+    keysOf: (violation, doc) => storyboardKeysOf(violation, doc, known),
+    async part(doc, key) {
+      const n = Number(key.slice(2));
+      const current = listOf(doc, 'episodes').find((e) => e['ep'] === n)!;
+      const seed = await seedEpisode(sb.ctx, n);
+      const seedScenes = listOf(seed, 'seedScenes');
+      const ask: AskParts = {
+        task: sb.task,
+        schema: sb.schema,
+        upstream: storyboardUpstream(sb.ctx, seedScenes),
+        sections: [openingSection(sb.opening, seedScenes.map((x) => x['sceneRef'])), { title: '这一集的节拍底稿（seed：场次、节拍与每拍秒数；beatIds 从这里照抄）', body: json(seed) }],
+        draft: { episodes: [current] },
+        range: `第 ${n}–${n} 集`,
+        outputSpec: '只输出 {"episodes": [这一集]}：已有的段 id、切 id 原样保留；新加的段、切不写 id；其余集不要输出。',
+      };
+      const merge = (whole: Doc, fixed: Doc): Doc | null => {
+        const got = (episodesOf(fixed).filter(isDoc) as Doc[]).find((e) => e['id'] === current['id'] || e['ep'] === n);
+        if (!got) return null;
+        return { ...whole, episodes: listOf(whole, 'episodes').map((e) => (e['ep'] === n ? { id: current['id'], ep: n, segments: listOf(got, 'segments') } : e)) };
+      };
+      return { ask, merge, missing: `上一次没有交回第 ${n} 集：只输出 {"episodes": [这一集]}` };
+    },
+  };
+}
+
 const novelStoryboard: Recipe = {
   name: 'novel-storyboard',
   ...deps('storyboard'),
@@ -216,29 +343,16 @@ const novelStoryboard: Recipe = {
     const script = ctx.upstream.script as Doc;
     const nums = scopedNumbers(ctx, script);
     const opening = parseBlocking(await ctx.runMounted('staging', ['blocking', ctx.inPath('staging')]), ctx.upstream.staging);
-    const schema = ctx.readFile('references/schema.md');
-    const task = readAll(ctx, STORYBOARD_REFS);
-    const upstream = pick(ctx, ['cast', 'art']);
+    const base = { ctx, task: readAll(ctx, STORYBOARD_REFS), schema: ctx.readFile('references/schema.md'), opening };
     let head: Doc = {};
     let episodes: Doc[] = [];
     const writeEpisodes = async (a: number, b: number): Promise<Doc[]> => {
       const [from, to] = [nums[a - 1]!, nums[b - 1]!];
       const seed = await seedOf(ctx, ['seed', ctx.inPath('script'), '--eps', `${from}-${to}`, ...(ctx.params?.aspect ? ['--aspect', ctx.params.aspect] : [])]);
       if (!Object.keys(head).length) head = omit(seed, ['episodes']);
+      const sb: StoryboardPass = { ...base, head };
       const seedEps = listOf(seed, 'episodes').filter((e) => nums.includes(e['ep'] as number));
-      const sceneRefs = seedEps.flatMap((e) => listOf(e, 'seedScenes').map((s) => s['sceneRef']));
-      const part = await ctx.ask(`episodes:${from}-${to}`, {
-        task,
-        schema,
-        upstream,
-        sections: [openingSection(opening, sceneRefs)],
-        base: baseEpisodes(ctx.base, new Set(seedEps.map((e) => e['id']))),
-        draft: { ...seed, episodes: seedEps },
-        draftLabel: '分镜底稿（seed 预填：场次、节拍与每拍秒数）',
-        range: `第 ${from}–${to} 集`,
-        outputSpec: '只输出 {"episodes": [...]}：沿用骨架里每集的 id 与 ep；每段写 sceneRef，每切写 beatIds（从 seedScenes 照抄），不写段 id 和切 id；输出里不要 seedScenes。',
-      });
-      return (episodesOf(part).filter(isDoc) as Doc[]).map((e) => omit(e, ['seedScenes']));
+      return a === b && seedEps.length === 1 ? writeStoryboardEpisode(sb, seedEps[0]!) : askStoryboard(sb, `episodes:${from}-${to}`, [from, to], seedEps, false);
     };
     for (const [a, b] of batches(nums.length, STORYBOARD_BATCH)) {
       episodes = mergeEpisodes(episodes, await writeSplitting(a, b, writeEpisodes));
@@ -249,8 +363,8 @@ const novelStoryboard: Recipe = {
       validateCheck(ctx, 'validate', 'storyboard.json', refs(ctx, [['--script', 'script'], ['--outline', 'outline'], ['--cast', 'cast'], ['--art', 'art']])),
       stagingCarryCheck(opening),
     ]);
-    const repair: AskParts = { task, schema, upstream, sections: [openingSection(opening, [...opening.keys()])], outputSpec: '输出修正后的整份 storyboard.json。' };
-    return ctx.gate(check, doc, repair, post);
+    const repair: AskParts = { task: base.task, schema: base.schema, upstream: pick(ctx, ['cast', 'art']), sections: [openingSection(opening, [...opening.keys()])], outputSpec: '输出修正后的整份 storyboard.json。' };
+    return ctx.gate(check, doc, repair, post, storyboardSplit(base));
   },
 };
 

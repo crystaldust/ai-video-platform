@@ -30,6 +30,7 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 20 | DeepSeek 官方单价与上下文 / 输出上限核对 | 估算 | Phase 3 已知缺口 | 待规划 | — |
 | 21 | 补 LICENSE 文件 | 工程 | README | 待规划 | — |
 | 22 | 固定常用的 skills 目录 | 工程 | 2026-10-29 讨论 | 暂缓 | — |
+| 23 | 站位修复轮按集拆开；单集修复截断时按场拆 | 后端 | 分镜截断修复 | 待规划 | — |
 
 ---
 
@@ -129,6 +130,14 @@ novel-outline 的 Step 3 要用户拍板快版骨架（砍了哪条线、合了�
 ### 17. 站位认图结果的退役
 
 站位里地点的认图结果跨集共用，导入时不退役：一个地点从所有站位里消失后，它的 staging 侧面仍然有效。来源：`reports/project-data-layer-report.md` 已知限制。
+
+### 23. 站位修复轮按集拆开；单集修复截断时按场拆
+
+分镜截断修复已经做了：写分镜时上游按集、按场裁剪，单集写不下按场拆；validate 的修复轮按集修（`RepairSplit`，违规按 `E02-01` 标签和段、场次 id 落到集上），只交回那一集再并回。还剩两处：
+- **站位**的修复轮仍是「输出修正后的整份 staging.json」并带整份 art，长项目同样会撞上输出上限。可照分镜给站位一个 `RepairSplit`（站位按场次带 `ep`）。
+- **单集修复本身截断**时没有按场再拆的兜底，直接转人工（步骤名 `repair:validate:epN`）。真实验证里单集修复约 12k 输出，离上限还远。
+
+**涉及**：`src/executor/stage-recipes.ts`（站位的 repair、`storyboardSplit`）、`src/executor/run-node.ts`（`repairRound`）。
 
 ### 18. 过期查询在大项目下的性能
 

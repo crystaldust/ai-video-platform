@@ -39,6 +39,38 @@ export interface Check {
   run(doc: Doc): Promise<string[]>;
 }
 
+/**
+ * 按份修：长文档（如 20 集的分镜）整份交回会撞上输出上限，违规能落到某几份（集）上时只修那几份、再并回。
+ * 有违规落不到任何一份上，这一轮退回整份修。
+ */
+export interface RepairSplit {
+  /** 这条违规落在哪几份上（如集号）；落不到返回空 */
+  keysOf(violation: string, doc: Doc): string[];
+  /** 修这一份：问模型的各部分（draft 是这一份）、把修好的并回整份（模型没交回这一份时返回 null）、没交回时补问用的违规 */
+  part(doc: Doc, key: string): Promise<{ readonly ask: AskParts; merge(doc: Doc, fixed: Doc): Doc | null; readonly missing: string }>;
+}
+
+/** 每一份的任务说明前面加上一段修复要求（平台门按集修时带上「能被平台导入」）。 */
+export const withTask = (split: RepairSplit, task: string): RepairSplit => ({
+  keysOf: (violation, doc) => split.keysOf(violation, doc),
+  part: async (doc, key) => {
+    const part = await split.part(doc, key);
+    return { ...part, ask: { ...part.ask, task: `${task}\n\n${part.ask.task}` } };
+  },
+});
+
+/**
+ * 一轮修复怎么分：落得到份上的违规按份修（份 → 它的违规，按首次出现排序）；落不到的留到下一轮再报。
+ * 一条都落不到份上（或没给 split）才整份修。
+ */
+export function planRepair(violations: readonly string[], doc: Doc, split: RepairSplit | undefined): { readonly parts: ReadonlyMap<string, readonly string[]>; readonly whole: boolean } {
+  const parts = new Map<string, string[]>();
+  for (const v of split ? violations : []) {
+    for (const key of split!.keysOf(v, doc)) parts.set(key, [...(parts.get(key) ?? []), v]);
+  }
+  return { parts, whole: parts.size === 0 };
+}
+
 export interface RecipeContext {
   readonly skill: SkillRow;
   readonly params: InputParams | null;
@@ -59,8 +91,8 @@ export interface RecipeContext {
   check(args: readonly string[]): Promise<string[]>;
   /** 调模型拿一份 JSON；输出解析不了会带违规重试 */
   ask(step: string, parts: AskParts): Promise<Doc>;
-  /** 过门：不过就把整份文档和违规交给模型修，每轮修完先跑 post（如补 id）再查 */
-  gate(check: Check, doc: Doc, repair: AskParts, post?: (doc: Doc) => Promise<Doc>): Promise<Doc>;
+  /** 过门：不过就把整份文档和违规交给模型修（给了 split 且违规都落得到份上，就逐份修），每轮修完先跑 post（如补 id）再查 */
+  gate(check: Check, doc: Doc, repair: AskParts, post?: (doc: Doc) => Promise<Doc>, split?: RepairSplit): Promise<Doc>;
   /** 记一个被跳过的「人工拍板」点 */
   skipHumanGate(what: string): void;
   /** 只处理这几集（集 id，按大纲顺序）；null = 整个阶段。只有 perEpisode 的配方会收到非 null */

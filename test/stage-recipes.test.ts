@@ -4,13 +4,16 @@ import { test } from 'node:test';
 import { parseBlocking, stagingCarryViolations } from '../src/executor/gates/staging-carry.ts';
 import { runNode } from '../src/executor/run-node.ts';
 import { mergeScoped } from '../src/executor/scoped.ts';
+import { planRepair, withTask, type RepairSplit } from '../src/executor/recipe-kit.ts';
+import { storyboardKeysOf } from '../src/executor/stage-recipes.ts';
 import { importArtifact } from '../src/import/import-artifact.ts';
 import type { Project } from '../src/project.ts';
 import { latestArtifactDoc } from '../src/repo/artifacts.ts';
 import { listVersions } from '../src/repo/entities.ts';
 import { getRun, listAttempts } from '../src/repo/runs.ts';
 import { DUKO, importAll, loadFixture, tempProject } from './helpers.ts';
-import { dukoModel, storyboardEpisodes } from './support/duko-model.ts';
+import type { TextModel, TextRequest, TextResult } from '../src/model/text-model.ts';
+import { dukoAnswer, dukoModel, storyboardEpisodes } from './support/duko-model.ts';
 import { setupNovel } from './support/novel-pack.ts';
 import { fenced, promptSection } from './support/scripted-model.ts';
 
@@ -124,7 +127,7 @@ function importEp1(project: Project): void {
   importArtifact(project, 'staging', { ...staging, scenes: staging.scenes.filter((s: { ep: number }) => s.ep === 1) });
 }
 
-test('分镜：取站位的开场走位句 → 每批 ≤2 集切镜 → 补 id → validate + staging-carry → 入库', async () => {
+test('分镜：取站位的开场走位句 → 每批 1 集切镜 → 补 id → validate + staging-carry → 入库', async () => {
   const { project, cleanup } = tempProject();
   await setupNovel(project);
   importEp1(project);
@@ -136,6 +139,105 @@ test('分镜：取站位的开场走位句 → 每批 ≤2 集切镜 → 补 id 
   assert.match(promptSection(model.requests[0]!.user, '开场走位') ?? '', new RegExp(`${DUKO.sc11}：沈知微站在岸端土坡上`));
   const doc = latestArtifactDoc(project.db, 'storyboard')?.doc as { episodes: { segments: { id: string; blocking: string }[] }[] };
   assert.match(doc.episodes[0]!.segments[0]!.blocking, /^沈知微站在岸端土坡上/);
+  cleanup();
+});
+
+test('分镜：每批只带这几集用到的角色卡、场景、道具，且只带形象要点与锚点（不带出图版面、音色）', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importEp1(project);
+  const model = dukoModel();
+  const out = await runNode(project, 'storyboard', { model });
+  assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
+
+  const user = model.requests[0]!.user;
+  const cast = loadFixture('cast').characters[0];
+  const art = promptSection(user, '上游 art.json') ?? '';
+  assert.match(art, /"S01"/);
+  assert.match(art, /"P01"/);
+  assert.doesNotMatch(art, /"S03"|"P02"/, '第 1 集没用到对岸芦苇滩、县衙旧砚');
+  assert.doesNotMatch(art, /"image"|"usage"/);
+  const castPart = promptSection(user, '上游 cast.json') ?? '';
+  assert.ok(castPart.includes(cast.persona.appearance), '带外貌');
+  assert.ok(!user.includes(cast.image.sheet), '不带出图版面指令');
+  assert.ok(!user.includes(cast.voice.prompt), '不带音色提示词');
+  cleanup();
+});
+
+/** 按集或按场作答的分镜模型：底稿里不止 maxScenes 场就报截断，否则只交回底稿里那几场的段。 */
+function sceneLimitedModel(maxScenes: number): TextModel & { readonly requests: TextRequest[] } {
+  const requests: TextRequest[] = [];
+  return {
+    id: 'scripted:scene-limited',
+    requests,
+    async complete(req: TextRequest): Promise<TextResult> {
+      requests.push(req);
+      const u = req.user;
+      if (!u.includes('每切写 beatIds')) return { text: dukoAnswer(req) ?? '', usage: { inputTokens: 1, outputTokens: 1 } };
+      const refs = new Set([...(promptSection(u, '分镜底稿') ?? '').matchAll(/"sceneRef": "(sc_\w+)"/g)].map((m) => m[1]!));
+      if (refs.size > maxScenes) return { text: '', finishReason: 'length', usage: { inputTokens: 1, outputTokens: 32768, reasoningTokens: 28000 } };
+      const episodes = storyboardEpisodes(u).map((e) => ({ ...e, segments: e.segments.filter((g: { sceneRef: string }) => refs.has(g.sceneRef)) }));
+      return { text: fenced({ episodes }), finishReason: 'stop', usage: { inputTokens: 1, outputTokens: 1 } };
+    },
+  };
+}
+
+test('分镜：单集写一遍被截断 → 按场次对半拆开写，拼回一集；每遍只带这几场用到的上游', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importEp1(project);
+  const model = sceneLimitedModel(1);
+  const out = await runNode(project, 'storyboard', { model });
+
+  assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
+  assert.deepEqual(steps(project, out.runId), ['episodes:1-1', 'episodes:1-1:scenes:1-1', 'episodes:1-1:scenes:2-2']);
+  const doc = latestArtifactDoc(project.db, 'storyboard')?.doc as { episodes: { id: string; segments: { sceneRef: string; blocking: string }[] }[] };
+  assert.equal(doc.episodes.length, 1);
+  assert.deepEqual(doc.episodes[0]!.segments.map((g) => g.sceneRef), loadFixture('storyboard').episodes[0].segments.map((g: { sceneRef: string }) => g.sceneRef), '按场次顺序拼回');
+  assert.match(doc.episodes[0]!.segments[3]!.blocking, /^陆行远/, '第二场第一段照抄它自己的开场走位');
+  const scene1 = model.requests.find((r) => r.user.includes('只写这几场') && r.user.includes(DUKO.sc11))!.user;
+  assert.doesNotMatch(promptSection(scene1, '上游 cast.json') ?? '', /陆行远/, '第 1 场陆行远不在场');
+  assert.doesNotMatch(promptSection(scene1, '上游 art.json') ?? '', /"S01"/, '第 1 场在栈桥，不带船舱');
+  cleanup();
+});
+
+test('分镜重跑第 1 集且要拆场：每一遍的底稿只带这几场的段；模型多交回的别场的段不收', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importEp1(project);
+  importArtifact(project, 'storyboard', loadFixture('storyboard'));
+  const inner = sceneLimitedModel(1);
+  // 写第 1 场时多交回第 2 场的段（模拟没守住「只写这几场」）
+  const model: TextModel & { readonly requests: TextRequest[] } = {
+    id: inner.id,
+    requests: inner.requests,
+    async complete(req) {
+      const r = await inner.complete(req);
+      if (!req.user.includes(`【只写这几场`) || !(promptSection(req.user, '只写这几场') ?? '').includes(DUKO.sc11)) return r;
+      return { ...r, text: fenced({ episodes: storyboardEpisodes(req.user) }) };
+    },
+  };
+  const out = await runNode(project, 'storyboard', { model, episodes: [DUKO.ep1], revise: { note: '汽笛提前' } });
+
+  assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
+  const scene1 = inner.requests.find((r) => (promptSection(r.user, '只写这几场') ?? '').includes(DUKO.sc11))!.user;
+  const base = promptSection(scene1, '底稿') ?? '';
+  assert.match(base, new RegExp(DUKO.sc11));
+  assert.doesNotMatch(base, new RegExp(DUKO.sc12), '底稿只带第 1 场的段');
+  const doc = latestArtifactDoc(project.db, 'storyboard')?.doc as { episodes: { segments: { sceneRef: string }[] }[] };
+  assert.equal(doc.episodes[0]!.segments.length, loadFixture('storyboard').episodes[0].segments.length, '第 2 场的段没有重复');
+  cleanup();
+});
+
+test('分镜：拆到单场还截断 → 转人工，说明已拆到单场', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importEp1(project);
+  const out = await runNode(project, 'storyboard', { model: sceneLimitedModel(0) });
+
+  assert.equal(out.status, 'needs_human');
+  assert.deepEqual(steps(project, out.runId), ['episodes:1-1', 'episodes:1-1:scenes:1-1']);
+  assert.match(out.message ?? '', /episodes:1-1:scenes:1-1：输出被截断.*已拆到单场/);
   cleanup();
 });
 
@@ -151,10 +253,96 @@ test('分镜没照抄开场走位：staging-carry 违规进修复循环', async 
   });
   const out = await runNode(project, 'storyboard', { model });
   assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
-  assert.deepEqual(steps(project, out.runId), ['episodes:1-1', 'repair:validate']);
+  assert.deepEqual(steps(project, out.runId), ['episodes:1-1', 'repair:validate:ep1'], '违规都落在第 1 集：只修这一集');
   const violations = promptSection(model.requests[1]!.user, '上一次的违规') ?? '';
   assert.match(violations, /blocking 没有照抄站位的开场走位：『沈知微站在岸端土坡上/);
   assert.equal(violations.split('\n').length, 2, '两场各一条');
+  cleanup();
+});
+
+test('分镜修复按集：漏了 cuts 的那一集单独修，只交回这一集（带节拍底稿、不带整份），并回后补 id 过门', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importEp1(project);
+  const model = dukoModel((req) => {
+    const u = req.user;
+    if (u.includes('【上一次的违规')) return fenced({ episodes: storyboardEpisodes(u) });
+    if (u.includes('每切写 beatIds')) return fenced({ episodes: storyboardEpisodes(u).map((e) => ({ ...e, segments: e.segments.map(({ cuts: _c, ...g }: Record<string, unknown>) => g) })) });
+    return undefined;
+  });
+  const out = await runNode(project, 'storyboard', { model });
+
+  assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
+  assert.deepEqual(steps(project, out.runId), ['episodes:1-1', 'repair:validate:ep1']);
+  const repair = model.requests[1]!.user;
+  assert.match(promptSection(repair, '上一次的违规') ?? '', /E01-01 没有分镜/);
+  assert.match(promptSection(repair, '这一集的节拍底稿') ?? '', /"beats"/, '带 seed 的节拍，beatIds 有处可抄');
+  assert.match(promptSection(repair, '输出') ?? '', /只输出 \{"episodes": \[这一集\]\}/);
+  assert.ok(promptSection(repair, '上游 cast.json') !== null && !repair.includes(loadFixture('cast').characters[0].image.sheet), '上游也只带形象要点');
+  const doc = latestArtifactDoc(project.db, 'storyboard')?.doc as { aspectRatio?: string; episodes: { segments: { id: string; cuts: { id: string }[] }[] }[] };
+  assert.ok(doc.aspectRatio, '只交回一集也保留顶层字段');
+  assert.ok(doc.episodes[0]!.segments.every((g) => /^sg_/.test(g.id) && g.cuts.every((c) => /^ct_/.test(c.id))), '并回后补上段 id、切 id');
+  cleanup();
+});
+
+test('分镜违规落在哪几集：段标签、段 id、场次 id 都认；落不到的返回空（这一轮整份修）', () => {
+  const doc = { episodes: [{ ep: 1, segments: [{ id: 'sg_aaaaaaaa', sceneRef: 'sc_x3xq2c82' }] }, { ep: 12, segments: [{ id: 'sg_bbbbbbbb', sceneRef: 'sc_rvnqh21s' }] }] };
+  assert.deepEqual(storyboardKeysOf('E01-02 没有分镜', doc), ['ep1']);
+  assert.deepEqual(storyboardKeysOf('质量门未过：（E12 第 1 场第 1–7 拍没人认领；E01-01#2 …）', doc), ['ep12', 'ep1']);
+  assert.deepEqual(storyboardKeysOf('段 sg_bbbbbbbb的 blocking 没有照抄站位的开场走位', doc), ['ep12']);
+  assert.deepEqual(storyboardKeysOf('E99-01 没有分镜', doc), [], '文档里没有的集不算');
+  assert.deepEqual(storyboardKeysOf('顶层缺少 aspectRatio', doc), []);
+  assert.deepEqual(storyboardKeysOf('涉及 E12、E01）', doc), ['ep12', 'ep1'], '后面跟中文标点也认');
+  assert.deepEqual(storyboardKeysOf('E12-01 没有分镜；E01-01 没有分镜', doc, new Set([1])), ['ep1'], '剧本里已经没有的集不按集修');
+});
+
+test('一轮修复怎么分：落得到集上的按集修（按首次出现排序），落不到的留到下一轮；全落不到才整份修', () => {
+  const doc = { episodes: [{ ep: 1, segments: [] }, { ep: 2, segments: [] }] };
+  const split: RepairSplit = { keysOf: storyboardKeysOf, part: async () => ({ ask: { task: '', schema: '', outputSpec: '' }, merge: (d) => d, missing: '' }) };
+  const mixed = planRepair(['E02-01 没有分镜', '顶层缺少 aspectRatio', 'E01-03 没有分镜', 'E02 第 1 场第 2 拍没人认领'], doc, split);
+  assert.equal(mixed.whole, false, '有一条落不到也不整份修');
+  assert.deepEqual([...mixed.parts.entries()], [['ep2', ['E02-01 没有分镜', 'E02 第 1 场第 2 拍没人认领']], ['ep1', ['E01-03 没有分镜']]]);
+  assert.equal(planRepair(['顶层缺少 aspectRatio'], doc, split).whole, true);
+  assert.equal(planRepair(['E01-01 没有分镜'], doc, undefined).whole, true, '没给 split 就整份修');
+});
+
+test('按集修平台门：每一份的任务说明前面加上平台的修复要求', async () => {
+  const split: RepairSplit = { keysOf: () => ['ep1'], part: async () => ({ ask: { task: '分镜任务', schema: '', outputSpec: '' }, merge: (d) => d, missing: '' }) };
+  const part = await withTask(split, '能被平台导入').part({}, 'ep1');
+  assert.equal(part.ask.task, '能被平台导入\n\n分镜任务');
+  assert.deepEqual(withTask(split, 'x').keysOf('E01', {}), ['ep1']);
+});
+
+test('分镜按集修时模型漏交这一集：同一份再问一次，并说明漏了', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importEp1(project);
+  let repairs = 0;
+  const model = dukoModel((req) => {
+    const u = req.user;
+    if (u.includes('【上一次的违规')) return fenced({ episodes: repairs++ === 0 ? [] : storyboardEpisodes(u) });
+    if (u.includes('每切写 beatIds')) return fenced({ episodes: storyboardEpisodes(u, false) });
+    return undefined;
+  });
+  const out = await runNode(project, 'storyboard', { model });
+
+  assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
+  assert.deepEqual(steps(project, out.runId), ['episodes:1-1', 'repair:validate:ep1', 'repair:validate:ep1']);
+  assert.match(promptSection(model.requests[2]!.user, '上一次的违规') ?? '', /没有交回第 1 集/);
+  cleanup();
+});
+
+test('分镜每批 1 集：推理模型写 2 集几乎必然截断，一上来就按单集写', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importAll(project, ['outline', 'cast', 'art']);
+  const script = loadFixture('script');
+  importArtifact(project, 'script', { ...script, episodes: script.episodes.filter((e: { ep: number }) => e.ep <= 2) });
+  const staging = loadFixture('staging');
+  importArtifact(project, 'staging', { ...staging, scenes: staging.scenes.filter((x: { ep: number }) => x.ep <= 2) });
+  const out = await runNode(project, 'storyboard', { model: dukoModel() });
+
+  assert.deepEqual(steps(project, out.runId).slice(0, 2), ['episodes:1-1', 'episodes:2-2']);
   cleanup();
 });
 

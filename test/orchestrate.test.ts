@@ -62,8 +62,9 @@ test('分镜一直违规：转人工、编排 blocked，付费确认单照样生
   await setupNovel(project);
   const head = { source: '渡口', aspectRatio: '16:9' };
   const model = dukoModel((req) => {
+    // 修复轮（按集或整份）也一直不照抄开场走位
+    if (req.user.includes('【上一次的违规')) return fenced({ ...head, episodes: storyboardEpisodes(req.user, false) });
     if (req.user.includes('每切写 beatIds')) return fenced({ episodes: storyboardEpisodes(req.user, false) });
-    if (req.user.includes('整份 storyboard.json')) return fenced({ ...head, episodes: storyboardEpisodes(req.user, false) });
     return undefined;
   });
   const result = await go(project, model).done;
