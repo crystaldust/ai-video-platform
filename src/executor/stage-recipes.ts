@@ -341,6 +341,7 @@ function storyboardSplit(sb: Omit<StoryboardPass, 'head'>): RepairSplit {
 const novelStoryboard: Recipe = {
   name: 'novel-storyboard',
   ...deps('storyboard'),
+  keysOf: (violation, doc) => storyboardKeysOf(violation, doc),
   needsInput: false,
   perEpisode: true,
   async run(ctx) {

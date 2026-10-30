@@ -1,6 +1,6 @@
 // 断点续跑：剧本、分镜的运行中途失败（进程中断、供应商报错）后再跑，输入没变就沿用上一次已写好的集，只写剩下的。
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { runNode, type ProgressEvent } from '../src/executor/run-node.ts';
@@ -14,7 +14,7 @@ import { latestArtifactDoc } from '../src/repo/artifacts.ts';
 import { dukoModel, storyboardEpisodes } from './support/duko-model.ts';
 import { setupNovel } from './support/novel-pack.ts';
 import { fenced, promptSection } from './support/scripted-model.ts';
-import { contiguousBatches, episodeKey, passedEpisodes, type RepairSplit } from '../src/executor/recipe-kit.ts';
+import { contiguousBatches, episodeKey, passedEpisodes } from '../src/executor/recipe-kit.ts';
 
 const steps = (project: Project, runId: number) => listAttempts(project.db, runId).map((a) => a.step);
 
@@ -47,7 +47,7 @@ test('分镜写到第 2 集时供应商报错 → 再跑直接从第 2 集写，
   const events: ProgressEvent[] = [];
   const second = await runNode(project, 'storyboard', { model: dukoModel(), onProgress: (e) => events.push(e) });
   assert.equal(steps(project, second.runId)[0], 'episodes:2-2', '第 1 集不再重写');
-  assert.ok(notices(events).some((m) => new RegExp(`沿用上一次（run ${first.runId}）中断前已写好的 1 集`).test(m)));
+  assert.ok(notices(events).some((m) => m.includes(`沿用之前（run ${first.runId}）已写好、没被质量门点到的 1 集`)));
   cleanup();
 });
 
@@ -168,17 +168,18 @@ test('修复用尽转人工、违规只落在第 2 集：再跑沿用过了门�
   const events: ProgressEvent[] = [];
   const second = await runNode(project, 'storyboard', { model: badSecond(), onProgress: (e) => events.push(e) });
   assert.equal(steps(project, second.runId)[0], 'episodes:2-2', '第 1 集不再重写');
-  assert.ok(notices(events).some((m) => m.includes(`沿用上一次（run ${first.runId}）转人工时留下的 1 集`)), notices(events).join('\n'));
+  assert.ok(notices(events).some((m) => m.includes(`沿用之前（run ${first.runId}）已写好、没被质量门点到的 1 集`)), notices(events).join('\n'));
   cleanup();
 });
 
-test('过了门的集：违规都落得到集上才算，落不到、没法分份或全被点到时不沿用', () => {
+test('过了门的集：违规都落得到集上才算，落不到、配方没法定位、没有清单或全被点到时不沿用', () => {
   const doc = { source: 's', episodes: [{ ep: 1 }, { ep: 2 }, { ep: 3 }] };
-  const split: RepairSplit = { keysOf: (v) => [...v.matchAll(/E(\d+)/g)].map((m) => episodeKey(Number(m[1]))), part: () => Promise.reject(new Error('不用')) };
-  assert.deepEqual(passedEpisodes(doc, ['E02 不对', 'E03 也不对'], split), { source: 's', episodes: [{ ep: 1 }] });
-  assert.equal(passedEpisodes(doc, ['E02 不对', '整份的问题'], split), null, '有一条落不到集上');
-  assert.equal(passedEpisodes(doc, ['E02 不对'], undefined), null, '没法分份');
-  assert.equal(passedEpisodes(doc, ['E01', 'E02', 'E03'], split), null, '全被点到');
+  const keysOf = (v: string) => [...v.matchAll(/E(\d+)/g)].map((m) => episodeKey(Number(m[1])));
+  assert.deepEqual(passedEpisodes(doc, ['E02 不对', 'E03 也不对'], keysOf), { source: 's', episodes: [{ ep: 1 }] });
+  assert.equal(passedEpisodes(doc, ['E02 不对', '整份的问题'], keysOf), null, '有一条落不到集上');
+  assert.equal(passedEpisodes(doc, ['E02 不对'], undefined), null, '配方没法按集定位');
+  assert.equal(passedEpisodes(doc, [], keysOf), null, '没有违规清单');
+  assert.equal(passedEpisodes(doc, ['E01', 'E02', 'E03'], keysOf), null, '全被点到');
 });
 
 test('分批不跨过缺口：要写的集不连续时（如只剩第 3、14 集），每批只含连续的集号', () => {
@@ -198,5 +199,67 @@ test('第 2 集拆到单场仍撞输出上限转人工：再跑沿用已写好�
   assert.equal(first.status, 'needs_human', first.message);
   const second = await runNode(project, 'storyboard', { model: dukoModel() });
   assert.equal(steps(project, second.runId)[0], 'episodes:2-2');
+  cleanup();
+});
+
+test('旧版本跑出的转人工（只留下最后一版与违规清单）：再跑照样沿用没被点到的集', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  const first = await runNode(project, 'storyboard', { model: badSecond() });
+  assert.equal(first.status, 'needs_human');
+  // 旧版本收尾时只写 out/storyboard.json 和 violations.txt
+  rmSync(join(project.dir, RUNS_DIR, String(first.runId), 'out', 'storyboard.kept.json'), { force: true });
+  const second = await runNode(project, 'storyboard', { model: badSecond() });
+  assert.equal(steps(project, second.runId)[0], 'episodes:2-2', '第 1 集不再重写');
+  cleanup();
+});
+
+test('中间隔了一次什么都没留下的中断：往前接上更早那次留下的集', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  const first = await runNode(project, 'storyboard', { model: badSecond() });
+  assert.equal(first.status, 'needs_human');
+  // 第二次刚开始就被杀：只留下指纹，没写出进度
+  const second = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  rmSync(join(project.dir, RUNS_DIR, String(second.runId), 'out', 'storyboard.partial.json'), { force: true });
+  const events: ProgressEvent[] = [];
+  const third = await runNode(project, 'storyboard', { model: badSecond(), onProgress: (e) => events.push(e) });
+  assert.equal(steps(project, third.runId)[0], 'episodes:2-2', '第 1 集不再重写');
+  assert.ok(notices(events).some((m) => m.includes(`run ${first.runId}`)), notices(events).join('\n'));
+  cleanup();
+});
+
+test('往前接时碰到指纹不同的运行就停：更早那次留下的集不沿用', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  const other: TextModel = { ...dukoModel(), id: 'scripted:other', complete: (req) => failingAt('第 2–2 集').complete(req) };
+  const switched = await runNode(project, 'storyboard', { model: other });
+  rmSync(join(project.dir, RUNS_DIR, String(switched.runId), 'out', 'storyboard.partial.json'), { force: true });
+  const back = await runNode(project, 'storyboard', { model: dukoModel() });
+  assert.equal(steps(project, back.runId)[0], 'episodes:1-1', '换过模型的那次挡在中间：更早的不沿用');
+  cleanup();
+});
+
+test('转人工那次点到的集，不能从更早的进度里捡回来：再跑照样重写它', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  // 第一次：第 1、2 集都写完（第 2 集是坏的），修复时供应商报错 → failed，进度里有坏的第 2 集
+  const broken = badSecond();
+  const crashing: TextModel = { ...broken, complete: (req) => (req.user.includes('【上一次的违规') ? Promise.reject(new Error('供应商 500')) : broken.complete(req)) };
+  const first = await runNode(project, 'storyboard', { model: crashing });
+  assert.equal(first.status, 'failed');
+  // 第二次：沿用两集，修复用尽转人工，点到第 2 集
+  const second = await runNode(project, 'storyboard', { model: badSecond() });
+  assert.equal(second.status, 'needs_human');
+  const third = await runNode(project, 'storyboard', { model: badSecond() });
+  assert.equal(steps(project, third.runId)[0], 'episodes:2-2', '第 2 集要重写，不是直接拿去修');
+  cleanup();
+});
+
+test('没留下指纹的失败（还没开始写就报错）不挡路：往前接上更早的', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  const first = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  const second = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  rmSync(join(project.dir, RUNS_DIR, String(second.runId), 'out'), { recursive: true, force: true });
+  const third = await runNode(project, 'storyboard', { model: dukoModel() });
+  assert.equal(steps(project, third.runId)[0], 'episodes:2-2');
+  assert.ok(first.runId < second.runId);
   cleanup();
 });
