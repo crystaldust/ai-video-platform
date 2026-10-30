@@ -48,3 +48,14 @@ export const joinDot = (...parts: (string | null | undefined | false)[]): string
 export const gateText = (label: string, g: GateResult | null): string =>
   !g ? `${label}还没有` : g.total !== null ? `${label}质量门 ${g.passed}/${g.total}` : g.failed.length ? `${label} ${g.failed.length} 处违规` : `${label}质量门通过`;
 export const gateTone = (g: GateResult | null): 'idle' | 'err' | 'ok' => (!g ? 'idle' : g.failed.length ? 'err' : 'ok');
+
+type AttemptLike = { readonly violations: readonly string[]; readonly endedAt: string | null };
+
+/** 一次模型调用的状态：没结束的是进行中（库里一开调就有这一行，违规还是空的），结束了按有没有违规分。 */
+export function attemptState(a: AttemptLike): 'ok' | 'err' | 'running' {
+  if (!a.endedAt) return 'running';
+  return a.violations.length ? 'err' : 'ok';
+}
+
+/** 正在进行的是第几次调用：正在调的那次库里已有行就是它，没有（两次调用之间）就是下一次。 */
+export const callNo = (attempts: readonly AttemptLike[]): number => attempts.length + (attempts.some((a) => attemptState(a) === 'running') ? 0 : 1);
