@@ -12,9 +12,13 @@ import {
   isDoc,
   listOf,
   mergeEpisodes,
+  omit,
   validateCheck,
   withIds,
   reportProgress,
+  contiguousBatches,
+  episodeKey,
+  resumeStart,
   writeSplitting,
   type AskParts,
   type Doc,
@@ -35,7 +39,6 @@ const refs = (ctx: RecipeContext, pairs: readonly [string, Stage][]): string[] =
 const pick = (ctx: RecipeContext, stages: readonly Stage[]): Record<string, Doc> =>
   Object.fromEntries(stages.flatMap((s) => (ctx.upstream[s] ? [[s, ctx.upstream[s]]] : [])));
 const readAll = (ctx: RecipeContext, files: readonly string[]): string => files.map((f) => ctx.readFile(f)).filter(Boolean).join('\n\n');
-const omit = (doc: Doc, keys: readonly string[]): Doc => Object.fromEntries(Object.entries(doc).filter(([k]) => !keys.includes(k)));
 
 /* ---------------------------------------------------------------- 角色卡 */
 
@@ -303,7 +306,7 @@ export function storyboardKeysOf(violation: string, doc: Doc, known?: ReadonlySe
   const eps = listOf(doc, 'episodes');
   const byLabel = [...violation.matchAll(/\bE(\d+)(?!\d)/g)].map((m) => Number(m[1]));
   const byId = eps.filter((e) => listOf(e, 'segments').some((g) => [g['id'], g['sceneRef']].some((x) => typeof x === 'string' && violation.includes(x)))).map((e) => e['ep']);
-  return [...new Set([...byLabel, ...byId])].filter((n) => eps.some((e) => e['ep'] === n) && (!known || known.has(n as number))).map((n) => `ep${String(n)}`);
+  return [...new Set([...byLabel, ...byId])].filter((n) => eps.some((e) => e['ep'] === n) && (!known || known.has(n as number))).map((n) => episodeKey(n as number));
 }
 
 /** 分镜按集修：只给这一集的当前版本、节拍底稿和它用到的上游，只交回这一集，并回时 id、ep 以原集为准。 */
@@ -345,17 +348,20 @@ const novelStoryboard: Recipe = {
     const nums = scopedNumbers(ctx, script);
     const opening = parseBlocking(await ctx.runMounted('staging', ['blocking', ctx.inPath('staging')]), ctx.upstream.staging);
     const base = { ctx, task: readAll(ctx, STORYBOARD_REFS), schema: ctx.readFile('references/schema.md'), opening };
-    let head: Doc = {};
-    let episodes: Doc[] = [];
+    // 上一次中断前已写好的集直接沿用（执行器已把它记成这次的进度），只对剩下的集分批写
+    const start = resumeStart(ctx, nums);
+    const rest = start.rest;
+    let head: Doc = start.head;
+    let episodes: Doc[] = start.episodes;
     const writeEpisodes = async (a: number, b: number): Promise<Doc[]> => {
-      const [from, to] = [nums[a - 1]!, nums[b - 1]!];
+      const [from, to] = [rest[a - 1]!, rest[b - 1]!];
       const seed = await seedOf(ctx, ['seed', ctx.inPath('script'), '--eps', `${from}-${to}`, ...(ctx.params?.aspect ? ['--aspect', ctx.params.aspect] : [])]);
       if (!Object.keys(head).length) head = omit(seed, ['episodes']);
       const sb: StoryboardPass = { ...base, head };
-      const seedEps = listOf(seed, 'episodes').filter((e) => nums.includes(e['ep'] as number));
+      const seedEps = listOf(seed, 'episodes').filter((e) => rest.includes(e['ep'] as number));
       return a === b && seedEps.length === 1 ? writeStoryboardEpisode(sb, seedEps[0]!) : askStoryboard(sb, `episodes:${from}-${to}`, [from, to], seedEps, false);
     };
-    for (const [a, b] of batches(nums.length, STORYBOARD_BATCH)) {
+    for (const [a, b] of contiguousBatches(rest, STORYBOARD_BATCH)) {
       episodes = mergeEpisodes(episodes, await writeSplitting(a, b, writeEpisodes));
       await reportProgress(ctx, 'storyboard.partial.json', { ...head, episodes }, ['--script', ctx.inPath('script')]);
     }

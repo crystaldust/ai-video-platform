@@ -31,6 +31,7 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 21 | 补 LICENSE 文件 | 工程 | README | 待规划 | — |
 | 22 | 固定常用的 skills 目录 | 工程 | 2026-10-29 讨论 | 暂缓 | — |
 | 23 | 站位修复轮按集拆开；单集修复截断时按场拆 | 后端 | 分镜截断修复 | 待规划 | — |
+| 24 | 重跑时可选「不沿用、从头写」 | 界面 | 断点续跑审查 M2 | 待规划 | — |
 
 ---
 
@@ -138,6 +139,12 @@ novel-outline 的 Step 3 要用户拍板快版骨架（砍了哪条线、合了�
 - **单集修复本身截断**时没有按场再拆的兜底，直接转人工（步骤名 `repair:validate:epN`）。真实验证里单集修复约 12k 输出，离上限还远。
 
 **涉及**：`src/executor/stage-recipes.ts`（站位的 repair、`storyboardSplit`）、`src/executor/run-node.ts`（`repairRound`）。
+
+### 24. 重跑时可选「不沿用、从头写」
+
+剧本、分镜重跑时，输入不变就沿用上一次已写好（中断）或没被质量门点到（转人工）的集（`run-node.ts` 的 `resumable`）。如果用户觉得那几集虽然过了门、但写得不好，想整份重来，现在只能改输入（例如附一条打回意见）。可以在全貌页的「重跑」和 `run` 命令上加一个开关（例如 `--fresh`），打开时跳过续跑。
+
+**涉及**：`src/executor/run-node.ts`（`RunNodeOptions`、`resumable`）、`src/server/routes/actions.ts`、`web/src/components/DetailPanel.tsx`、`src/cli.ts`。
 
 ### 18. 过期查询在大项目下的性能
 
