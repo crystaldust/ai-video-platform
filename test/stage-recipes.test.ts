@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { parseBlocking, stagingCarryViolations } from '../src/executor/gates/staging-carry.ts';
 import { runNode } from '../src/executor/run-node.ts';
 import { mergeScoped } from '../src/executor/scoped.ts';
-import { planRepair, type RepairSplit } from '../src/executor/recipe-kit.ts';
+import { planRepair, withTask, type RepairSplit } from '../src/executor/recipe-kit.ts';
 import { storyboardKeysOf } from '../src/executor/stage-recipes.ts';
 import { importArtifact } from '../src/import/import-artifact.ts';
 import type { Project } from '../src/project.ts';
@@ -127,7 +127,7 @@ function importEp1(project: Project): void {
   importArtifact(project, 'staging', { ...staging, scenes: staging.scenes.filter((s: { ep: number }) => s.ep === 1) });
 }
 
-test('分镜：取站位的开场走位句 → 每批 ≤2 集切镜 → 补 id → validate + staging-carry → 入库', async () => {
+test('分镜：取站位的开场走位句 → 每批 1 集切镜 → 补 id → validate + staging-carry → 入库', async () => {
   const { project, cleanup } = tempProject();
   await setupNovel(project);
   importEp1(project);
@@ -293,16 +293,57 @@ test('分镜违规落在哪几集：段标签、段 id、场次 id 都认；落�
   assert.deepEqual(storyboardKeysOf('E99-01 没有分镜', doc), [], '文档里没有的集不算');
   assert.deepEqual(storyboardKeysOf('顶层缺少 aspectRatio', doc), []);
   assert.deepEqual(storyboardKeysOf('涉及 E12、E01）', doc), ['ep12', 'ep1'], '后面跟中文标点也认');
+  assert.deepEqual(storyboardKeysOf('E12-01 没有分镜；E01-01 没有分镜', doc, new Set([1])), ['ep1'], '剧本里已经没有的集不按集修');
 });
 
 test('一轮修复怎么分：落得到集上的按集修（按首次出现排序），落不到的留到下一轮；全落不到才整份修', () => {
   const doc = { episodes: [{ ep: 1, segments: [] }, { ep: 2, segments: [] }] };
-  const split: RepairSplit = { keysOf: storyboardKeysOf, part: async () => ({ ask: { task: '', schema: '', outputSpec: '' }, merge: (d) => d }) };
+  const split: RepairSplit = { keysOf: storyboardKeysOf, part: async () => ({ ask: { task: '', schema: '', outputSpec: '' }, merge: (d) => d, missing: '' }) };
   const mixed = planRepair(['E02-01 没有分镜', '顶层缺少 aspectRatio', 'E01-03 没有分镜', 'E02 第 1 场第 2 拍没人认领'], doc, split);
   assert.equal(mixed.whole, false, '有一条落不到也不整份修');
   assert.deepEqual([...mixed.parts.entries()], [['ep2', ['E02-01 没有分镜', 'E02 第 1 场第 2 拍没人认领']], ['ep1', ['E01-03 没有分镜']]]);
   assert.equal(planRepair(['顶层缺少 aspectRatio'], doc, split).whole, true);
   assert.equal(planRepair(['E01-01 没有分镜'], doc, undefined).whole, true, '没给 split 就整份修');
+});
+
+test('按集修平台门：每一份的任务说明前面加上平台的修复要求', async () => {
+  const split: RepairSplit = { keysOf: () => ['ep1'], part: async () => ({ ask: { task: '分镜任务', schema: '', outputSpec: '' }, merge: (d) => d, missing: '' }) };
+  const part = await withTask(split, '能被平台导入').part({}, 'ep1');
+  assert.equal(part.ask.task, '能被平台导入\n\n分镜任务');
+  assert.deepEqual(withTask(split, 'x').keysOf('E01', {}), ['ep1']);
+});
+
+test('分镜按集修时模型漏交这一集：同一份再问一次，并说明漏了', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importEp1(project);
+  let repairs = 0;
+  const model = dukoModel((req) => {
+    const u = req.user;
+    if (u.includes('【上一次的违规')) return fenced({ episodes: repairs++ === 0 ? [] : storyboardEpisodes(u) });
+    if (u.includes('每切写 beatIds')) return fenced({ episodes: storyboardEpisodes(u, false) });
+    return undefined;
+  });
+  const out = await runNode(project, 'storyboard', { model });
+
+  assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
+  assert.deepEqual(steps(project, out.runId), ['episodes:1-1', 'repair:validate:ep1', 'repair:validate:ep1']);
+  assert.match(promptSection(model.requests[2]!.user, '上一次的违规') ?? '', /没有交回第 1 集/);
+  cleanup();
+});
+
+test('分镜每批 1 集：推理模型写 2 集几乎必然截断，一上来就按单集写', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importAll(project, ['outline', 'cast', 'art']);
+  const script = loadFixture('script');
+  importArtifact(project, 'script', { ...script, episodes: script.episodes.filter((e: { ep: number }) => e.ep <= 2) });
+  const staging = loadFixture('staging');
+  importArtifact(project, 'staging', { ...staging, scenes: staging.scenes.filter((x: { ep: number }) => x.ep <= 2) });
+  const out = await runNode(project, 'storyboard', { model: dukoModel() });
+
+  assert.deepEqual(steps(project, out.runId).slice(0, 2), ['episodes:1-1', 'episodes:2-2']);
+  cleanup();
 });
 
 test('staging-carry：解析 blocking 输出；空白差异不算违规；行数对不上报错', () => {

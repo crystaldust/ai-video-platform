@@ -18,7 +18,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { OutputTruncated, RECIPES, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit, planRepair } from './recipes.ts';
+import { OutputTruncated, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -252,7 +252,10 @@ class NodeRun {
       if (plan.whole) return await this.ask(`repair:${check.name}`, { ...repair, draft: doc, draftLabel: '当前版本（需要修正）' }, violations);
       for (const [key, own] of plan.parts) {
         const part = await split!.part(current, key);
-        current = part.merge(current, await this.ask(`repair:${check.name}:${key}`, { ...part.ask, draftLabel: '当前版本（需要修正）' }, own));
+        const [step, ask] = [`repair:${check.name}:${key}`, { ...part.ask, draftLabel: '当前版本（需要修正）' }];
+        // 模型没交回这一份：同一份再问一次并说明漏了；还没有就留到下一轮
+        const merged = part.merge(current, await this.ask(step, ask, own)) ?? part.merge(current, await this.ask(step, ask, [...own, part.missing]));
+        current = merged ?? current;
       }
       return current;
     } catch (error) {
@@ -345,7 +348,7 @@ class NodeRun {
       },
     };
     const repair: AskParts = { task: '按违规修正 JSON，使它同时通过 skill 的质量门、能被平台导入；没被点到的内容不要改动。', schema: ctx.readFile('references/schema.md'), outputSpec: `输出修正后的整份 ${this.stage}.json。` };
-    return this.gate(check, doc, repair, skillGate?.post, skillGate?.split);
+    return this.gate(check, doc, repair, skillGate?.post, skillGate?.split && withTask(skillGate.split, repair.task));
   }
 
   /** 并回后的整份文档再过一次 skill 的门：只报告不阻断（例如剧本总时长），结果作为提示发出。 */

@@ -46,9 +46,18 @@ export interface Check {
 export interface RepairSplit {
   /** 这条违规落在哪几份上（如集号）；落不到返回空 */
   keysOf(violation: string, doc: Doc): string[];
-  /** 修这一份：问模型的各部分（draft 是这一份）与把修好的并回整份 */
-  part(doc: Doc, key: string): Promise<{ readonly ask: AskParts; merge(doc: Doc, fixed: Doc): Doc }>;
+  /** 修这一份：问模型的各部分（draft 是这一份）、把修好的并回整份（模型没交回这一份时返回 null）、没交回时补问用的违规 */
+  part(doc: Doc, key: string): Promise<{ readonly ask: AskParts; merge(doc: Doc, fixed: Doc): Doc | null; readonly missing: string }>;
 }
+
+/** 每一份的任务说明前面加上一段修复要求（平台门按集修时带上「能被平台导入」）。 */
+export const withTask = (split: RepairSplit, task: string): RepairSplit => ({
+  keysOf: (violation, doc) => split.keysOf(violation, doc),
+  part: async (doc, key) => {
+    const part = await split.part(doc, key);
+    return { ...part, ask: { ...part.ask, task: `${task}\n\n${part.ask.task}` } };
+  },
+});
 
 /**
  * 一轮修复怎么分：落得到份上的违规按份修（份 → 它的违规，按首次出现排序）；落不到的留到下一轮再报。
