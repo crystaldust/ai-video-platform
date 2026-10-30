@@ -1,7 +1,7 @@
 // 阶段流水线：6 个文本阶段卡 + 付费阶段条（加锁，先确认再生成；数字来自估算）。
 import { ChevronRight, Lock } from 'lucide-react';
 import { Link } from 'react-router';
-import { yuanRange } from '../format.ts';
+import { attemptState, callNo, yuanRange } from '../format.ts';
 import type { LogRun, NodeEstimate, ProjectEstimate, StageCard, StageState } from '../types.ts';
 import { Badge, type Tone } from './ui.tsx';
 import s from './overview.module.css';
@@ -21,9 +21,11 @@ type CardData = StageCard & { gates: { total: number | null; passed: number | nu
 function footLine(card: CardData, run: LogRun | undefined, deps: string): string {
   if (card.state === 'running' && run) {
     const last = run.attempts.at(-1);
-    const n = run.attempts.length;
+    const n = callNo(run.attempts);
     if (!last) return '开始运行';
-    return last.violations.length ? `第 ${n + 1} 次调用 · 上次 ${last.violations.length} 处违规` : `${last.step} 通过 · 第 ${n + 1} 次调用`;
+    const state = attemptState(last);
+    if (state === 'running') return `${last.step} · 第 ${n} 次调用 · 等模型返回`;
+    return state === 'err' ? `第 ${n} 次调用 · 上次 ${last.violations.length} 处违规` : `${last.step} 通过 · 第 ${n} 次调用`;
   }
   if (card.state === 'waiting') return deps;
   if (card.state === 'needs_human' || card.state === 'failed') return `尝试 ${card.lastRun?.attempts ?? 0} 次 · ${card.lastRun?.error ?? '没过'}`;
