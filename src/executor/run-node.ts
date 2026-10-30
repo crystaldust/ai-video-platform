@@ -18,7 +18,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { OutputTruncated, RECIPES, type AskParts, type Check, type Doc, type RecipeContext } from './recipes.ts';
+import { OutputTruncated, RECIPES, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit, planRepair } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -170,7 +170,7 @@ class NodeRun {
   readonly skipped: string[] = [];
   private readonly counters = new Map<string, number>();
   /** 配方最后一道 skill 自己的门：平台门修过的文档要再过一次它 */
-  private lastSkillGate: { check: Check; post?: ((doc: Doc) => Promise<Doc>) | undefined } | null = null;
+  private lastSkillGate: { check: Check; post?: ((doc: Doc) => Promise<Doc>) | undefined; split?: RepairSplit | undefined } | null = null;
 
   private readonly project: Project;
   private readonly stage: Stage;
@@ -241,23 +241,38 @@ class NodeRun {
     throw new NeedsHuman(step, null, pending, lastOutput);
   }
 
-  /** 过门：不过就把整份文档和违规交给模型修，修完先跑 post（如补 id）再查。 */
-  async gate(check: Check, doc: Doc, repair: AskParts, post?: (doc: Doc) => Promise<Doc>): Promise<Doc> {
+  /**
+   * 一轮修复：违规落得到份上就逐份修、并回（见 planRepair）；否则整份修。
+   * 修到一半出错转人工时，交出的是已经并回的那一版（前几份修好的不丢）。
+   */
+  private async repairRound(check: Check, doc: Doc, violations: readonly string[], repair: AskParts, split: RepairSplit | undefined): Promise<Doc> {
+    const plan = planRepair(violations, doc, split);
+    let current = doc;
+    try {
+      if (plan.whole) return await this.ask(`repair:${check.name}`, { ...repair, draft: doc, draftLabel: '当前版本（需要修正）' }, violations);
+      for (const [key, own] of plan.parts) {
+        const part = await split!.part(current, key);
+        current = part.merge(current, await this.ask(`repair:${check.name}:${key}`, { ...part.ask, draftLabel: '当前版本（需要修正）' }, own));
+      }
+      return current;
+    } catch (error) {
+      // 修复时模型一直给不出 JSON：交给人的应该是最后一版能用的文档，而不是那段解析不了的输出
+      if (error instanceof NeedsHuman) throw new NeedsHuman(check.name, current, [...violations, ...error.violations], error.raw);
+      // 修复时被截断：同样交出最后一版能用的文档，而不是空手转人工
+      if (error instanceof OutputTruncated) throw new NeedsHuman(check.name, current, [...violations, error.message]);
+      throw error;
+    }
+  }
+
+  /** 过门：不过就把文档和违规交给模型修（能按份就按份），修完先跑 post（如补 id）再查。 */
+  async gate(check: Check, doc: Doc, repair: AskParts, post?: (doc: Doc) => Promise<Doc>, split?: RepairSplit): Promise<Doc> {
     let current = doc;
     for (let round = 0; ; round++) {
       const violations = await check.run(current);
       this.emit({ type: 'gate', runId: this.runId, gate: check.name, violations });
       if (!violations.length) return current;
       if (round >= this.maxAttempts) throw new NeedsHuman(check.name, current, violations);
-      try {
-        current = await this.ask(`repair:${check.name}`, { ...repair, draft: current, draftLabel: '当前版本（需要修正）' }, violations);
-      } catch (error) {
-        // 修复时模型一直给不出 JSON：交给人的应该是最后一版能用的文档，而不是那段解析不了的输出
-        if (error instanceof NeedsHuman) throw new NeedsHuman(check.name, current, [...violations, ...error.violations], error.raw);
-        // 修复时被截断：同样交出最后一版能用的文档，而不是空手转人工
-        if (error instanceof OutputTruncated) throw new NeedsHuman(check.name, current, [...violations, error.message]);
-        throw error;
-      }
+      current = await this.repairRound(check, current, violations, repair, split);
       if (post) current = await post(current);
     }
   }
@@ -297,9 +312,9 @@ class NodeRun {
         return parseViolations(r.code, r.stdout, r.stderr);
       },
       ask: (step, parts) => this.ask(step, parts, []),
-      gate: (check, doc, repair, post) => {
-        this.lastSkillGate = { check, post };
-        return this.gate(check, doc, repair, post);
+      gate: (check, doc, repair, post, split) => {
+        this.lastSkillGate = { check, post, split };
+        return this.gate(check, doc, repair, post, split);
       },
       skipHumanGate: (what) => this.skipped.push(what),
       episodes: p.episodes,
@@ -330,7 +345,7 @@ class NodeRun {
       },
     };
     const repair: AskParts = { task: '按违规修正 JSON，使它同时通过 skill 的质量门、能被平台导入；没被点到的内容不要改动。', schema: ctx.readFile('references/schema.md'), outputSpec: `输出修正后的整份 ${this.stage}.json。` };
-    return this.gate(check, doc, repair, skillGate?.post);
+    return this.gate(check, doc, repair, skillGate?.post, skillGate?.split);
   }
 
   /** 并回后的整份文档再过一次 skill 的门：只报告不阻断（例如剧本总时长），结果作为提示发出。 */
@@ -389,9 +404,9 @@ function unpricedNotice(modelId: string, prices: PriceSources | null): string | 
 function settle(run: NodeRun, project: Project, error: unknown, maxAttempts: number): RunOutcome {
   const { runId, dir, skipped } = run;
   if (error instanceof OutputTruncated) {
-    // 已经拆到一集还截断：换更大输出上限的模型，或把这一阶段的单集内容减量
-    const batched = /^episodes:\d+-\d+$/.test(error.step);
-    const message = `${error.step}：${error.message}；${batched ? '已拆到最小批次' : '这一步不分批'}，需要更大的输出上限或换模型`;
+    // 已经拆到最小批次（分镜拆到单场）还截断：换更大输出上限的模型，或把这一阶段的单集内容减量
+    const smallest = /:scenes:(\d+)-\1$/.test(error.step) ? '已拆到单场' : /^episodes:\d+-\d+/.test(error.step) ? '已拆到最小批次' : '这一步不分批';
+    const message = `${error.step}：${error.message}；${smallest}，需要更大的输出上限或换模型`;
     run.handOver([message], null, null);
     finishRun(project.db, runId, { status: 'needs_human', skippedHumanGates: skipped, error: message });
     return { runId, status: 'needs_human', dir, message, violations: [message], skippedHumanGates: skipped };
