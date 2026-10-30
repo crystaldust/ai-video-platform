@@ -76,11 +76,11 @@ export const episodeKey = (ep: number): string => `ep${String(ep)}`;
 
 /**
  * 转人工时过了门的那几集：剩下的违规都落得到集上，就去掉被点到的集、留下其余的（下次重跑沿用）。
- * 有违规落不到集上、没法分份、或每集都被点到时返回 null——说不清哪几集是好的，就不沿用。
+ * 有违规落不到集上、配方没法按集定位、没有违规或每集都被点到时返回 null——说不清哪几集是好的，就不沿用。
  */
-export function passedEpisodes(doc: Doc, violations: readonly string[], split: RepairSplit | undefined): Doc | null {
-  if (!split) return null;
-  const hit = violations.map((v) => split.keysOf(v, doc));
+export function passedEpisodes(doc: Doc, violations: readonly string[], keysOf: ((violation: string, doc: Doc) => string[]) | undefined): Doc | null {
+  if (!keysOf || !violations.length) return null;
+  const hit = violations.map((v) => keysOf(v, doc));
   if (hit.some((keys) => !keys.length)) return null;
   const flagged = new Set(hit.flat());
   const kept = episodesOf(doc).filter((e) => isDoc(e) && !flagged.has(episodeKey(e['ep'] as number)));
@@ -148,6 +148,8 @@ export interface Recipe {
   readonly name: string;
   /** 必须已有的上游 */
   needs(skill: SkillRow): readonly Stage[];
+  /** 这条违规落在哪几集上（episodeKey）；给了才能在转人工后沿用没被点到的集 */
+  keysOf?(violation: string, doc: Doc): string[];
   /** 有就带上的上游 */
   optional(skill: SkillRow): readonly Stage[];
   /** 需要项目输入（梗概 / 原文） */

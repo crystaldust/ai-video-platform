@@ -19,7 +19,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { episodesOf, isDoc, OutputTruncated, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit } from './recipes.ts';
+import { episodesOf, isDoc, mergeEpisodes, OutputTruncated, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type Recipe, type RecipeContext, type RepairSplit } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -86,16 +86,13 @@ export class NeedsHuman extends Error {
   readonly doc: Doc | null;
   readonly raw: string | null;
   readonly violations: readonly string[];
-  /** 过了门的那几集（违规都落得到集上时），下次重跑沿用；说不清时为 null */
-  readonly passed: Doc | null;
-  constructor(gate: string, doc: Doc | null, violations: readonly string[], raw: string | null = null, passed: Doc | null = null) {
+  constructor(gate: string, doc: Doc | null, violations: readonly string[], raw: string | null = null) {
     super(`${gate} 重试用尽，仍有 ${violations.length} 处违规`);
     this.name = 'NeedsHuman';
     this.gate = gate;
     this.doc = doc;
     this.raw = raw;
     this.violations = [...violations];
-    this.passed = passed;
   }
 }
 
@@ -272,7 +269,7 @@ class NodeRun {
       // 修复时模型一直给不出 JSON：交给人的应该是最后一版能用的文档，而不是那段解析不了的输出
       if (error instanceof NeedsHuman) throw new NeedsHuman(check.name, current, [...violations, ...error.violations], error.raw);
       // 修复时被截断：同样交出最后一版能用的文档，而不是空手转人工
-      if (error instanceof OutputTruncated) throw new NeedsHuman(check.name, current, [...violations, error.message], null, passedEpisodes(current, violations, split));
+      if (error instanceof OutputTruncated) throw new NeedsHuman(check.name, current, [...violations, error.message]);
       throw error;
     }
   }
@@ -284,7 +281,7 @@ class NodeRun {
       const violations = await check.run(current);
       this.emit({ type: 'gate', runId: this.runId, gate: check.name, violations });
       if (!violations.length) return current;
-      if (round >= this.maxAttempts) throw new NeedsHuman(check.name, current, violations, null, passedEpisodes(current, violations, split));
+      if (round >= this.maxAttempts) throw new NeedsHuman(check.name, current, violations);
       current = await this.repairRound(check, current, violations, repair, split);
       if (post) current = await post(current);
     }
@@ -388,7 +385,7 @@ class NodeRun {
     writeFileSync(join(this.dir, 'violations.txt'), `${violations.join('\n')}\n`);
   }
 
-  /** 转人工时留下可以沿用的集（out/<stage>.kept.json）：输入不变时下一次重跑只写其余的。 */
+  /** 撞上输出上限转人工时留下已写好的集（out/<stage>.kept.json）：输入不变时下一次重跑只写其余的。 */
   keep(doc: Doc | null): void {
     if (doc && episodesOf(doc).length && existsSync(join(this.dir, 'out'))) writeFileSync(join(this.dir, 'out', `${this.stage}.kept.json`), JSON.stringify(doc));
   }
@@ -403,26 +400,61 @@ function resumeKey(p: Prepared, opts: RunNodeOptions): string {
   return contentHash({ upstream: p.upstream, params: p.params, source: p.source, skill, model: opts.model.id, episodes: p.episodes, note: opts.revise?.note ?? null, base: p.base });
 }
 
-/**
- * 可续的上一次：同阶段紧挨着的上一次运行输入指纹一样——
- * 因故障失败（进程中断、供应商报错）就取它已写好的那份进度；转人工就取它留下的过了门的那几集（被质量门点到的集重写）。
- */
-function resumable(project: Project, stage: Stage, runId: number, key: string): { runId: number; doc: Doc; human: boolean } | null {
-  const prev = project.db.prepare('SELECT id, status FROM node_run WHERE stage = ? AND id < ? ORDER BY id DESC LIMIT 1').get(stage, runId) as { id: number; status: string } | undefined;
-  if (prev?.status !== 'failed' && prev?.status !== 'needs_human') return null;
-  const human = prev.status === 'needs_human';
-  const out = join(project.dir, RUNS_DIR, String(prev.id), 'out');
-  const file = join(out, `${stage}.${human ? 'kept' : 'partial'}.json`);
-  if (!existsSync(join(out, 'resume.key')) || !existsSync(file)) return null;
-  if (readFileSync(join(out, 'resume.key'), 'utf8') !== key) return null;
-  let doc: unknown;
+/** 读运行目录里的 JSON 文档；没有或坏了返回 null（续跑只是省钱，读不了就从头写）。 */
+function readDoc(path: string): Doc | null {
+  if (!existsSync(path)) return null;
   try {
-    doc = JSON.parse(readFileSync(file, 'utf8'));
+    const doc: unknown = JSON.parse(readFileSync(path, 'utf8'));
+    return isDoc(doc) ? doc : null;
   } catch {
-    // 进度文件坏了：续跑只是省钱，读不了就从头写
     return null;
   }
-  return isDoc(doc) && episodesOf(doc).length ? { runId: prev.id, doc, human } : null;
+}
+
+/**
+ * 转人工的那次留下的可沿用的集：撞上输出上限的留了 kept.json（已写好的集）；
+ * 质量门修复用尽的留了最后一版和违规清单，违规都落得到集上就去掉被点到的集——收尾时现算，旧版本跑出的运行也接得上。
+ */
+function passedOf(out: string, stage: Stage, keysOf: Recipe['keysOf']): Doc | null {
+  const kept = readDoc(join(out, `${stage}.kept.json`));
+  if (kept) return kept;
+  const last = readDoc(join(out, `${stage}.json`));
+  const list = join(out, '..', 'violations.txt');
+  if (!last || !existsSync(list)) return null;
+  return passedEpisodes(last, readFileSync(list, 'utf8').split('\n').filter(Boolean), keysOf);
+}
+
+/** 往前最多看几次同阶段运行（续跑只往回接连着失败、指纹相同的那一串） */
+const RESUME_LOOKBACK = 20;
+
+/**
+ * 可续的那一串：同阶段从最近一次往前，连着以失败或转人工结束、输入指纹一样的运行——
+ * 故障失败（进程中断、供应商报错）取它已写好的进度（没写出进度的跳过）；转人工取它留下的过了门的那几集（被质量门点到的集重写）。
+ * 各次留下的集按集号合起来，同一集取最新那次的；碰到通过的、指纹不同的、或转人工的（取完它就停）就不再往前。
+ */
+function resumable(project: Project, stage: Stage, runId: number, key: string, recipe: Recipe): { runIds: number[]; doc: Doc } | null {
+  const prevs = project.db.prepare('SELECT id, status FROM node_run WHERE stage = ? AND id < ? ORDER BY id DESC LIMIT ?').all(stage, runId, RESUME_LOOKBACK) as { id: number; status: string }[];
+  const found: { id: number; doc: Doc }[] = [];
+  for (const prev of prevs) {
+    if (prev.status !== 'failed' && prev.status !== 'needs_human') break;
+    const human = prev.status === 'needs_human';
+    const out = join(project.dir, RUNS_DIR, String(prev.id), 'out');
+    if (!existsSync(join(out, 'resume.key'))) {
+      // 还没开始写就失败（没留下指纹）：什么都没写，跳过；转人工的说不清，就停
+      if (human) break;
+      continue;
+    }
+    if (readFileSync(join(out, 'resume.key'), 'utf8') !== key) break;
+    const doc = human ? passedOf(out, stage, recipe.keysOf) : readDoc(join(out, `${stage}.partial.json`));
+    if (doc && episodesOf(doc).length) found.push({ id: prev.id, doc });
+    // 转人工那次已经并进了更早的集、去掉了被点到的：再往前会把被点到的集的旧版本捡回来
+    if (human) break;
+  }
+  if (!found.length) return null;
+  // 从最早的往后并：后来的覆盖同一集；顶层字段取最新那次的
+  const oldestFirst = [...found].reverse();
+  const episodes = oldestFirst.reduce<Doc[]>((acc, f) => mergeEpisodes(acc, episodesOf(f.doc)), []);
+  return { runIds: oldestFirst.map((f) => f.id), doc: { ...found[0]!.doc, episodes } };
 }
 
 async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared): Promise<RunOutcome> {
@@ -433,15 +465,14 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   run.emit({ type: 'run-start', runId, stage, skill: `${p.skill.name}@${p.skill.version}`, model: run.opts.model.id });
   const key = resumeKey(p, run.opts);
   writeFileSync(join(dir, 'out', 'resume.key'), key);
-  const resumed = resumable(project, stage, runId, key);
+  const resumed = resumable(project, stage, runId, key, RECIPES[p.recipeName]!);
   if (resumed) run.resumed = resumed.doc;
   const ctx = run.context();
   if (resumed) {
     // 先把沿用的那份记成这次的进度：这次还没写出新进度就又中断的话，下一次照样能接上
     ctx.progress(resumed.doc);
-    const n = episodesOf(resumed.doc).length;
-    const message = resumed.human ? `沿用上一次（run ${resumed.runId}）转人工时留下的 ${n} 集（已写好、没被质量门点到），只重写其余的` : `沿用上一次（run ${resumed.runId}）中断前已写好的 ${n} 集，只写剩下的`;
-    run.emit({ type: 'notice', runId, message });
+    const runs = resumed.runIds.map((id) => `run ${id}`).join('、');
+    run.emit({ type: 'notice', runId, message: `沿用之前（${runs}）已写好、没被质量门点到的 ${episodesOf(resumed.doc).length} 集，只写其余的` });
   }
   const notice = run.priceProblem ?? unpricedNotice(run.opts.model.id, run.prices);
   if (notice) run.emit({ type: 'notice', runId, message: notice });
@@ -484,10 +515,8 @@ function settle(run: NodeRun, project: Project, error: unknown, maxAttempts: num
   }
   if (error instanceof NeedsHuman || error instanceof ImportError) {
     const violations = error instanceof NeedsHuman ? error.violations : error.problems;
-    if (error instanceof NeedsHuman) {
-      run.handOver(violations, error.doc, error.raw);
-      run.keep(error.passed);
-    } else run.handOver(violations, null, null);
+    if (error instanceof NeedsHuman) run.handOver(violations, error.doc, error.raw);
+    else run.handOver(violations, null, null);
     const message = error instanceof NeedsHuman ? `${error.gate} 重试 ${maxAttempts} 次仍未通过` : '导入时引用对不上';
     finishRun(project.db, runId, { status: 'needs_human', skippedHumanGates: skipped, error: message });
     return { runId, status: 'needs_human', dir, message, violations, skippedHumanGates: skipped };
