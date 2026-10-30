@@ -1,0 +1,201 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+}
+.gateLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.section {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.section h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.section h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.core {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.choiceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 20px;
+}
+.choices {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.choices b {
+  display: block;
+  font-weight: 500;
+}
+.choices span,
+.note {
+  color: var(--text-2);
+}
+.note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: grid;
+  grid-template-columns: 88px 150px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.row:first-child {
+  border-top: 0;
+}
+.row b {
+  font-weight: 600;
+}
+.meta {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.episode {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.episode header,
+.scene header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.episode p {
+  margin: 6px 0;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.kv {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.kv dt {
+  color: var(--text-3);
+}
+.kv dd {
+  margin: 0;
+}
+.warn {
+  color: var(--warn);
+  font-size: 12px;
+}
+.scriptBody {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.epList {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 16px;
+}
+.epList button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.epList button:hover {
+  background: var(--bg);
+}
+.epList button[aria-current='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.epList small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.epHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.scene {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.action,
+.line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.action > span:first-child,
+.line > span:first-child {
+  margin-right: 6px;
+}
+.action {
+  color: var(--text-2);
+}
+.line {
+  padding-left: 24px;
+}
+.line b {
+  font-weight: 600;
+}
+.delivery {
+  color: var(--text-3);
+  font-size: 12px;
+}

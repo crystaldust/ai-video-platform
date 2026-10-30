@@ -60,9 +60,20 @@ test('新建 → 一键跑 → 付费确认 → 打回单集 → 复核', async 
   await expect(page.getByTestId('stage-storyboard')).toContainText('通过');
 });
 
-test('单集详情、角色与美术、Skill 包、模型与预设都能打开', async ({ page }) => {
+test('大纲与剧本、单集详情、角色与美术、Skill 包、模型与预设都能打开', async ({ page }) => {
   await page.goto('/');
   await page.getByText('《渡口》').click();
+  // 全貌的大纲卡「查看」→ 大纲页签；切到剧本看第 1 集的场次与台词
+  await page.getByTestId('stage-outline').getByRole('link', { name: '查看' }).click();
+  await expect(page.getByRole('region', { name: '改编说明' })).toBeVisible();
+  await expect(page.getByTestId('outline-ep-1')).toBeVisible();
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, 'outline.png'), fullPage: true });
+  await page.getByRole('group', { name: '查看' }).getByRole('button', { name: '剧本' }).click();
+  await expect(page.getByTestId('script-ep-1')).toContainText('第 1 场');
+  await page.getByRole('button', { name: /第 02 集/ }).click();
+  await expect(page).toHaveURL(/tab=script&ep=/);
+  await expect(page.getByTestId('script-ep-2')).toBeVisible();
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, 'script.png'), fullPage: true });
   await page.getByRole('link', { name: '剧集与分镜' }).click();
   await expect(page.getByText('E01-01').first()).toBeVisible();
   await expect(page.getByRole('complementary', { name: '切详情' })).toContainText('认领的剧本节拍');

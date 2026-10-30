@@ -8,6 +8,7 @@ import { gateView } from '../views/gates.ts';
 import { modelsView } from '../views/models.ts';
 import { overview } from '../views/overview.ts';
 import { skillsView } from '../views/skills.ts';
+import { outlinePage, scriptPage } from '../views/story.ts';
 
 const gateId = (raw: string | undefined): number => {
   const n = Number(raw);
@@ -20,6 +21,8 @@ export const VIEW_ROUTES: readonly Route[] = [
   route('GET', '/api/p/:id/head', ({ app, params }) => app.withProject(params['id']!, (p) => ({ ...projectHead(p, params['id']!), job: app.jobs.current(params['id']!) }))),
   route('GET', '/api/p/:id/overview', ({ app, params }) => app.withProject(params['id']!, (p) => overview(app, p, params['id']!))),
   route('GET', '/api/p/:id/episodes/:ep', ({ app, params }) => app.withProject(params['id']!, (p) => episodeDetail(p, params['id']!, params['ep']!))),
+  route('GET', '/api/p/:id/outline', ({ app, params }) => app.withProject(params['id']!, (p) => outlinePage(p, params['id']!))),
+  route('GET', '/api/p/:id/script', ({ app, params }) => app.withProject(params['id']!, (p) => scriptPage(p, params['id']!))),
   route('GET', '/api/p/:id/cast', ({ app, params }) => app.withProject(params['id']!, (p) => castView(p, params['id']!))),
   route('GET', '/api/p/:id/skills', ({ app, params }) => app.withProject(params['id']!, (p) => skillsView(p, params['id']!))),
   route('GET', '/api/p/:id/models', ({ app, params }) => app.withProject(params['id']!, (p) => modelsView(app, p, params['id']!))),

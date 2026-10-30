@@ -1,4 +1,6 @@
-// 显示用的格式：人民币、区间、时长、时刻、集号。
+// 显示用的格式：人民币、区间、时长、时刻、集号、质量门。
+import type { GateResult } from './types.ts';
+
 export const yuan = (n: number | null | undefined, digits = 2): string => (n === null || n === undefined ? '—' : `¥${n.toFixed(digits)}`);
 
 export const yuanRange = (r: { low: number; high: number } | null | undefined, digits = 1): string =>
@@ -41,3 +43,8 @@ export const aspectLabel = (a: string | undefined): string | null => (a === '9:1
 
 /** 「6 集 · 竖屏 9:16 · 小成本验证」：缺的项不显示 */
 export const joinDot = (...parts: (string | null | undefined | false)[]): string => parts.filter(Boolean).join(' · ');
+
+/** 质量门一句话：几道过了几道；只有 validate 的 skill 说违规数。 */
+export const gateText = (label: string, g: GateResult | null): string =>
+  !g ? `${label}还没有` : g.total !== null ? `${label}质量门 ${g.passed}/${g.total}` : g.failed.length ? `${label} ${g.failed.length} 处违规` : `${label}质量门通过`;
+export const gateTone = (g: GateResult | null): 'idle' | 'err' | 'ok' => (!g ? 'idle' : g.failed.length ? 'err' : 'ok');

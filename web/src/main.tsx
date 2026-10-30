@@ -11,6 +11,7 @@ import { NewProjectPage } from './pages/NewProjectPage.tsx';
 import { OverviewPage } from './pages/OverviewPage.tsx';
 import { ProjectsPage } from './pages/ProjectsPage.tsx';
 import { SkillsPage } from './pages/SkillsPage.tsx';
+import { StoryPage } from './pages/StoryPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
     element: <ProjectShell />,
     children: [
       { index: true, element: <OverviewPage /> },
+      { path: 'story', element: <StoryPage /> },
       { path: 'episodes', element: <EpisodesIndex /> },
       { path: 'ep/:ep', element: <EpisodePage /> },
       { path: 'cast', element: <CastPage /> },

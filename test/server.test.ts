@@ -177,6 +177,44 @@ test('单集详情、角色与美术、Skill 包、模型与预设、付费确�
   project.close();
 });
 
+test('大纲与剧本：文本阶段的产物整份可看（名字已解析）；还没有产物时为 null', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  const project = await dukoProject(h);
+  const get = async (path: string) => (await h.call('GET', encodeURI(`/api/p/渡口${path}`))).body;
+
+  const outline = (await get('/outline')).data.outline;
+  assert.equal(outline.v, 1);
+  assert.equal(outline.episodes.length, 6);
+  assert.equal(outline.characters.length, 5);
+  assert.equal(outline.beats.length, 4);
+  assert.match(outline.adaptation.core, /浓雾渡口/);
+  assert.equal(outline.adaptation.keep.length, 2);
+  assert.deepEqual(outline.episodes[0].characters.slice(0, 1), ['沈知微'], '人物编号换成名字');
+  assert.equal(outline.props[0].beats[0], '悬念钩', '道具关联的爽点给类型');
+  assert.equal(outline.beats[1].episode, 3);
+
+  const script = (await get('/script')).data.script;
+  assert.equal(script.episodes.length, 6);
+  const ep1 = script.episodes[0];
+  assert.equal(ep1.id, DUKO.ep1);
+  assert.equal(ep1.targetSeconds, 120);
+  assert.equal(ep1.scenes[0].location, '渡口栈桥');
+  assert.equal(ep1.scenes[0].lighting, '浓雾清晨');
+  assert.ok(ep1.scenes[0].characters.includes('沈知微'));
+  const line = ep1.scenes[0].flow.find((b: { kind: string }) => b.kind === 'line');
+  assert.equal(line.speaker, '老周', '说话人换成名字');
+  assert.equal(line.delivery, '扯着嗓子，不急不躁');
+  assert.equal(ep1.scenes[0].flow[0].hook, true, '钩子节拍标出来');
+  assert.equal(ep1.scenes[0].flow.filter((b: { hook: boolean }) => b.hook).length, 1);
+  project.close();
+
+  createProject(join(h.app.config.projectsRoot, '空'), '空').close();
+  assert.equal((await h.call('GET', encodeURI('/api/p/空/outline'))).body.data.outline, null);
+  assert.equal((await h.call('GET', encodeURI('/api/p/空/script'))).body.data.script, null);
+  assert.equal((await h.call('GET', encodeURI('/api/p/没有/script'))).status, 404);
+});
+
 test('新建项目并开跑：SSE 推出各阶段的运行与结束，编排 done，生成付费确认单；同项目再开任务 409', async (t) => {
   const h = await startHarness();
   t.after(() => h.close());

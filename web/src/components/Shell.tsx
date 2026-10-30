@@ -1,5 +1,5 @@
 // 页面框架：左侧导航 + 右侧内容。进了项目后导航换成项目内的页面，侧栏显示当前项目。
-import { Boxes, Film, Folder, Image, LayoutDashboard, ListChecks, Package, Scissors, SlidersHorizontal, Users } from 'lucide-react';
+import { BookOpen, Boxes, Film, Folder, Image, LayoutDashboard, ListChecks, Package, Scissors, SlidersHorizontal, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet, useParams } from 'react-router';
 import { projectPath, useApi } from '../api.ts';
@@ -74,6 +74,7 @@ export function ProjectShell() {
   const base = `/p/${encodeURIComponent(id)}`;
   const items: Item[] = [
     { to: base, label: '全貌', icon: <LayoutDashboard {...ICON} />, end: true },
+    { to: `${base}/story`, label: '大纲与剧本', icon: <BookOpen {...ICON} /> },
     { to: `${base}/episodes`, label: '剧集与分镜', icon: <Film {...ICON} /> },
     { to: `${base}/cast`, label: '角色与美术', icon: <Users {...ICON} /> },
     { to: null, label: '素材与候选', icon: <Image {...ICON} />, soon: 'Phase 6' },

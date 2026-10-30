@@ -5,12 +5,9 @@ import { useParams } from 'react-router';
 import { api, ApiError, projectPath, useApi } from '../api.ts';
 import { Badge, Button, ButtonHint, cardClass, ErrorView, Loading, PageHead, Segmented, useToast } from '../components/ui.tsx';
 import o from '../components/overview.module.css';
-import type { CastView, CharacterView, GateResult } from '../types.ts';
+import { gateText, gateTone } from '../format.ts';
+import type { CastView, CharacterView } from '../types.ts';
 import s from './CastPage.module.css';
-
-const gateText = (label: string, g: GateResult | null) =>
-  !g ? `${label}还没有` : g.total !== null ? `${label}质量门 ${g.passed}/${g.total}` : g.failed.length ? `${label} ${g.failed.length} 处违规` : `${label}质量门通过`;
-const gateTone = (g: GateResult | null) => (!g ? 'idle' : g.failed.length ? 'err' : 'ok') as 'idle' | 'err' | 'ok';
 
 function CharacterPanel({ c, projectId, onClose, onDone, onError }: { c: CharacterView; projectId: string; onClose: () => void; onDone: (m: string) => void; onError: (e: ApiError) => void }) {
   const [showPrompt, setShowPrompt] = useState(false);
