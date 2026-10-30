@@ -1,5 +1,6 @@
 // 阶段流水线：6 个文本阶段卡 + 付费阶段条（加锁，先确认再生成；数字来自估算）。
 import { ChevronRight, Lock } from 'lucide-react';
+import { Link } from 'react-router';
 import { yuanRange } from '../format.ts';
 import type { LogRun, NodeEstimate, ProjectEstimate, StageCard, StageState } from '../types.ts';
 import { Badge, type Tone } from './ui.tsx';
@@ -31,6 +32,9 @@ function footLine(card: CardData, run: LogRun | undefined, deps: string): string
   return card.state === 'stale' ? `${gates} · ${card.stale} 处需复核` : gates;
 }
 
+/** 能整份查看的文本产物：阶段卡上给「查看」链到大纲与剧本页（相对当前项目） */
+const READABLE: Record<string, string> = { outline: 'story?tab=outline', script: 'story?tab=script' };
+
 const WAITING: Record<string, string> = { outline: '等梗概', cast: '等大纲', art: '等大纲', script: '等大纲', staging: '等剧本和美术', storyboard: '等剧本和站位' };
 
 function StageCardView({ card, index, run }: { card: CardData; index: number; run: LogRun | undefined }) {
@@ -43,7 +47,14 @@ function StageCardView({ card, index, run }: { card: CardData; index: number; ru
         </b>
         <Badge tone={st.tone}>{st.label}</Badge>
       </div>
-      <span className={s.stageSkill}>{card.skill?.split('@')[0] ?? '未挂载'}</span>
+      <span className={s.stageSkill}>
+        {card.skill?.split('@')[0] ?? '未挂载'}
+        {READABLE[card.stage] && card.artifactV !== null ? (
+          <Link to={READABLE[card.stage]!} className={s.stageLink}>
+            查看
+          </Link>
+        ) : null}
+      </span>
       <span className={`${s.stageFoot} ${card.state === 'running' ? s.stageFootRun : ''}`}>{footLine(card, run, WAITING[card.stage] ?? '')}</span>
     </div>
   );

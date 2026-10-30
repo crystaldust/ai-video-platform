@@ -3,6 +3,7 @@ export type { Overview, EpisodeRow, PendingItem, LogRun, CellState } from '../..
 export type { ProjectSummary } from '../../src/server/views/projects.ts';
 export type { EpisodeDetail, SceneView, SegmentView, CutView, BeatView } from '../../src/server/views/episode.ts';
 export type { CastView, CharacterView, ArtItemView } from '../../src/server/views/cast.ts';
+export type { OutlinePage, OutlineView, ScriptPage, ScriptView, FlowItem, Choice } from '../../src/server/views/story.ts';
 export type { SkillsView, MountRow } from '../../src/server/views/skills.ts';
 export type { ModelsView } from '../../src/server/views/models.ts';
 export type { GateView } from '../../src/server/views/gates.ts';
