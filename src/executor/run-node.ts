@@ -1,6 +1,6 @@
 // 节点执行器：按挂载的 skill 和它的配方跑一个阶段，门不过就带违规原文重试，用尽转人工；通过后导入项目库。
 // 每次模型调用（完整提示词、输出、违规、用量）都单独落库，不包大事务——等模型是异步的，中途崩溃也留得下记录。
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Stage } from '../domain/types.ts';
 import { ImportError, importArtifact } from '../import/import-artifact.ts';
@@ -18,7 +18,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { OutputTruncated, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit } from './recipes.ts';
+import { episodesOf, OutputTruncated, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -27,6 +27,8 @@ export type ProgressEvent =
   | { readonly type: 'attempt'; readonly runId: number; readonly step: string; readonly n: number; readonly violations: readonly string[] }
   | { readonly type: 'gate'; readonly runId: number; readonly gate: string; readonly violations: readonly string[] }
   | { readonly type: 'notice'; readonly runId: number; readonly message: string }
+  /** 已写好、还没过门的集数（页面据此刷新，先显示草稿） */
+  | { readonly type: 'progress'; readonly runId: number; readonly episodes: number }
   | { readonly type: 'run-end'; readonly runId: number; readonly status: RunOutcome['status'] };
 
 export interface RunNodeOptions {
@@ -320,6 +322,14 @@ class NodeRun {
         return this.gate(check, doc, repair, post, split);
       },
       skipHumanGate: (what) => this.skipped.push(what),
+      progress: (doc, problem) => {
+        // 先写临时文件再改名：页面随时会读，不能读到写了一半的 JSON
+        const path = join(this.dir, 'out', `${this.stage}.partial.json`);
+        writeFileSync(`${path}.tmp`, JSON.stringify(doc));
+        renameSync(`${path}.tmp`, path);
+        if (problem) this.emit({ type: 'notice', runId: this.runId, message: problem });
+        this.emit({ type: 'progress', runId: this.runId, episodes: episodesOf(doc).length });
+      },
       episodes: p.episodes,
       base: p.base,
       runMounted: async (stage, args) => {

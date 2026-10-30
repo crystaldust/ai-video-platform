@@ -39,6 +39,9 @@
   background: var(--warn-soft);
   font-size: 12px;
 }
+.bannerDraft {
+  background: var(--accent-soft);
+}
 .stats {
   display: flex;
   gap: 32px;

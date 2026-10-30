@@ -2,7 +2,7 @@
 // 门不过就进修复循环（见 run-node.ts 的 gate）；平台门（投影检查）由执行器在配方之后统一执行。
 // 共用的类型与工具在 recipe-kit.ts；角色、美术、站位、分镜的专用配方在 stage-recipes.ts。
 import type { Stage } from '../domain/types.ts';
-import { baseEpisodes, batches, episodesOf, mergeEpisodes, validateCheck, withIds, writeSplitting, type AskParts, type Doc, type Recipe, type RecipeContext } from './recipe-kit.ts';
+import { baseEpisodes, batches, episodesOf, mergeEpisodes, reportProgress, validateCheck, withIds, writeSplitting, type AskParts, type Doc, type Recipe, type RecipeContext } from './recipe-kit.ts';
 import { STAGE_RECIPES } from './stage-recipes.ts';
 
 export * from './recipe-kit.ts';
@@ -96,6 +96,7 @@ const novelScript: Recipe = {
     };
     for (const [a, b] of batches(eps.length, SCRIPT_BATCH)) {
       episodes = mergeEpisodes(episodes, await writeSplitting(a, b, writeEpisodes));
+      await reportProgress(ctx, 'script.partial.json', { ...head, episodes }, ['--outline', ctx.inPath('outline')]);
     }
     const post = (d: Doc) => withIds(ctx, 'script.json', d, ['--outline', ctx.inPath('outline')]);
     const doc = await post({ ...head, episodes });

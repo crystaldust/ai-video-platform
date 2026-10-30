@@ -1,8 +1,9 @@
 // 单集详情：左边场次与段，中间选中段的切（关键帧位、画面 / 台词时间轴、视频提示词），右边选中切的详情。
+// 剧本、分镜在跑时边写边显示：已写好的集先出来（标草稿），收到进度事件就刷新。
 import { ChevronLeft, ChevronRight, Image, MapPin, Package, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router';
-import { api, ApiError, projectPath, useApi } from '../api.ts';
+import { api, ApiError, projectPath, useApi, useReloadOnProgress } from '../api.ts';
 import { Badge, Button, cardClass, ErrorView, Loading, PageHead, useToast } from '../components/ui.tsx';
 import { epLabel, seconds } from '../format.ts';
 import type { CutView, EpisodeDetail, SegmentView } from '../types.ts';
@@ -148,6 +149,7 @@ export function EpisodePage() {
   const [segId, setSegId] = useState<string | null>(null);
   const [cutId, setCutId] = useState<string | null>(null);
   const [toast, notify] = useToast();
+  useReloadOnProgress(id, d.reload);
   if (d.error) return <ErrorView error={d.error} onRetry={d.reload} />;
   if (!d.data) return <Loading what="读取这一集" />;
   const data = d.data;
@@ -204,6 +206,12 @@ export function EpisodePage() {
           {data.stale.map((x) => `${x.title}需复核：${x.reasons[0]}${x.reasons.length > 1 ? ` 等 ${x.reasons.length} 处` : ''}`).join('；')}。已生成素材：无。
         </div>
       ) : null}
+      {data.draft.script || data.draft.storyboard ? (
+        <div className={`${s.banner} ${s.bannerDraft}`} role="status">
+          <RefreshCw size={15} color="var(--accent)" />
+          生成中：这一集的{[data.draft.script && '剧本', data.draft.storyboard && '分镜'].filter(Boolean).join('、')}是刚写好的草稿，还没过质量门，阶段跑完后可能还会修改。
+        </div>
+      ) : null}
       <div className={s.stats}>
         <Stat label="时长" value={`${seconds(data.stats.seconds)}${data.stats.target ? ` / 目标 ${data.stats.target} 秒` : ''}`} />
         <Stat label="场次" value={String(data.stats.scenes)} />
@@ -213,7 +221,7 @@ export function EpisodePage() {
       </div>
       {segments.length === 0 ? (
         <div className={cardClass} style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>
-          这一集还没有分镜。{data.scenes.length ? `剧本有 ${data.scenes.length} 场，跑完分镜阶段后这里会出现段与切。` : '剧本也还没有写到这一集。'}
+          这一集还没有分镜。{data.scenes.length ? `剧本有 ${data.scenes.length} 场；分镜写到这一集后这里就会出现段与切（运行中边写边显示）。` : '剧本也还没有写到这一集。'}
         </div>
       ) : (
         <div className={s.body}>

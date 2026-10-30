@@ -4,8 +4,9 @@ import { test } from 'node:test';
 import { parseBlocking, stagingCarryViolations } from '../src/executor/gates/staging-carry.ts';
 import { runNode } from '../src/executor/run-node.ts';
 import { mergeScoped } from '../src/executor/scoped.ts';
-import { planRepair, withTask, type RepairSplit } from '../src/executor/recipe-kit.ts';
+import { planRepair, reportProgress, withTask, type RecipeContext, type RepairSplit } from '../src/executor/recipe-kit.ts';
 import { storyboardKeysOf } from '../src/executor/stage-recipes.ts';
+import { episodeDetail } from '../src/server/views/episode.ts';
 import { importArtifact } from '../src/import/import-artifact.ts';
 import type { Project } from '../src/project.ts';
 import { latestArtifactDoc } from '../src/repo/artifacts.ts';
@@ -344,6 +345,75 @@ test('分镜每批 1 集：推理模型写 2 集几乎必然截断，一上来�
 
   assert.deepEqual(steps(project, out.runId).slice(0, 2), ['episodes:1-1', 'episodes:2-2']);
   cleanup();
+});
+
+test('分镜跑到一半：已写好的集在单集详情里就能看到（标为草稿、还没过质量门）；运行结束后不再读进度', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importAll(project, ['outline', 'cast', 'art']);
+  const script = loadFixture('script');
+  importArtifact(project, 'script', { ...script, episodes: script.episodes.filter((e: { ep: number }) => e.ep <= 2) });
+  const staging = loadFixture('staging');
+  importArtifact(project, 'staging', { ...staging, scenes: staging.scenes.filter((x: { ep: number }) => x.ep <= 2) });
+  let [before, during]: (ReturnType<typeof episodeDetail> | null)[] = [null, null];
+  const model = dukoModel((req) => {
+    const range = promptSection(req.user, '只写这几集') ?? '';
+    if (!before && range.includes('第 1–1 集')) before = episodeDetail(project, 'p', DUKO.ep1);
+    if (!during && range.includes('第 2–2 集')) during = episodeDetail(project, 'p', DUKO.ep1);
+    return undefined;
+  });
+  const events: string[] = [];
+  const out = await runNode(project, 'storyboard', { model, onProgress: (e) => events.push(e.type === 'progress' ? `progress:${e.episodes}` : e.type) });
+
+  assert.ok(events.includes('progress:1'), '写好一集就发进度事件，页面据此刷新');
+  const first = before as ReturnType<typeof episodeDetail> | null;
+  assert.equal(first?.stats.segments, 0, '刚开跑、一批都还没写完：没有进度可读，也不报错');
+  assert.equal(first?.draft.storyboard, false);
+  const mid = during as ReturnType<typeof episodeDetail> | null;
+  assert.ok(mid, '写第 2 集时读到了第 1 集');
+  assert.equal(mid.stats.segments, 10, '第 1 集已写好的段马上能看到');
+  assert.equal(mid.draft.storyboard, true, '标为草稿');
+  assert.ok(mid.scenes[0]!.segments[0]!.cuts[0]!.id.startsWith('ct_'), '草稿也补好了 id');
+  assert.notEqual(out.status, 'running');
+  const after = episodeDetail(project, 'p', DUKO.ep1);
+  assert.equal(after.draft.storyboard, false, '运行结束后不再读进度');
+  cleanup();
+});
+
+test('剧本跑到一半：已写好的那批集在单集详情里就能看到场次（草稿）', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importAll(project, ['outline', 'cast', 'art']);
+  let during: ReturnType<typeof episodeDetail> | null = null;
+  const model = dukoModel((req) => {
+    if (!during && (promptSection(req.user, '只写这几集') ?? '').includes('第 4–6 集')) during = episodeDetail(project, 'p', DUKO.ep1);
+    return undefined;
+  });
+  const out = await runNode(project, 'script', { model });
+
+  assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
+  const mid = during as ReturnType<typeof episodeDetail> | null;
+  assert.ok(mid, '写第 4–6 集时读到了第 1 集');
+  assert.equal(mid.draft.script, true);
+  assert.ok(mid.scenes.length > 0 && mid.scenes[0]!.id.startsWith('sc_'), '场次已补 id');
+  assert.equal(episodeDetail(project, 'p', DUKO.ep1).draft.script, false);
+  cleanup();
+});
+
+test('报进度：补 id 失败就原样报，并带上原因（发成运行提示），不中断运行', async () => {
+  const reported: { doc: unknown; problem: string | undefined }[] = [];
+  const ctx = {
+    writeWork: () => '/nonexistent/storyboard.partial.json',
+    runSkill: async () => {
+      throw new Error('ids 脚本坏了');
+    },
+    progress: (doc: unknown, problem?: string) => reported.push({ doc, problem }),
+  } as unknown as RecipeContext;
+  const doc = { episodes: [{ ep: 1, segments: [] }] };
+  await reportProgress(ctx, 'storyboard.partial.json', doc, []);
+  assert.equal(reported.length, 1);
+  assert.equal(reported[0]!.doc, doc);
+  assert.match(reported[0]!.problem ?? '', /补 id 失败.*ids 脚本坏了/);
 });
 
 test('staging-carry：解析 blocking 输出；空白差异不算违规；行数对不上报错', () => {

@@ -4,7 +4,7 @@ import { listOf } from '../../executor/recipe-kit.ts';
 import { pendingCells } from '../../orchestrate/review-matrix.ts';
 import type { Project } from '../../project.ts';
 import { HttpError } from '../http.ts';
-import { docOf, episodesIn, projectHead, STAGE_TITLES, type ProjectHead } from './common.ts';
+import { docOf, episodesIn, liveDoc, projectHead, STAGE_TITLES, type ProjectHead } from './common.ts';
 
 export interface BeatView {
   readonly id: string;
@@ -56,6 +56,8 @@ export interface EpisodeDetail {
   readonly stale: readonly { readonly stage: string; readonly title: string; readonly reasons: readonly string[] }[];
   readonly stats: { readonly seconds: number; readonly target: number | null; readonly scenes: number; readonly segments: number; readonly cuts: number; readonly hookBeat: number | null };
   readonly scenes: readonly SceneView[];
+  /** 这一集的剧本 / 分镜来自正在跑的运行、还没过质量门 */
+  readonly draft: { readonly script: boolean; readonly storyboard: boolean };
 }
 
 const str = (x: unknown): string => (typeof x === 'string' ? x : '');
@@ -101,8 +103,9 @@ function cutView(cut: Doc, start: number, names: ReadonlyMap<string, string>, be
 export function episodeDetail(project: Project, id: string, episodeId: string): EpisodeDetail {
   const { db } = project;
   const outline = docOf(db, 'outline');
-  const script = docOf(db, 'script');
-  const board = docOf(db, 'storyboard');
+  const liveScript = liveDoc(project, 'script');
+  const liveBoard = liveDoc(project, 'storyboard');
+  const [script, board] = [liveScript.doc, liveBoard.doc];
   const all = episodesIn(outline);
   const index = all.findIndex((e) => e['id'] === episodeId || String(e['ep']) === episodeId);
   if (index < 0) throw new HttpError(404, `大纲里没有这一集：${episodeId}`);
@@ -111,8 +114,9 @@ export function episodeDetail(project: Project, id: string, episodeId: string): 
   const ep = num(o['ep']);
   const names = nameIndex(outline);
   const beats = beatsOf(script, names);
-  const s = episodesIn(script).find((e) => e['id'] === epId) ?? null;
-  const segments = listOf(episodesIn(board).find((e) => e['id'] === epId) ?? null, 'segments');
+  // 按集 id 认，认不到再按集号（运行中的草稿补 id 失败时没有集 id）
+  const s = episodesIn(script).find((e) => e['id'] === epId) ?? episodesIn(script).find((e) => e['ep'] === ep) ?? null;
+  const segments = listOf(episodesIn(board).find((e) => e['id'] === epId) ?? episodesIn(board).find((e) => e['ep'] === ep) ?? null, 'segments');
   const cells = pendingCells(db).filter((c) => c.episode === epId);
   const changedScenes = new Set(cells.flatMap((c) => c.reasons.filter((r) => r.to.kind === 'script_scene').map((r) => r.to.key)));
   let segIndex = 0;
@@ -139,5 +143,6 @@ export function episodeDetail(project: Project, id: string, episodeId: string): 
     stale: cells.map((c) => ({ stage: c.stage, title: STAGE_TITLES[c.stage], reasons: c.reasons.map((r) => `${r.to.kind} ${r.to.key} 的${STAGE_TITLES[r.to.facet]}：v${r.pinnedV} → v${r.currentV}`) })),
     stats: { seconds: segViews.reduce((a, g) => a + g.seconds, 0), target: s ? num(s['targetSeconds']) || null : null, scenes: scenes.length, segments: segViews.length, cuts: segViews.reduce((a, g) => a + g.cuts.length, 0), hookBeat },
     scenes,
+    draft: { script: liveScript.drafts.has(ep), storyboard: liveBoard.drafts.has(ep) },
   };
 }

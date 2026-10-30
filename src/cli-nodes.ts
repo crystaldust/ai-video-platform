@@ -32,6 +32,7 @@ export const progressLine = (e: ProgressEvent): string => {
   if (e.type === 'run-start') return `▸ ${e.stage} · ${e.skill} · ${e.model}（run ${e.runId}）`;
   if (e.type === 'attempt') return `  ${e.step} #${e.n} ${e.violations.length ? `✗ ${e.violations[0]}` : '✓'}`;
   if (e.type === 'notice') return `  ⚠ ${e.message}`;
+  if (e.type === 'progress') return `  已写好 ${e.episodes} 集（草稿，还没过门）`;
   if (e.type === 'gate') return `  门 ${e.gate} ${e.violations.length ? `✗ ${e.violations.length} 处违规` : '✓'}`;
   return `${e.status === 'passed' ? '✓' : '✗'} run ${e.runId} ${e.status}`;
 };
