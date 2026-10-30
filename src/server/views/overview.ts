@@ -108,14 +108,30 @@ function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: rea
   return [...failed, ...stale];
 }
 
-/** 最近一次编排的各次运行与尝试（运行中视图的运行记录、正在进行面板）。 */
-function runLog(db: DatabaseSync, orchestrationId: number | null): LogRun[] {
-  if (orchestrationId === null) return [];
+/** 运行记录最多带多少次运行（最近的），免得项目跑久了全貌越来越大 */
+const MAX_LOG_RUNS = 200;
+
+/**
+ * 项目的运行记录：所有运行与它们的每次尝试，按时间先后（运行中视图的运行记录、正在进行面板）。
+ * 不按编排过滤——重跑某个阶段、打回都是追加，之前的记录要留着；打回的运行不属于任何编排，也要在。
+ */
+function runLog(db: DatabaseSync): LogRun[] {
   const runs = db
-    .prepare('SELECT r.id, r.stage, r.status, r.model, r.episode_key, r.started_at, r.ended_at, r.error, s.name, s.version FROM node_run r JOIN skill s ON s.id = r.skill_id WHERE r.orchestration_id = ? ORDER BY r.id')
-    .all(orchestrationId) as { id: number; stage: Stage; status: RunStatus; model: string; episode_key: string | null; started_at: string; ended_at: string | null; error: string | null; name: string; version: string }[];
+    .prepare(
+      `SELECT * FROM (SELECT r.id, r.stage, r.status, r.model, r.episode_key, r.started_at, r.ended_at, r.error, s.name, s.version
+       FROM node_run r JOIN skill s ON s.id = r.skill_id ORDER BY r.id DESC LIMIT ?) ORDER BY id`,
+    )
+    .all(MAX_LOG_RUNS) as { id: number; stage: Stage; status: RunStatus; model: string; episode_key: string | null; started_at: string; ended_at: string | null; error: string | null; name: string; version: string }[];
+  // 尝试一次查完再按运行分组：运行中每条进度事件都会重拉全貌，不能每次运行各查一遍
+  const attemptsOf = new Map<number, { step: string; n: number; violations: string; usage: string | null; started_at: string; ended_at: string | null }[]>();
+  if (runs.length) {
+    const rows = db
+      .prepare('SELECT run_id, step, n, violations, usage, started_at, ended_at FROM node_attempt WHERE run_id >= ? ORDER BY id')
+      .all(runs[0]!.id) as { run_id: number; step: string; n: number; violations: string; usage: string | null; started_at: string; ended_at: string | null }[];
+    for (const a of rows) attemptsOf.set(a.run_id, [...(attemptsOf.get(a.run_id) ?? []), a]);
+  }
   return runs.map((r) => {
-    const attempts = db.prepare('SELECT step, n, violations, usage, started_at, ended_at FROM node_attempt WHERE run_id = ? ORDER BY id').all(r.id) as { step: string; n: number; violations: string; usage: string | null; started_at: string; ended_at: string | null }[];
+    const attempts = attemptsOf.get(r.id) ?? [];
     return {
       id: r.id,
       stage: r.stage,
@@ -185,6 +201,6 @@ export async function overview(app: App, project: Project, id: string): Promise<
     episodes: episodeRows(db, cells, estimate),
     pending,
     gate: gate ? { id: gate.id, status: gate.status } : null,
-    log: runLog(db, orch?.id ?? null),
+    log: runLog(db),
   };
 }

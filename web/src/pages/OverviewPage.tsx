@@ -123,7 +123,7 @@ export function OverviewPage() {
       <StagePipeline stages={data.stages} log={data.log} estimate={data.estimate} estimateError={data.estimateError} />
       {running ? (
         <div className={s.body}>
-          <RunLog log={data.log} startedAt={data.orchestration?.startedAt ?? data.job?.startedAt ?? null} />
+          <RunLog log={data.log} />
           <CurrentPanel log={data.log} stages={data.stages} />
         </div>
       ) : (
