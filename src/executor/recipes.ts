@@ -2,7 +2,7 @@
 // 门不过就进修复循环（见 run-node.ts 的 gate）；平台门（投影检查）由执行器在配方之后统一执行。
 // 共用的类型与工具在 recipe-kit.ts；角色、美术、站位、分镜的专用配方在 stage-recipes.ts。
 import type { Stage } from '../domain/types.ts';
-import { baseEpisodes, batches, episodesOf, mergeEpisodes, reportProgress, validateCheck, withIds, writeSplitting, type AskParts, type Doc, type Recipe, type RecipeContext } from './recipe-kit.ts';
+import { baseEpisodes, batches, contiguousBatches, episodesOf, mergeEpisodes, omit, reportProgress, resumeStart, validateCheck, withIds, writeSplitting, type AskParts, type Doc, type Recipe, type RecipeContext } from './recipe-kit.ts';
 import { STAGE_RECIPES } from './stage-recipes.ts';
 
 export * from './recipe-kit.ts';
@@ -74,13 +74,16 @@ const novelScript: Recipe = {
     const scope = ctx.episodes ? new Set<unknown>(ctx.episodes) : null;
     const eps = (episodesOf(outline) as Doc[]).filter((e) => !scope || scope.has(e['id'])).map((e) => e['ep']).filter((n): n is number => Number.isInteger(n));
     const upstream = { outline, ...(ctx.upstream.art ? { art: ctx.upstream.art } : {}) };
-    let head: Doc = {};
-    let episodes: Doc[] = [];
-    // a、b 是大纲里的位置（1 起）；seed 的 --eps 用集号
+    // 上一次中断前已写好的集直接沿用（执行器已把它记成这次的进度），只对剩下的集分批写
+    const start = resumeStart(ctx, eps);
+    const rest = start.rest;
+    let head: Doc = start.head;
+    let episodes: Doc[] = start.episodes;
+    // a、b 是 rest 里的位置（1 起）；seed 的 --eps 用集号
     const writeEpisodes = async (a: number, b: number): Promise<Doc[]> => {
-      const [from, to] = [eps[a - 1]!, eps[b - 1]!];
+      const [from, to] = [rest[a - 1]!, rest[b - 1]!];
       const seed = JSON.parse(await ctx.runSkill(['seed', ctx.inPath('outline'), '--eps', `${from}-${to}`])) as Doc;
-      if (!Object.keys(head).length) head = Object.fromEntries(Object.entries(seed).filter(([k]) => k !== 'episodes'));
+      if (!Object.keys(head).length) head = omit(seed, ['episodes']);
       const part = await ctx.ask(`episodes:${from}-${to}`, {
         schema,
         task,
@@ -94,7 +97,7 @@ const novelScript: Recipe = {
       });
       return episodesOf(part) as Doc[];
     };
-    for (const [a, b] of batches(eps.length, SCRIPT_BATCH)) {
+    for (const [a, b] of contiguousBatches(rest, SCRIPT_BATCH)) {
       episodes = mergeEpisodes(episodes, await writeSplitting(a, b, writeEpisodes));
       await reportProgress(ctx, 'script.partial.json', { ...head, episodes }, ['--outline', ctx.inPath('outline')]);
     }

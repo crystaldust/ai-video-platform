@@ -2,6 +2,7 @@
 // 每次模型调用（完整提示词、输出、违规、用量）都单独落库，不包大事务——等模型是异步的，中途崩溃也留得下记录。
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { contentHash } from '../domain/hash.ts';
 import type { Stage } from '../domain/types.ts';
 import { ImportError, importArtifact } from '../import/import-artifact.ts';
 import { PROJECTIONS } from '../import/projections/index.ts';
@@ -18,7 +19,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { episodesOf, OutputTruncated, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit } from './recipes.ts';
+import { episodesOf, isDoc, OutputTruncated, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -85,13 +86,16 @@ export class NeedsHuman extends Error {
   readonly doc: Doc | null;
   readonly raw: string | null;
   readonly violations: readonly string[];
-  constructor(gate: string, doc: Doc | null, violations: readonly string[], raw: string | null = null) {
+  /** 过了门的那几集（违规都落得到集上时），下次重跑沿用；说不清时为 null */
+  readonly passed: Doc | null;
+  constructor(gate: string, doc: Doc | null, violations: readonly string[], raw: string | null = null, passed: Doc | null = null) {
     super(`${gate} 重试用尽，仍有 ${violations.length} 处违规`);
     this.name = 'NeedsHuman';
     this.gate = gate;
     this.doc = doc;
     this.raw = raw;
     this.violations = [...violations];
+    this.passed = passed;
   }
 }
 
@@ -170,6 +174,10 @@ function prepare(project: Project, stage: Stage, opts: RunNodeOptions): Prepared
 /** 一次运行的状态与动作：调模型、过门、跑脚本、收尾。 */
 class NodeRun {
   readonly skipped: string[] = [];
+  /** 沿用的上一次中断前写好的那份（execute 开头查好） */
+  resumed: Doc | null = null;
+  /** 最近一次上报的进度（转人工时撞上截断，留下已写好的集） */
+  lastProgress: Doc | null = null;
   private readonly counters = new Map<string, number>();
   /** 配方最后一道 skill 自己的门：平台门修过的文档要再过一次它 */
   private lastSkillGate: { check: Check; post?: ((doc: Doc) => Promise<Doc>) | undefined; split?: RepairSplit | undefined } | null = null;
@@ -264,7 +272,7 @@ class NodeRun {
       // 修复时模型一直给不出 JSON：交给人的应该是最后一版能用的文档，而不是那段解析不了的输出
       if (error instanceof NeedsHuman) throw new NeedsHuman(check.name, current, [...violations, ...error.violations], error.raw);
       // 修复时被截断：同样交出最后一版能用的文档，而不是空手转人工
-      if (error instanceof OutputTruncated) throw new NeedsHuman(check.name, current, [...violations, error.message]);
+      if (error instanceof OutputTruncated) throw new NeedsHuman(check.name, current, [...violations, error.message], null, passedEpisodes(current, violations, split));
       throw error;
     }
   }
@@ -276,7 +284,7 @@ class NodeRun {
       const violations = await check.run(current);
       this.emit({ type: 'gate', runId: this.runId, gate: check.name, violations });
       if (!violations.length) return current;
-      if (round >= this.maxAttempts) throw new NeedsHuman(check.name, current, violations);
+      if (round >= this.maxAttempts) throw new NeedsHuman(check.name, current, violations, null, passedEpisodes(current, violations, split));
       current = await this.repairRound(check, current, violations, repair, split);
       if (post) current = await post(current);
     }
@@ -327,11 +335,13 @@ class NodeRun {
         const path = join(this.dir, 'out', `${this.stage}.partial.json`);
         writeFileSync(`${path}.tmp`, JSON.stringify(doc));
         renameSync(`${path}.tmp`, path);
+        this.lastProgress = doc;
         if (problem) this.emit({ type: 'notice', runId: this.runId, message: problem });
         this.emit({ type: 'progress', runId: this.runId, episodes: episodesOf(doc).length });
       },
       episodes: p.episodes,
       base: p.base,
+      resumed: this.resumed,
       runMounted: async (stage, args) => {
         const mounted = currentMount(this.project.db, stage);
         if (!mounted?.script) throw new Error(`阶段 ${stage} 挂载的 skill 没有脚本，不能运行 ${args[0]}`);
@@ -377,6 +387,42 @@ class NodeRun {
     if (raw !== null) writeFileSync(join(this.dir, 'out', `${this.stage}.raw.txt`), raw);
     writeFileSync(join(this.dir, 'violations.txt'), `${violations.join('\n')}\n`);
   }
+
+  /** 转人工时留下可以沿用的集（out/<stage>.kept.json）：输入不变时下一次重跑只写其余的。 */
+  keep(doc: Doc | null): void {
+    if (doc && episodesOf(doc).length && existsSync(join(this.dir, 'out'))) writeFileSync(join(this.dir, 'out', `${this.stage}.kept.json`), JSON.stringify(doc));
+  }
+}
+
+/**
+ * 续跑用的输入指纹：上游、项目参数与原文、挂载的 skill（含注册时 SKILL.md 与脚本的哈希）、模型、集范围、打回意见、底稿
+ * 都一样，上一次写好的集才能沿用。
+ */
+function resumeKey(p: Prepared, opts: RunNodeOptions): string {
+  const skill = [p.skill.id, p.skill.version, p.skill.skillMdHash, p.skill.scriptHash];
+  return contentHash({ upstream: p.upstream, params: p.params, source: p.source, skill, model: opts.model.id, episodes: p.episodes, note: opts.revise?.note ?? null, base: p.base });
+}
+
+/**
+ * 可续的上一次：同阶段紧挨着的上一次运行输入指纹一样——
+ * 因故障失败（进程中断、供应商报错）就取它已写好的那份进度；转人工就取它留下的过了门的那几集（被质量门点到的集重写）。
+ */
+function resumable(project: Project, stage: Stage, runId: number, key: string): { runId: number; doc: Doc; human: boolean } | null {
+  const prev = project.db.prepare('SELECT id, status FROM node_run WHERE stage = ? AND id < ? ORDER BY id DESC LIMIT 1').get(stage, runId) as { id: number; status: string } | undefined;
+  if (prev?.status !== 'failed' && prev?.status !== 'needs_human') return null;
+  const human = prev.status === 'needs_human';
+  const out = join(project.dir, RUNS_DIR, String(prev.id), 'out');
+  const file = join(out, `${stage}.${human ? 'kept' : 'partial'}.json`);
+  if (!existsSync(join(out, 'resume.key')) || !existsSync(file)) return null;
+  if (readFileSync(join(out, 'resume.key'), 'utf8') !== key) return null;
+  let doc: unknown;
+  try {
+    doc = JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    // 进度文件坏了：续跑只是省钱，读不了就从头写
+    return null;
+  }
+  return isDoc(doc) && episodesOf(doc).length ? { runId: prev.id, doc, human } : null;
 }
 
 async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared): Promise<RunOutcome> {
@@ -385,9 +431,20 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   for (const sub of ['in', 'work', 'out']) mkdirSync(join(dir, sub), { recursive: true });
   for (const [s, doc] of Object.entries(p.upstream)) writeFileSync(join(dir, 'in', `${s}.json`), JSON.stringify(doc, null, 2));
   run.emit({ type: 'run-start', runId, stage, skill: `${p.skill.name}@${p.skill.version}`, model: run.opts.model.id });
+  const key = resumeKey(p, run.opts);
+  writeFileSync(join(dir, 'out', 'resume.key'), key);
+  const resumed = resumable(project, stage, runId, key);
+  if (resumed) run.resumed = resumed.doc;
+  const ctx = run.context();
+  if (resumed) {
+    // 先把沿用的那份记成这次的进度：这次还没写出新进度就又中断的话，下一次照样能接上
+    ctx.progress(resumed.doc);
+    const n = episodesOf(resumed.doc).length;
+    const message = resumed.human ? `沿用上一次（run ${resumed.runId}）转人工时留下的 ${n} 集（已写好、没被质量门点到），只重写其余的` : `沿用上一次（run ${resumed.runId}）中断前已写好的 ${n} 集，只写剩下的`;
+    run.emit({ type: 'notice', runId, message });
+  }
   const notice = run.priceProblem ?? unpricedNotice(run.opts.model.id, run.prices);
   if (notice) run.emit({ type: 'notice', runId, message: notice });
-  const ctx = run.context();
   const doc = await run.finalGate(ctx, await RECIPES[p.recipeName]!.run(ctx));
   const outPath = join(dir, 'out', `${stage}.json`);
   writeFileSync(outPath, JSON.stringify(doc, null, 2));
@@ -421,13 +478,16 @@ function settle(run: NodeRun, project: Project, error: unknown, maxAttempts: num
     const smallest = /:scenes:(\d+)-\1$/.test(error.step) ? '已拆到单场' : /^episodes:\d+-\d+/.test(error.step) ? '已拆到最小批次' : '这一步不分批';
     const message = `${error.step}：${error.message}；${smallest}，需要更大的输出上限或换模型`;
     run.handOver([message], null, null);
+    run.keep(run.lastProgress);
     finishRun(project.db, runId, { status: 'needs_human', skippedHumanGates: skipped, error: message });
     return { runId, status: 'needs_human', dir, message, violations: [message], skippedHumanGates: skipped };
   }
   if (error instanceof NeedsHuman || error instanceof ImportError) {
     const violations = error instanceof NeedsHuman ? error.violations : error.problems;
-    if (error instanceof NeedsHuman) run.handOver(violations, error.doc, error.raw);
-    else run.handOver(violations, null, null);
+    if (error instanceof NeedsHuman) {
+      run.handOver(violations, error.doc, error.raw);
+      run.keep(error.passed);
+    } else run.handOver(violations, null, null);
     const message = error instanceof NeedsHuman ? `${error.gate} 重试 ${maxAttempts} 次仍未通过` : '导入时引用对不上';
     finishRun(project.db, runId, { status: 'needs_human', skippedHumanGates: skipped, error: message });
     return { runId, status: 'needs_human', dir, message, violations, skippedHumanGates: skipped };
