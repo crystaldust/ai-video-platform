@@ -14,6 +14,7 @@ import {
   mergeEpisodes,
   validateCheck,
   withIds,
+  reportProgress,
   writeSplitting,
   type AskParts,
   type Doc,
@@ -356,6 +357,7 @@ const novelStoryboard: Recipe = {
     };
     for (const [a, b] of batches(nums.length, STORYBOARD_BATCH)) {
       episodes = mergeEpisodes(episodes, await writeSplitting(a, b, writeEpisodes));
+      await reportProgress(ctx, 'storyboard.partial.json', { ...head, episodes }, ['--script', ctx.inPath('script')]);
     }
     const post = (d: Doc) => withIds(ctx, 'storyboard.json', d, ['--script', ctx.inPath('script')]);
     const doc = await post({ ...head, episodes });

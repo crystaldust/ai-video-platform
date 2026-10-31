@@ -95,8 +95,27 @@ export function useProjectEvents(id: string, onEvent: (e: ServerEvent) => void):
         // 坏事件忽略
       }
     };
-    const types = ['hello', 'job-start', 'job-end', 'layer', 'stage', 'paid-gate', 'run-run-start', 'run-run-end', 'run-attempt', 'run-gate', 'run-notice'];
+    const types = ['hello', 'job-start', 'job-end', 'layer', 'stage', 'paid-gate', 'run-run-start', 'run-run-end', 'run-attempt', 'run-gate', 'run-notice', 'run-progress'];
     for (const t of types) source.addEventListener(t, listen);
     return () => source.close();
   }, [id]);
+}
+
+/** 运行中边写边看：收到这个项目的进度事件就重新拉一次（节流，免得每次尝试都打一遍接口）。 */
+export function useReloadOnProgress(id: string, reload: () => void, ms = 1500): void {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useProjectEvents(id, () => {
+    if (timer.current) return;
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      reload();
+    }, ms);
+  });
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+    },
+    [],
+  );
 }

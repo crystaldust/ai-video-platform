@@ -18,6 +18,15 @@ export class OutputTruncated extends Error {
   }
 }
 
+/** 报进度：先补 id（页面要用段、切、场次 id），补不上就原样报并发提示——进度只给页面看，不影响这次运行。 */
+export async function reportProgress(ctx: RecipeContext, name: string, doc: Doc, idArgs: readonly string[]): Promise<void> {
+  try {
+    ctx.progress(await withIds(ctx, name, doc, idArgs));
+  } catch (error) {
+    ctx.progress(doc, `进度草稿补 id 失败，页面上先显示没有 id 的版本：${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 /** 写 [a, b] 这一批；输出被截断就对半拆开分别写，结果按顺序拼起来。 */
 export async function writeSplitting(a: number, b: number, write: (a: number, b: number) => Promise<Doc[]>): Promise<Doc[]> {
   try {
@@ -95,6 +104,8 @@ export interface RecipeContext {
   gate(check: Check, doc: Doc, repair: AskParts, post?: (doc: Doc) => Promise<Doc>, split?: RepairSplit): Promise<Doc>;
   /** 记一个被跳过的「人工拍板」点 */
   skipHumanGate(what: string): void;
+  /** 记下已写好、还没过门的进度（按集写的阶段每批写完调一次），页面运行中据此先显示；不入库。problem 作为运行提示发出 */
+  progress(doc: Doc, problem?: string): void;
   /** 只处理这几集（集 id，按大纲顺序）；null = 整个阶段。只有 perEpisode 的配方会收到非 null */
   readonly episodes: readonly string[] | null;
   /** 改这一版：这一阶段当前的整份文档（打回、上游变了重跑时给）；null = 从头写 */
