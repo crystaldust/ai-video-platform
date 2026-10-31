@@ -263,3 +263,109 @@ test('没留下指纹的失败（还没开始写就报错）不挡路：往前�
   assert.ok(first.runId < second.runId);
   cleanup();
 });
+
+/** 剧本只改第 2 集（第 2 集第 1 场第 1 拍）后重新导入，仍只留前 2 集。 */
+function editScriptEp2(project: Project, patch: (script: Record<string, any>) => void = () => {}) {
+  const script = loadFixture('script');
+  script.episodes[1].scenes[0].flow[0].action = '雾更浓了。';
+  patch(script);
+  importArtifact(project, 'script', { ...script, episodes: script.episodes.filter((e: { ep: number }) => e.ep <= 2) });
+}
+
+test('按集比上游：剧本只改了第 2 集，第 1 集的分镜照样沿用', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  const first = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  editScriptEp2(project);
+  const events: ProgressEvent[] = [];
+  const second = await runNode(project, 'storyboard', { model: dukoModel(), onProgress: (e) => events.push(e) });
+  assert.equal(steps(project, second.runId)[0], 'episodes:2-2', '第 1 集的剧本、站位都没变，不重写');
+  assert.ok(notices(events).some((m) => m.includes(`run ${first.runId}`)), notices(events).join('\n'));
+  cleanup();
+});
+
+test('按集比上游：转人工后剧本改了被点到的那一集，没被点到、上游也没变的集沿用', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  const first = await runNode(project, 'storyboard', { model: badSecond() });
+  assert.equal(first.status, 'needs_human');
+  editScriptEp2(project);
+  const second = await runNode(project, 'storyboard', { model: badSecond() });
+  assert.equal(steps(project, second.runId)[0], 'episodes:2-2');
+  cleanup();
+});
+
+test('按集比上游：这一集那几场的站位变了就重写这一集', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  const staging = loadFixture('staging');
+  const scenes = staging.scenes.filter((x: { ep: number }) => x.ep <= 2);
+  const ep1 = scenes.find((x: { ep: number }) => x.ep === 1);
+  ep1.extras = '码头上多了两个挑夫';
+  importArtifact(project, 'staging', { ...staging, scenes });
+  const second = await runNode(project, 'storyboard', { model: dukoModel() });
+  assert.equal(steps(project, second.runId)[0], 'episodes:1-1');
+  cleanup();
+});
+
+test('按集比上游：全局部分（剧本顶层字段）变了、或换了模型：一集都不沿用', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  editScriptEp2(project, (s) => void (s['source'] = `${String(s['source'])}（修订）`));
+  const changed = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  assert.equal(steps(project, changed.runId)[0], 'episodes:1-1', '剧本顶层变了');
+
+  editScriptEp2(project);
+  const other: TextModel = { ...dukoModel(), id: 'scripted:other', complete: (req) => dukoModel().complete(req) };
+  const switched = await runNode(project, 'storyboard', { model: other });
+  assert.equal(steps(project, switched.runId)[0], 'episodes:1-1', '剧本只改第 2 集，但换了模型');
+  cleanup();
+});
+
+test('剧本不按集比：大纲改了一集，整份重写（每批都带着整份大纲）', async () => {
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  importAll(project, ['outline', 'cast', 'art']);
+  await runNode(project, 'script', { model: failingAt('第 4–6 集') });
+  const outline = loadFixture('outline');
+  outline.episodes[4].synopsis = `${String(outline.episodes[4].synopsis)}雾更浓了。`;
+  importArtifact(project, 'outline', outline);
+  const second = await runNode(project, 'script', { model: failingAt('第 4–6 集') });
+  assert.equal(steps(project, second.runId)[0], 'episodes:1-3');
+  cleanup();
+});
+
+test('按集比上游：提示写明沿用几集、上游变了几集；角色卡变了一集都不沿用', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  const first = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  const script = loadFixture('script');
+  script.episodes[0].scenes[0].flow[0].action = '汽笛提前响了。';
+  importArtifact(project, 'script', { ...script, episodes: script.episodes.filter((e: { ep: number }) => e.ep <= 2) });
+  // 第 1 集上游变了：没有能沿用的集，不发沿用提示
+  const events: ProgressEvent[] = [];
+  const second = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集'), onProgress: (e) => events.push(e) });
+  assert.equal(steps(project, second.runId)[0], 'episodes:1-1');
+  assert.ok(!notices(events).some((m) => m.includes('沿用')), notices(events).join('\n'));
+
+  // 这次第 1 集写好了；再改第 2 集剧本，提示里写明沿用 1 集
+  editScriptEp2(project, (s) => void (s.episodes[0].scenes[0].flow[0].action = '汽笛提前响了。'));
+  const third: ProgressEvent[] = [];
+  const again = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集'), onProgress: (e) => third.push(e) });
+  assert.equal(steps(project, again.runId)[0], 'episodes:2-2');
+  assert.ok(notices(third).some((m) => m.includes(`沿用之前（run ${second.runId}）已写好、没被质量门点到的 1 集`)), notices(third).join('\n'));
+  assert.notEqual(first.runId, second.runId);
+
+  const cast = loadFixture('cast');
+  cast.characters[0].oneLiner = `${String(cast.characters[0].oneLiner)}（改）`;
+  importArtifact(project, 'cast', cast);
+  const afterCast = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  assert.equal(steps(project, afterCast.runId)[0], 'episodes:1-1', '角色卡算共用部分');
+  cleanup();
+});
+
+test('分镜按集切上游：剧本这一集 + 站位这一集的场；落不到任何一集的站位场次留在共用部分', async () => {
+  const { storyboardSlices } = await import('../src/executor/stage-recipes.ts');
+  const script = { source: 's', episodes: [{ id: 'ep_a', ep: 1, scenes: [{ id: 'sc_1' }] }, { id: 'ep_b', ep: 2, scenes: [{ id: 'sc_2' }] }] };
+  const staging = { lang: 'zh', scenes: [{ sceneRef: 'sc_1', x: 1 }, { sceneRef: 'sc_2', x: 2 }, { sceneRef: 'sc_9', x: 9 }] };
+  const s = storyboardSlices({ script, staging, outline: { o: 1 } });
+  assert.deepEqual(s.episodes.get('ep_b'), { script: script.episodes[1], staging: [staging.scenes[1]] });
+  assert.deepEqual(s.shared, { script: { source: 's' }, staging: { lang: 'zh', scenes: [staging.scenes[2]] }, outline: { o: 1 } });
+});

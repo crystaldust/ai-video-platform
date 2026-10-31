@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { contentHash } from '../domain/hash.ts';
-import type { Stage } from '../domain/types.ts';
+import { STAGES, type Stage } from '../domain/types.ts';
 import { ImportError, importArtifact } from '../import/import-artifact.ts';
 import { PROJECTIONS } from '../import/projections/index.ts';
 import type { TextModel, TextResult } from '../model/text-model.ts';
@@ -19,7 +19,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { episodesOf, isDoc, mergeEpisodes, OutputTruncated, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type Recipe, type RecipeContext, type RepairSplit } from './recipes.ts';
+import { episodesOf, isDoc, mergeEpisodes, OutputTruncated, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type Recipe, type RecipeContext, type RepairSplit, type UpstreamSlices } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -428,25 +428,57 @@ function passedOf(out: string, stage: Stage, keysOf: Recipe['keysOf']): Doc | nu
 const RESUME_LOOKBACK = 20;
 
 /**
- * 可续的那一串：同阶段从最近一次往前，连着以失败或转人工结束、输入指纹一样的运行——
- * 故障失败（进程中断、供应商报错）取它已写好的进度（没写出进度的跳过）；转人工取它留下的过了门的那几集（被质量门点到的集重写）。
- * 各次留下的集按集号合起来，同一集取最新那次的；碰到通过的、指纹不同的、或转人工的（取完它就停）就不再往前。
+ * 指纹不同时按集比：从那次运行的 in/ 读回它当时的上游，配上这次的其余输入重算指纹——对得上它记下的，
+ * 才说明 skill、模型、参数、意见、底稿都没变、只是上游变了；再看共用部分一样，就返回「这一集的上游片没变」的判断。
+ * 配方不能按集切、读不回上游、或除上游外还有别的变了：null（不沿用）。
  */
-function resumable(project: Project, stage: Stage, runId: number, key: string, recipe: Recipe): { runIds: number[]; doc: Doc } | null {
+function sameEpisodes(prevDir: string, stored: string, p: Prepared, opts: RunNodeOptions, recipe: Recipe, now: UpstreamSlices | null): ((id: string) => boolean) | null {
+  if (!recipe.sliceUpstream || !now) return null;
+  const upstream: Partial<Record<Stage, Doc>> = {};
+  for (const s of STAGES) {
+    const doc = readDoc(join(prevDir, 'in', `${s}.json`));
+    if (doc) upstream[s] = doc;
+  }
+  if (resumeKey({ ...p, upstream }, opts) !== stored) return null;
+  const then = recipe.sliceUpstream(upstream);
+  if (contentHash(then.shared) !== contentHash(now.shared)) return null;
+  return (id) => then.episodes.has(id) && now.episodes.has(id) && contentHash(then.episodes.get(id)) === contentHash(now.episodes.get(id));
+}
+
+/**
+ * 可续的那一串：同阶段从最近一次往前，连着以失败或转人工结束、输入没变的运行——
+ * 故障失败（进程中断、供应商报错）取它已写好的进度（没写出进度的跳过）；转人工取它留下的过了门的那几集（被质量门点到的集重写）。
+ * 输入变了但配方能按集比（见 sameEpisodes）：只取上游没变的那几集，变了的算进 changed、重写。
+ * 各次留下的集按集号合起来，同一集取最新那次的；碰到通过的、输入变了又不能按集比的、或转人工的（取完它就停）就不再往前。
+ */
+function resumable(project: Project, stage: Stage, runId: number, p: Prepared, opts: RunNodeOptions, recipe: Recipe): { runIds: number[]; doc: Doc; changed: number } | null {
+  const key = resumeKey(p, opts);
+  const now = recipe.sliceUpstream ? recipe.sliceUpstream(p.upstream) : null;
   const prevs = project.db.prepare('SELECT id, status FROM node_run WHERE stage = ? AND id < ? ORDER BY id DESC LIMIT ?').all(stage, runId, RESUME_LOOKBACK) as { id: number; status: string }[];
   const found: { id: number; doc: Doc }[] = [];
+  const changed = new Set<string>();
   for (const prev of prevs) {
     if (prev.status !== 'failed' && prev.status !== 'needs_human') break;
     const human = prev.status === 'needs_human';
-    const out = join(project.dir, RUNS_DIR, String(prev.id), 'out');
+    const dir = join(project.dir, RUNS_DIR, String(prev.id));
+    const out = join(dir, 'out');
     if (!existsSync(join(out, 'resume.key'))) {
       // 还没开始写就失败（没留下指纹）：什么都没写，跳过；转人工的说不清，就停
       if (human) break;
       continue;
     }
-    if (readFileSync(join(out, 'resume.key'), 'utf8') !== key) break;
+    const stored = readFileSync(join(out, 'resume.key'), 'utf8');
+    const same = stored === key ? () => true : sameEpisodes(dir, stored, p, opts, recipe, now);
+    if (!same) break;
     const doc = human ? passedOf(out, stage, recipe.keysOf) : readDoc(join(out, `${stage}.partial.json`));
-    if (doc && episodesOf(doc).length) found.push({ id: prev.id, doc });
+    const written = doc ? (episodesOf(doc).filter(isDoc) as Doc[]) : [];
+    const kept = written.filter((e) => same(String(e['id'])));
+    // 只算这次上游里还有的集：被删掉的集不会重写，不该报成「上游变了」
+    for (const e of written) {
+      const id = String(e['id']);
+      if (!same(id) && (!now || now.episodes.has(id))) changed.add(id);
+    }
+    if (doc && kept.length) found.push({ id: prev.id, doc: { ...doc, episodes: kept } });
     // 转人工那次已经并进了更早的集、去掉了被点到的：再往前会把被点到的集的旧版本捡回来
     if (human) break;
   }
@@ -454,7 +486,8 @@ function resumable(project: Project, stage: Stage, runId: number, key: string, r
   // 从最早的往后并：后来的覆盖同一集；顶层字段取最新那次的
   const oldestFirst = [...found].reverse();
   const episodes = oldestFirst.reduce<Doc[]>((acc, f) => mergeEpisodes(acc, episodesOf(f.doc)), []);
-  return { runIds: oldestFirst.map((f) => f.id), doc: { ...found[0]!.doc, episodes } };
+  for (const e of episodes) if (isDoc(e)) changed.delete(String(e['id']));
+  return { runIds: oldestFirst.map((f) => f.id), doc: { ...found[0]!.doc, episodes }, changed: changed.size };
 }
 
 async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared): Promise<RunOutcome> {
@@ -465,14 +498,15 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   run.emit({ type: 'run-start', runId, stage, skill: `${p.skill.name}@${p.skill.version}`, model: run.opts.model.id });
   const key = resumeKey(p, run.opts);
   writeFileSync(join(dir, 'out', 'resume.key'), key);
-  const resumed = resumable(project, stage, runId, key, RECIPES[p.recipeName]!);
+  const resumed = resumable(project, stage, runId, p, run.opts, RECIPES[p.recipeName]!);
   if (resumed) run.resumed = resumed.doc;
   const ctx = run.context();
   if (resumed) {
     // 先把沿用的那份记成这次的进度：这次还没写出新进度就又中断的话，下一次照样能接上
     ctx.progress(resumed.doc);
     const runs = resumed.runIds.map((id) => `run ${id}`).join('、');
-    run.emit({ type: 'notice', runId, message: `沿用之前（${runs}）已写好、没被质量门点到的 ${episodesOf(resumed.doc).length} 集，只写其余的` });
+    const changedNote = resumed.changed ? `；另有 ${resumed.changed} 集上游变了，重写` : '';
+    run.emit({ type: 'notice', runId, message: `沿用之前（${runs}）已写好、没被质量门点到的 ${episodesOf(resumed.doc).length} 集，只写其余的${changedNote}` });
   }
   const notice = run.priceProblem ?? unpricedNotice(run.opts.model.id, run.prices);
   if (notice) run.emit({ type: 'notice', runId, message: notice });
