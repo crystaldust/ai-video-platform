@@ -71,7 +71,8 @@ export function OverviewPage() {
   // 选中项按 (类型, 阶段, 集) 在最新数据里重新找：原因、运行号都用新的
   const fresh = selectedItem ? pending.find((p) => p.kind === selectedItem.kind && p.stage === selectedItem.stage && p.episode === selectedItem.episode) : undefined;
   const item = fresh ?? (selectedEp ? (pending.find((p) => p.episode === selectedEp) ?? null) : (pending[0] ?? null));
-  const episodeId = item?.episode ?? selectedEp;
+  // 转人工的项点名了上游的某一集，就把这一集带上：打回框默认只改那一集
+  const episodeId = item?.episode ?? item?.upstream?.episode ?? selectedEp;
   const episode = data.episodes.find((e) => e.id === episodeId) ?? null;
   const next = pending.find((p) => p !== item && !(item && p.stage === item.stage && p.episode === item.episode)) ?? null;
   const elapsed = data.orchestration ? (data.orchestration.endedAt ? data.summary.elapsedMs : now - Date.parse(data.orchestration.startedAt)) : null;
@@ -126,36 +127,38 @@ export function OverviewPage() {
           <RunLog log={data.log} />
           <CurrentPanel log={data.log} stages={data.stages} />
         </div>
-      ) : (
-        <div className={s.body}>
-          <EpisodeTable
-            episodes={data.episodes}
-            selected={episodeId}
-            estimate={data.estimate}
-            onSelect={(ep) => {
-              setSelectedEp(ep);
-              setSelectedItem(null);
-            }}
-          />
-          <DetailPanel
-            projectId={id}
-            item={item}
-            episode={episode}
-            next={next}
-            busy={Boolean(data.job)}
-            onNext={(n) => {
-              setSelectedItem(n);
-              setSelectedEp(n.episode);
-            }}
-            onClose={() => {
-              setSelectedEp(null);
-              setSelectedItem(null);
-            }}
-            onDone={done}
-            onError={fail}
-          />
-        </div>
-      )}
+      ) : null}
+      {/* 运行中也留着分集表：能看各集进度、选好集；任务在跑时打回、重跑按钮是禁用的 */}
+      <div className={s.body}>
+        <EpisodeTable
+          episodes={data.episodes}
+          selected={episodeId}
+          estimate={data.estimate}
+          onSelect={(ep) => {
+            setSelectedEp(ep);
+            setSelectedItem(null);
+          }}
+        />
+        <DetailPanel
+          projectId={id}
+          item={item}
+          episode={episode}
+          next={next}
+          busy={Boolean(data.job)}
+          stages={data.stages}
+          totalEpisodes={data.episodes.length}
+          onNext={(n) => {
+            setSelectedItem(n);
+            setSelectedEp(n.episode);
+          }}
+          onClose={() => {
+            setSelectedEp(null);
+            setSelectedItem(null);
+          }}
+          onDone={done}
+          onError={fail}
+        />
+      </div>
       {gateOpen && data.gate ? (
         <PaidGateModal
           projectId={id}

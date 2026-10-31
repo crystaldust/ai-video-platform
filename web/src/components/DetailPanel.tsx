@@ -4,12 +4,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api, ApiError, projectPath } from '../api.ts';
 import { epLabel } from '../format.ts';
-import type { EpisodeRow, PendingItem, Stage } from '../types.ts';
+import { rejectChoices, rejectScope, STAGE_TITLE } from '../reject.ts';
+import type { EpisodeRow, PendingItem, Stage, StageCard } from '../types.ts';
 import { Button } from './ui.tsx';
 import s from './overview.module.css';
-
-const STAGE_TITLE: Record<string, string> = { outline: '大纲', cast: '角色', art: '美术', script: '剧本', staging: '站位', storyboard: '分镜' };
-const PER_EPISODE: Stage[] = ['script', 'staging', 'storyboard'];
 
 export interface PanelProps {
   readonly projectId: string;
@@ -17,6 +15,9 @@ export interface PanelProps {
   readonly episode: EpisodeRow | null;
   readonly next: PendingItem | null;
   readonly busy: boolean;
+  /** 阶段卡：哪些阶段有产物（没有的打回不了） */
+  readonly stages: readonly StageCard[];
+  readonly totalEpisodes: number;
   onNext(item: PendingItem): void;
   onClose(): void;
   /** 操作完成后：刷新全貌并提示 */
@@ -24,11 +25,18 @@ export interface PanelProps {
   onError(e: ApiError): void;
 }
 
-function RejectForm({ projectId, episode, defaultStage, busy, onDone, onError }: { projectId: string; episode: EpisodeRow | null; defaultStage: Stage } & Pick<PanelProps, 'busy' | 'onDone' | 'onError'>) {
-  const stages: Stage[] = episode ? PER_EPISODE : ['outline', 'cast', 'art', 'script', 'staging', 'storyboard'];
-  const [stage, setStage] = useState<Stage>(stages.includes(defaultStage) ? defaultStage : stages[0]!);
+type RejectProps = { projectId: string; episode: EpisodeRow | null; preferred: readonly Stage[] } & Pick<PanelProps, 'busy' | 'stages' | 'totalEpisodes' | 'onDone' | 'onError'>;
+
+function RejectForm({ projectId, episode, preferred, busy, stages: cards, totalEpisodes, onDone, onError }: RejectProps) {
+  const choices = rejectChoices({ cards, perEpisode: Boolean(episode), preferred });
+  const [picked, setStage] = useState<Stage | null>(choices.initial);
   const [note, setNote] = useState('');
+  // 选中的阶段后来没了产物（极少见）就退回默认
+  const stage = picked && choices.stages.some((x) => x.stage === picked && x.enabled) ? picked : choices.initial;
+  const scope = stage ? rejectScope({ stage, episode: episode?.ep ?? null, totalEpisodes }) : null;
   const submit = async () => {
+    if (!stage) return;
+    if (scope?.confirm && !window.confirm(scope.confirm)) return;
     try {
       await api.post(projectPath(projectId, '/reject'), { stage, note, ...(episode ? { episode: episode.id } : {}) });
       setNote('');
@@ -37,14 +45,14 @@ function RejectForm({ projectId, episode, defaultStage, busy, onDone, onError }:
       onError(e as ApiError);
     }
   };
-  const downstream = stage === 'script' ? '站位、分镜' : stage === 'staging' ? '分镜' : stage === 'storyboard' ? '' : '下游';
+  const downstream = stage === 'script' ? '站位、分镜' : stage === 'staging' ? '分镜' : stage === 'storyboard' || !stage ? '' : '下游';
   return (
     <>
       <div className={s.rejectHead}>
         <span className={s.sectionTitle}>附意见打回</span>
         <span className={s.filters}>
-          {stages.map((st) => (
-            <button key={st} type="button" className={s.chip} aria-pressed={st === stage} onClick={() => setStage(st)}>
+          {choices.stages.map(({ stage: st, enabled }) => (
+            <button key={st} type="button" className={s.chip} aria-pressed={st === stage} disabled={!enabled} title={enabled ? undefined : `${STAGE_TITLE[st]}还没有产物，没什么可打回的`} onClick={() => setStage(st)}>
               {STAGE_TITLE[st]}
             </button>
           ))}
@@ -52,11 +60,11 @@ function RejectForm({ projectId, episode, defaultStage, busy, onDone, onError }:
       </div>
       <textarea className={s.note} aria-label="打回意见" placeholder="例如：汽笛要压在陆行远掏砚之前，给胡二爷一个特写" value={note} onChange={(e) => setNote(e.target.value)} />
       <div className={s.rejectFoot}>
-        <span>
-          {episode ? `只重跑第 ${epLabel(episode.ep)} 集的${STAGE_TITLE[stage]}` : `重跑整个${STAGE_TITLE[stage]}`}
-          {downstream ? `，${downstream}自动标为需复核` : ''}
+        <span style={scope?.warn ? { color: 'var(--warn)', fontWeight: 600 } : undefined}>
+          {scope ? scope.text : '还没有能打回的产物'}
+          {scope && downstream ? `，${downstream}自动标为需复核` : ''}
         </span>
-        <Button variant="dark" disabled={!note.trim() || busy} onClick={() => void submit()}>
+        <Button variant="dark" disabled={!stage || !note.trim() || busy} onClick={() => void submit()}>
           打回重跑
         </Button>
       </div>
@@ -152,16 +160,50 @@ function FailedBody({ projectId, item, busy, onDone, onError }: { item: PendingI
       <p className={s.muted}>
         人工接管：最后一版在项目目录 runs/{item.runId}/out/ 下，改好后用命令行 <span className="mono">import &lt;项目&gt; {item.stage} &lt;文件&gt; --run {item.runId}</span> 结案。也可以直接重跑或附意见打回。
       </p>
-      <Button variant="primary" block disabled={busy} onClick={() => void rerun()}>
+      {item.upstream ? <UpstreamHint item={item} upstream={item.upstream} /> : null}
+      <Button variant={item.upstream ? undefined : 'primary'} block disabled={busy} onClick={() => void rerun()}>
         <RefreshCw size={14} /> 重跑{STAGE_TITLE[item.stage]}
       </Button>
     </>
   );
 }
 
+/** 上游按当前门不过：下游重跑多少遍都过不了，指明先打回哪一阶段、哪一集。 */
+function UpstreamHint({ item, upstream }: { item: PendingItem; upstream: NonNullable<PendingItem['upstream']> }) {
+  const where = `${STAGE_TITLE[upstream.stage]}${upstream.ep ? `第 ${epLabel(upstream.ep)} 集` : ''}`;
+  return (
+    <div className={`${s.why} ${s['why-warn']}`}>
+      <span className={s.whyTitle} style={{ color: 'var(--warn)' }}>
+        先改上游的{where}
+      </span>
+      <span>
+        {where}按当前质量门不过，{STAGE_TITLE[item.stage]}照着它重跑多半还是过不了。在下面附意见打回{where}（已帮你选好），跑完再重跑{STAGE_TITLE[item.stage]}。
+      </span>
+    </div>
+  );
+}
+
+/** 已有产物按当前 skill 的门不过：多半是 skill 升级、门变严了，旧产物不会自己重查。 */
+function GateBody({ item }: { item: PendingItem }) {
+  const where = `${item.ep ? `第 ${epLabel(item.ep)} 集的` : ''}${STAGE_TITLE[item.stage]}`;
+  return (
+    <>
+      <div className={`${s.why} ${s['why-err']}`}>
+        <span className={s.whyTitle} style={{ color: 'var(--err)' }}>
+          按当前质量门不过
+        </span>
+        <span>{item.detail}</span>
+      </div>
+      <p className={s.muted}>这一版是在旧规则下通过的；挂载的 skill 后来门变严了，已有产物不会自己重查。下游照着它跑会一直卡住——在下面附意见打回{where}，把这一处改掉。</p>
+    </>
+  );
+}
+
+const KICKER: Record<PendingItem['kind'], string> = { stale: '需复核', needs_human: '未通过', failed: '失败', gate: '门不过' };
+
 export function DetailPanel(p: PanelProps) {
   const { item, episode, next } = p;
-  const kicker = item ? `${item.ep ? `第 ${epLabel(item.ep)} 集 · ` : ''}${item.kind === 'stale' ? '需复核' : item.kind === 'needs_human' ? '未通过' : '失败'}` : episode ? `第 ${epLabel(episode.ep)} 集` : '待你处理';
+  const kicker = item ? `${item.ep ? `第 ${epLabel(item.ep)} 集 · ` : ''}${KICKER[item.kind]}` : episode ? `第 ${epLabel(episode.ep)} 集` : '待你处理';
   const title = item ? (episode?.hook ?? item.title) : (episode?.hook ?? '没有需要你处理的事');
   const tone = item?.kind === 'stale' ? 'var(--warn)' : item ? 'var(--err)' : 'var(--accent)';
   return (
@@ -180,7 +222,8 @@ export function DetailPanel(p: PanelProps) {
         ) : null}
       </div>
       {item?.kind === 'stale' ? <StaleBody {...p} item={item} episode={episode} /> : null}
-      {item && item.kind !== 'stale' ? <FailedBody {...p} item={item} /> : null}
+      {item?.kind === 'gate' ? <GateBody item={item} /> : null}
+      {item && (item.kind === 'needs_human' || item.kind === 'failed') ? <FailedBody {...p} item={item} /> : null}
       {!item && episode ? (
         <p className={s.muted}>
           这一集没有待处理的地方。{' '}
@@ -191,7 +234,17 @@ export function DetailPanel(p: PanelProps) {
       ) : null}
       {!item && !episode ? <p className={s.muted}>各阶段都通过了，也没有需要复核的地方。点左边任意一集查看，或附意见打回整个阶段。</p> : null}
       <div className={s.divider} />
-      <RejectForm key={`${episode?.id ?? '-'}|${item?.stage ?? '-'}`} projectId={p.projectId} episode={episode} defaultStage={item?.stage ?? 'storyboard'} busy={p.busy} onDone={p.onDone} onError={p.onError} />
+      <RejectForm
+        key={`${episode?.id ?? '-'}|${item?.stage ?? '-'}|${item?.upstream?.stage ?? '-'}`}
+        projectId={p.projectId}
+        episode={episode}
+        preferred={[...(item?.upstream ? [item.upstream.stage] : []), item?.stage ?? 'storyboard']}
+        busy={p.busy}
+        stages={p.stages}
+        totalEpisodes={p.totalEpisodes}
+        onDone={p.onDone}
+        onError={p.onError}
+      />
       {next ? (
         <button type="button" className={`${s.next} ${next.kind === 'stale' ? s.nextWarn : ''}`} onClick={() => p.onNext(next)}>
           <b>
