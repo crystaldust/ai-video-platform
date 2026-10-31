@@ -12,7 +12,7 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 2 | 长原文的分卷 / 分块处理（大纲、角色卡） | 功能 | 随 #1 | 待规划 | — |
 | 3 | 骨架拍板暂停点（`go --pause-after outline`） | 功能 | 4a 计划 NOT Building | 待规划 | — |
 | 4 | 编排运行中暂停 / 取消 | 功能 | 4b 设计稿 | 待规划 | — |
-| 5 | 汇总里提示「没落实的打回」 | 功能 | 4a 评审 LOW | 待规划 | — |
+| 5 | 汇总里提示「没落实的打回」 | 功能 | 4a 评审 LOW | 部分完成：全貌已做；`go` 命令行汇总待规划 | [PR #15](https://github.com/crystaldust/ai-video-platform/pull/15) |
 | 6 | 新建 / 另存预设 | 界面 | 4b 设计稿 | 待规划 | — |
 | 7 | 页面上设置凭据 | 界面 | 4b 设计稿 | 待规划 | — |
 | 8 | Skill 新版本提示与一键更新 | 界面 | 4b 设计稿 | 待规划 | — |
@@ -31,7 +31,7 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 21 | 补 LICENSE 文件 | 工程 | README | 待规划 | — |
 | 22 | 固定常用的 skills 目录 | 工程 | 2026-10-29 讨论 | 暂缓 | — |
 | 23 | 站位修复轮按集拆开；单集修复截断时按场拆 | 后端 | 分镜截断修复 | 待规划 | — |
-| 24 | 重跑时可选「不沿用、从头写」 | 界面 | 断点续跑审查 M2 | 待规划 | — |
+| 24 | 重跑时可选「不沿用、从头写」 | 界面 | 断点续跑审查 M2 | 已完成 | [PR #15](https://github.com/crystaldust/ai-video-platform/pull/15) |
 | 25 | 质量门缓存键带上 skill 内容哈希 | 后端 | 2026-10-31 单句上限排查 | 待规划 | — |
 | 26 | `web:dev` 下也能操作（令牌与同源） | 工程 | 2026-10-31 讨论 | 暂缓 | — |
 | 27 | 平台测试夹具里的 skill 拷贝同步到 3.0.1 | 工程 | shuohao-skills fork PR #2 | 待 PR #2 合并 | — |
@@ -78,6 +78,8 @@ novel-outline 的 Step 3 要用户拍板快版骨架（砍了哪条线、合了�
 ### 5. 汇总里提示「没落实的打回」
 
 打回的运行转人工或失败后，产物没变、也没有需复核的格子，`go` 不会自动补跑，汇总会显示「done」。应在全貌的待处理里列出「有意见还没落实的打回」。来源：`reports/orchestration-rerun-report.md`。
+
+**全貌部分已完成（PR #15）**，见文末「已完成」。**还剩**：命令行 `go` 的汇总也提示没落实的打回（可直接用 `src/repo/revisions.ts` 的 `unfulfilledRevisions`）。
 
 ---
 
@@ -143,12 +145,6 @@ novel-outline 的 Step 3 要用户拍板快版骨架（砍了哪条线、合了�
 
 **涉及**：`src/executor/stage-recipes.ts`（站位的 repair、`storyboardSplit`）、`src/executor/run-node.ts`（`repairRound`）。
 
-### 24. 重跑时可选「不沿用、从头写」
-
-剧本、分镜重跑时，输入不变就沿用上一次已写好（中断）或没被质量门点到（转人工）的集（`run-node.ts` 的 `resumable`）。如果用户觉得那几集虽然过了门、但写得不好，想整份重来，现在只能改输入（例如附一条打回意见）。可以在全貌页的「重跑」和 `run` 命令上加一个开关（例如 `--fresh`），打开时跳过续跑。
-
-**涉及**：`src/executor/run-node.ts`（`RunNodeOptions`、`resumable`）、`src/server/routes/actions.ts`、`web/src/components/DetailPanel.tsx`、`src/cli.ts`。
-
 ### 25. 质量门缓存键带上 skill 内容哈希
 
 全貌的质量门结果按「阶段、挂载的 skill id、各阶段产物版本」缓存在内存里（`src/server/views/checkup.ts` 的 `versionsKey`）。skill 改了门（例如单句台词上限 35→22）但重新加载时版本号没变、还是同一条 skill 记录，缓存就不失效，全貌上的质量门和「按当前质量门不过」的待处理项还是旧规则算的，要重启服务才对。键里应带上 skill 记录的 `skillMdHash`、`scriptHash`。
@@ -199,4 +195,10 @@ DeepSeek Flash 的价格来自第三方（标「未核对官方」），V4 Pro �
 
 ## 已完成
 
-（暂无）
+### 24. 重跑时可选「不沿用、从头写」（[PR #15](https://github.com/crystaldust/ai-video-platform/pull/15)）
+
+`RunNodeOptions.fresh` 跳过续跑；`POST /go` 的 `fresh`（只能配合 `only`）、命令行 `go --only <stage> --fresh` 与 `run <dir> <stage> --fresh`；全貌详情面板「重跑」下的勾选项，勾上先确认。
+
+### 5（全貌部分）. 全貌列出没落实的打回（[PR #15](https://github.com/crystaldust/ai-video-platform/pull/15)）
+
+迁移 v6 给 `revision_request` 加 `dismissed_at`；`unfulfilledRevisions` 认出没落实的打回，附在对应的未通过项上或单独列出；详情里可「带同样意见再打回」或「放弃这条意见」（`POST /api/p/:id/revisions/:rid/dismiss`）。命令行汇总那部分仍在上面 #5。
