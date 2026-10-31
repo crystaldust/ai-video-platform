@@ -32,6 +32,9 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 22 | 固定常用的 skills 目录 | 工程 | 2026-10-29 讨论 | 暂缓 | — |
 | 23 | 站位修复轮按集拆开；单集修复截断时按场拆 | 后端 | 分镜截断修复 | 待规划 | — |
 | 24 | 重跑时可选「不沿用、从头写」 | 界面 | 断点续跑审查 M2 | 待规划 | — |
+| 25 | 质量门缓存键带上 skill 内容哈希 | 后端 | 2026-10-31 单句上限排查 | 待规划 | — |
+| 26 | `web:dev` 下也能操作（令牌与同源） | 工程 | 2026-10-31 讨论 | 暂缓 | — |
+| 27 | 平台测试夹具里的 skill 拷贝同步到 3.0.1 | 工程 | shuohao-skills fork PR #2 | 待 PR #2 合并 | — |
 
 ---
 
@@ -146,6 +149,14 @@ novel-outline 的 Step 3 要用户拍板快版骨架（砍了哪条线、合了�
 
 **涉及**：`src/executor/run-node.ts`（`RunNodeOptions`、`resumable`）、`src/server/routes/actions.ts`、`web/src/components/DetailPanel.tsx`、`src/cli.ts`。
 
+### 25. 质量门缓存键带上 skill 内容哈希
+
+全貌的质量门结果按「阶段、挂载的 skill id、各阶段产物版本」缓存在内存里（`src/server/views/checkup.ts` 的 `versionsKey`）。skill 改了门（例如单句台词上限 35→22）但重新加载时版本号没变、还是同一条 skill 记录，缓存就不失效，全貌上的质量门和「按当前质量门不过」的待处理项还是旧规则算的，要重启服务才对。键里应带上 skill 记录的 `skillMdHash`、`scriptHash`。
+
+**涉及**：`src/server/views/checkup.ts`。
+
+---
+
 ### 18. 过期查询在大项目下的性能
 
 `findStaleRefs` 每次全量现算，需复核矩阵和全貌页都依赖它。原定「60 集规模到 Phase 4 实测后再定」，还没有实测。来源：Phase 1 评审 M7。
@@ -169,6 +180,16 @@ DeepSeek Flash 的价格来自第三方（标「未核对官方」），V4 Pro �
 ### 21. 补 LICENSE 文件
 
 `package.json` 与 README 写的是 Apache-2.0，仓库里还没有 `LICENSE` 文件。
+
+### 26. `web:dev` 下也能操作（暂缓）
+
+`pnpm web:dev`（Vite 开发服务器）把 `/api` 代理到本地服务，但页面里没有令牌（令牌只由服务托管的 index.html 注入），请求来源也和服务不同源，打回、重跑这类变更请求都会被拒（403），只能看不能操作。2026-10-31 讨论过的做法：服务加 `GET /api/dev/token`（本机、无外站 Origin 才给）；Vite 插件取令牌注入 index.html；代理转发时去掉 Origin。涉及安全检查，用户说先不做。
+
+**涉及**：`src/server/server.ts`、`web/vite.config.ts`。
+
+### 27. 平台测试夹具里的 skill 拷贝同步到 3.0.1
+
+`test/fixtures/skills/` 是平台测试用的 skill 拷贝，novel-script 还是 3.0.0（单句上限 35 字）。fork 的 PR #2（crystaldust/shuohao-skills，35→22 字，novel-script 3.0.1）合并后，整份重新拷贝，跑平台测试确认不受影响（渡口样例的台词句数变了）。
 
 ### 22. 固定常用的 skills 目录（暂缓）
 
