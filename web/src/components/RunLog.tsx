@@ -1,6 +1,6 @@
 // 运行中视图：左边是项目的运行记录（重跑、打回都追加，按时间倒序），右边是「正在进行」——当前阶段的每次尝试与排队中的阶段。
 import { Hourglass, Info } from 'lucide-react';
-import { stamp } from '../format.ts';
+import { attemptState, callNo, stamp } from '../format.ts';
 import type { LogRun, StageCard } from '../types.ts';
 import s from './overview.module.css';
 
@@ -67,6 +67,8 @@ export function CurrentPanel({ log, stages }: { log: readonly LogRun[]; stages: 
       {running.map((r) => {
         const used = Date.now() - Date.parse(r.startedAt);
         const tokens = r.attempts.reduce((a, x) => a + (x.inputTokens ?? 0), 0);
+        // 正在调的那一次库里已有行；没有的话（两次调用之间）补一行「进行中」
+        const calling = r.attempts.some((a) => attemptState(a) === 'running');
         return (
           <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div>
@@ -74,24 +76,38 @@ export function CurrentPanel({ log, stages }: { log: readonly LogRun[]; stages: 
                 正在进行 · {STAGE_TITLE[r.stage]}
               </div>
               <h2 className={s.panelTitle}>
-                {r.skill.replace('@', ' ')} · 第 {r.attempts.length + 1} 次调用
+                {r.skill.replace('@', ' ')} · 第 {callNo(r.attempts)} 次调用
               </h2>
               <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
                 {r.model} · 已用 {Math.round(used / 1000)} 秒{tokens ? ` · 输入 ${(tokens / 1000).toFixed(1)}k tokens` : ''}
               </span>
             </div>
-            {r.attempts.map((a) => (
-              <div key={`${a.step}-${a.n}`} className={s.attempt}>
-                <b>{a.step}</b>
-                {a.violations.length ? <span style={{ color: 'var(--err)' }}>{a.violations.length} 处违规</span> : <span style={{ color: 'var(--ok)' }}>通过</span>}
-                {a.violations[0] ? <small>{a.violations[0]}</small> : null}
+            {r.attempts.map((a) => {
+              const state = attemptState(a);
+              if (state === 'running') {
+                return (
+                  <div key={`${a.step}-${a.n}`} className={`${s.attempt} ${s.attemptRun}`}>
+                    <b>{a.step}</b>
+                    <span style={{ color: 'var(--accent)' }}>进行中</span>
+                    <small>等模型返回</small>
+                  </div>
+                );
+              }
+              return (
+                <div key={`${a.step}-${a.n}`} className={s.attempt}>
+                  <b>{a.step}</b>
+                  {state === 'err' ? <span style={{ color: 'var(--err)' }}>{a.violations.length} 处违规</span> : <span style={{ color: 'var(--ok)' }}>通过</span>}
+                  {a.violations[0] ? <small>{a.violations[0]}</small> : null}
+                </div>
+              );
+            })}
+            {calling ? null : (
+              <div className={`${s.attempt} ${s.attemptRun}`}>
+                <b>#{r.attempts.length + 1}</b>
+                <span style={{ color: 'var(--accent)' }}>进行中</span>
+                <small>{r.attempts.at(-1)?.violations.length ? '提示词里附上了上一次的违规' : '等模型返回'}</small>
               </div>
-            ))}
-            <div className={`${s.attempt} ${s.attemptRun}`}>
-              <b>#{r.attempts.length + 1}</b>
-              <span style={{ color: 'var(--accent)' }}>进行中</span>
-              <small>{r.attempts.at(-1)?.violations.length ? '提示词里附上了上一次的违规' : '等模型返回'}</small>
-            </div>
+            )}
           </div>
         );
       })}

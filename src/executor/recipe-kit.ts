@@ -8,6 +8,8 @@ import type { PromptParts } from './prompt.ts';
 
 export type Doc = Record<string, unknown>;
 
+export const omit = (doc: Doc, keys: readonly string[]): Doc => Object.fromEntries(Object.entries(doc).filter(([k]) => !keys.includes(k)));
+
 /** 模型输出撞上上限被截断：不能原样重试。分批的配方把批次对半拆开再问，拆到一集还截断就交给人。 */
 export class OutputTruncated extends Error {
   readonly step: string;
@@ -16,6 +18,16 @@ export class OutputTruncated extends Error {
     this.name = 'OutputTruncated';
     this.step = step;
   }
+}
+
+/**
+ * 按集写的起点：上一次中断前已写好、这次也要写的集直接沿用（只在最后整份过门时一起检查），只对剩下的集分批。
+ * 全都沿用时顶层字段（source 等）取自沿用的那份。
+ */
+export function resumeStart(ctx: RecipeContext, nums: readonly number[]): { readonly rest: number[]; readonly head: Doc; readonly episodes: Doc[] } {
+  const kept = ctx.resumed ? (episodesOf(ctx.resumed).filter(isDoc) as Doc[]).filter((e) => nums.includes(e['ep'] as number)) : [];
+  const done = new Set(kept.map((e) => e['ep']));
+  return { rest: nums.filter((n) => !done.has(n)), head: kept.length ? omit(ctx.resumed!, ['episodes']) : {}, episodes: kept };
 }
 
 /** 报进度：先补 id（页面要用段、切、场次 id），补不上就原样报并发提示——进度只给页面看，不影响这次运行。 */
@@ -57,6 +69,22 @@ export interface RepairSplit {
   keysOf(violation: string, doc: Doc): string[];
   /** 修这一份：问模型的各部分（draft 是这一份）、把修好的并回整份（模型没交回这一份时返回 null）、没交回时补问用的违规 */
   part(doc: Doc, key: string): Promise<{ readonly ask: AskParts; merge(doc: Doc, fixed: Doc): Doc | null; readonly missing: string }>;
+}
+
+/** 按集分份时一集的键（违规落到哪几集、修哪几集都用它）。 */
+export const episodeKey = (ep: number): string => `ep${String(ep)}`;
+
+/**
+ * 转人工时过了门的那几集：剩下的违规都落得到集上，就去掉被点到的集、留下其余的（下次重跑沿用）。
+ * 有违规落不到集上、配方没法按集定位、没有违规或每集都被点到时返回 null——说不清哪几集是好的，就不沿用。
+ */
+export function passedEpisodes(doc: Doc, violations: readonly string[], keysOf: ((violation: string, doc: Doc) => string[]) | undefined): Doc | null {
+  if (!keysOf || !violations.length) return null;
+  const hit = violations.map((v) => keysOf(v, doc));
+  if (hit.some((keys) => !keys.length)) return null;
+  const flagged = new Set(hit.flat());
+  const kept = episodesOf(doc).filter((e) => isDoc(e) && !flagged.has(episodeKey(e['ep'] as number)));
+  return kept.length ? { ...doc, episodes: kept } : null;
 }
 
 /** 每一份的任务说明前面加上一段修复要求（平台门按集修时带上「能被平台导入」）。 */
@@ -110,6 +138,8 @@ export interface RecipeContext {
   readonly episodes: readonly string[] | null;
   /** 改这一版：这一阶段当前的整份文档（打回、上游变了重跑时给）；null = 从头写 */
   readonly base: Doc | null;
+  /** 上一次同阶段运行故障中断前已写好的那份（输入没变才有，见 run-node 的 resumable）；配方只写剩下的集 */
+  readonly resumed: Doc | null;
   /** 跑另一个阶段挂载的 skill 的脚本（如分镜要站位的 blocking），返回 stdout；非零退出抛错 */
   runMounted(stage: Stage, args: readonly string[]): Promise<string>;
 }
@@ -118,6 +148,8 @@ export interface Recipe {
   readonly name: string;
   /** 必须已有的上游 */
   needs(skill: SkillRow): readonly Stage[];
+  /** 这条违规落在哪几集上（episodeKey）；给了才能在转人工后沿用没被点到的集 */
+  keysOf?(violation: string, doc: Doc): string[];
   /** 有就带上的上游 */
   optional(skill: SkillRow): readonly Stage[];
   /** 需要项目输入（梗概 / 原文） */
@@ -131,6 +163,21 @@ export interface Recipe {
 export function batches(n: number, size: number): [number, number][] {
   const out: [number, number][] = [];
   for (let a = 1; a <= n; a += size) out.push([a, Math.min(n, a + size - 1)]);
+  return out;
+}
+
+/**
+ * 按集号分批（返回 nums 里的位置，1 起）：每批只含连续的集号——seed 和问模型都按「起–止」取集，
+ * 跨过缺口会把中间不该写的集（沿用的、不在这次范围里的）也写一遍。
+ */
+export function contiguousBatches(nums: readonly number[], size: number): [number, number][] {
+  const out: [number, number][] = [];
+  let start = 1;
+  for (let i = 1; i <= nums.length; i++) {
+    if (i < nums.length && nums[i] === nums[i - 1]! + 1) continue;
+    for (const [a, b] of batches(i - start + 1, size)) out.push([start + a - 1, start + b - 1]);
+    start = i + 1;
+  }
   return out;
 }
 

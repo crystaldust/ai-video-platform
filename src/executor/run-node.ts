@@ -2,6 +2,7 @@
 // 每次模型调用（完整提示词、输出、违规、用量）都单独落库，不包大事务——等模型是异步的，中途崩溃也留得下记录。
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { contentHash } from '../domain/hash.ts';
 import type { Stage } from '../domain/types.ts';
 import { ImportError, importArtifact } from '../import/import-artifact.ts';
 import { PROJECTIONS } from '../import/projections/index.ts';
@@ -18,7 +19,7 @@ import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../ski
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { episodesOf, OutputTruncated, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type RecipeContext, type RepairSplit } from './recipes.ts';
+import { episodesOf, isDoc, mergeEpisodes, OutputTruncated, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type Recipe, type RecipeContext, type RepairSplit } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -170,6 +171,10 @@ function prepare(project: Project, stage: Stage, opts: RunNodeOptions): Prepared
 /** 一次运行的状态与动作：调模型、过门、跑脚本、收尾。 */
 class NodeRun {
   readonly skipped: string[] = [];
+  /** 沿用的上一次中断前写好的那份（execute 开头查好） */
+  resumed: Doc | null = null;
+  /** 最近一次上报的进度（转人工时撞上截断，留下已写好的集） */
+  lastProgress: Doc | null = null;
   private readonly counters = new Map<string, number>();
   /** 配方最后一道 skill 自己的门：平台门修过的文档要再过一次它 */
   private lastSkillGate: { check: Check; post?: ((doc: Doc) => Promise<Doc>) | undefined; split?: RepairSplit | undefined } | null = null;
@@ -327,11 +332,13 @@ class NodeRun {
         const path = join(this.dir, 'out', `${this.stage}.partial.json`);
         writeFileSync(`${path}.tmp`, JSON.stringify(doc));
         renameSync(`${path}.tmp`, path);
+        this.lastProgress = doc;
         if (problem) this.emit({ type: 'notice', runId: this.runId, message: problem });
         this.emit({ type: 'progress', runId: this.runId, episodes: episodesOf(doc).length });
       },
       episodes: p.episodes,
       base: p.base,
+      resumed: this.resumed,
       runMounted: async (stage, args) => {
         const mounted = currentMount(this.project.db, stage);
         if (!mounted?.script) throw new Error(`阶段 ${stage} 挂载的 skill 没有脚本，不能运行 ${args[0]}`);
@@ -377,6 +384,77 @@ class NodeRun {
     if (raw !== null) writeFileSync(join(this.dir, 'out', `${this.stage}.raw.txt`), raw);
     writeFileSync(join(this.dir, 'violations.txt'), `${violations.join('\n')}\n`);
   }
+
+  /** 撞上输出上限转人工时留下已写好的集（out/<stage>.kept.json）：输入不变时下一次重跑只写其余的。 */
+  keep(doc: Doc | null): void {
+    if (doc && episodesOf(doc).length && existsSync(join(this.dir, 'out'))) writeFileSync(join(this.dir, 'out', `${this.stage}.kept.json`), JSON.stringify(doc));
+  }
+}
+
+/**
+ * 续跑用的输入指纹：上游、项目参数与原文、挂载的 skill（含注册时 SKILL.md 与脚本的哈希）、模型、集范围、打回意见、底稿
+ * 都一样，上一次写好的集才能沿用。
+ */
+function resumeKey(p: Prepared, opts: RunNodeOptions): string {
+  const skill = [p.skill.id, p.skill.version, p.skill.skillMdHash, p.skill.scriptHash];
+  return contentHash({ upstream: p.upstream, params: p.params, source: p.source, skill, model: opts.model.id, episodes: p.episodes, note: opts.revise?.note ?? null, base: p.base });
+}
+
+/** 读运行目录里的 JSON 文档；没有或坏了返回 null（续跑只是省钱，读不了就从头写）。 */
+function readDoc(path: string): Doc | null {
+  if (!existsSync(path)) return null;
+  try {
+    const doc: unknown = JSON.parse(readFileSync(path, 'utf8'));
+    return isDoc(doc) ? doc : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 转人工的那次留下的可沿用的集：撞上输出上限的留了 kept.json（已写好的集）；
+ * 质量门修复用尽的留了最后一版和违规清单，违规都落得到集上就去掉被点到的集——收尾时现算，旧版本跑出的运行也接得上。
+ */
+function passedOf(out: string, stage: Stage, keysOf: Recipe['keysOf']): Doc | null {
+  const kept = readDoc(join(out, `${stage}.kept.json`));
+  if (kept) return kept;
+  const last = readDoc(join(out, `${stage}.json`));
+  const list = join(out, '..', 'violations.txt');
+  if (!last || !existsSync(list)) return null;
+  return passedEpisodes(last, readFileSync(list, 'utf8').split('\n').filter(Boolean), keysOf);
+}
+
+/** 往前最多看几次同阶段运行（续跑只往回接连着失败、指纹相同的那一串） */
+const RESUME_LOOKBACK = 20;
+
+/**
+ * 可续的那一串：同阶段从最近一次往前，连着以失败或转人工结束、输入指纹一样的运行——
+ * 故障失败（进程中断、供应商报错）取它已写好的进度（没写出进度的跳过）；转人工取它留下的过了门的那几集（被质量门点到的集重写）。
+ * 各次留下的集按集号合起来，同一集取最新那次的；碰到通过的、指纹不同的、或转人工的（取完它就停）就不再往前。
+ */
+function resumable(project: Project, stage: Stage, runId: number, key: string, recipe: Recipe): { runIds: number[]; doc: Doc } | null {
+  const prevs = project.db.prepare('SELECT id, status FROM node_run WHERE stage = ? AND id < ? ORDER BY id DESC LIMIT ?').all(stage, runId, RESUME_LOOKBACK) as { id: number; status: string }[];
+  const found: { id: number; doc: Doc }[] = [];
+  for (const prev of prevs) {
+    if (prev.status !== 'failed' && prev.status !== 'needs_human') break;
+    const human = prev.status === 'needs_human';
+    const out = join(project.dir, RUNS_DIR, String(prev.id), 'out');
+    if (!existsSync(join(out, 'resume.key'))) {
+      // 还没开始写就失败（没留下指纹）：什么都没写，跳过；转人工的说不清，就停
+      if (human) break;
+      continue;
+    }
+    if (readFileSync(join(out, 'resume.key'), 'utf8') !== key) break;
+    const doc = human ? passedOf(out, stage, recipe.keysOf) : readDoc(join(out, `${stage}.partial.json`));
+    if (doc && episodesOf(doc).length) found.push({ id: prev.id, doc });
+    // 转人工那次已经并进了更早的集、去掉了被点到的：再往前会把被点到的集的旧版本捡回来
+    if (human) break;
+  }
+  if (!found.length) return null;
+  // 从最早的往后并：后来的覆盖同一集；顶层字段取最新那次的
+  const oldestFirst = [...found].reverse();
+  const episodes = oldestFirst.reduce<Doc[]>((acc, f) => mergeEpisodes(acc, episodesOf(f.doc)), []);
+  return { runIds: oldestFirst.map((f) => f.id), doc: { ...found[0]!.doc, episodes } };
 }
 
 async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared): Promise<RunOutcome> {
@@ -385,9 +463,19 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   for (const sub of ['in', 'work', 'out']) mkdirSync(join(dir, sub), { recursive: true });
   for (const [s, doc] of Object.entries(p.upstream)) writeFileSync(join(dir, 'in', `${s}.json`), JSON.stringify(doc, null, 2));
   run.emit({ type: 'run-start', runId, stage, skill: `${p.skill.name}@${p.skill.version}`, model: run.opts.model.id });
+  const key = resumeKey(p, run.opts);
+  writeFileSync(join(dir, 'out', 'resume.key'), key);
+  const resumed = resumable(project, stage, runId, key, RECIPES[p.recipeName]!);
+  if (resumed) run.resumed = resumed.doc;
+  const ctx = run.context();
+  if (resumed) {
+    // 先把沿用的那份记成这次的进度：这次还没写出新进度就又中断的话，下一次照样能接上
+    ctx.progress(resumed.doc);
+    const runs = resumed.runIds.map((id) => `run ${id}`).join('、');
+    run.emit({ type: 'notice', runId, message: `沿用之前（${runs}）已写好、没被质量门点到的 ${episodesOf(resumed.doc).length} 集，只写其余的` });
+  }
   const notice = run.priceProblem ?? unpricedNotice(run.opts.model.id, run.prices);
   if (notice) run.emit({ type: 'notice', runId, message: notice });
-  const ctx = run.context();
   const doc = await run.finalGate(ctx, await RECIPES[p.recipeName]!.run(ctx));
   const outPath = join(dir, 'out', `${stage}.json`);
   writeFileSync(outPath, JSON.stringify(doc, null, 2));
@@ -421,6 +509,7 @@ function settle(run: NodeRun, project: Project, error: unknown, maxAttempts: num
     const smallest = /:scenes:(\d+)-\1$/.test(error.step) ? '已拆到单场' : /^episodes:\d+-\d+/.test(error.step) ? '已拆到最小批次' : '这一步不分批';
     const message = `${error.step}：${error.message}；${smallest}，需要更大的输出上限或换模型`;
     run.handOver([message], null, null);
+    run.keep(run.lastProgress);
     finishRun(project.db, runId, { status: 'needs_human', skippedHumanGates: skipped, error: message });
     return { runId, status: 'needs_human', dir, message, violations: [message], skippedHumanGates: skipped };
   }
