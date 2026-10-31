@@ -121,3 +121,40 @@ test('v6：revision_request 有 dismissed_at 列（放弃的打回意见），v5
   upgraded.close();
   rmSync(dir, { recursive: true, force: true });
 });
+
+test('v7：generation_task 重建——新状态与新列；v6 库里的任务、事件、候选、视图升上来都在', () => {
+  const db = openDb(':memory:');
+  assert.ok(MIGRATIONS.length >= 7);
+  const cols = (db.prepare('PRAGMA table_info(generation_task)').all() as { name: string }[]).map((c) => c.name);
+  for (const c of ['node', 'episode_key', 'label', 'content_fingerprint', 'paid_gate_id', 'attempt_of', 'pid', 'submitted_at', 'provider_status', 'result_url']) assert.ok(cols.includes(c), `generation_task 缺列 ${c}`);
+  db.close();
+
+  const dir = mkdtempSync(join(tmpdir(), 'avp-mig-'));
+  const path = join(dir, 'x.sqlite');
+  const raw = new DatabaseSync(path);
+  for (const sql of MIGRATIONS.slice(0, 6)) raw.exec(sql);
+  raw.exec(`
+    INSERT INTO entity (id, kind, key, created_at) VALUES (1, 'segment', 'sg_aaaaaaaa', 'now');
+    INSERT INTO entity_version (id, entity_id, facet, v, payload, content_hash, created_at) VALUES (1, 1, 'storyboard', 1, '{}', 'h', 'now');
+    INSERT INTO media_file (id, sha256, rel_path, mime, bytes, created_at) VALUES (1, 'abc', 'media/ab/abc.mp4', 'video/mp4', 10, 'now');
+    INSERT INTO generation_task (id, target_version_id, capability, provider, model, status, provider_task_id, planned_input, created_at, updated_at)
+      VALUES (1, 1, 'video', 'minimax', 'MiniMax-H3-Lite', 'succeeded', 't-1', '{}', 'now', 'now');
+    INSERT INTO task_event (task_id, status, at) VALUES (1, 'succeeded', 'now');
+    INSERT INTO candidate (id, target_entity_id, task_id, media_file_id, label, created_at) VALUES (1, 1, 1, 1, 'v1', 'now');
+  `);
+  raw.exec('PRAGMA user_version = 6');
+  raw.close();
+
+  const up = openDb(path);
+  assert.equal(schemaVersion(up), MIGRATIONS.length);
+  const task = up.prepare('SELECT status, provider_task_id, node, pid FROM generation_task WHERE id = 1').get() as Record<string, unknown>;
+  assert.deepEqual({ ...task }, { status: 'succeeded', provider_task_id: 't-1', node: null, pid: null });
+  assert.deepEqual({ ...(up.prepare('SELECT exec_status, selected FROM candidate_state WHERE candidate_id = 1').get() as object) }, { exec_status: 'succeeded', selected: 0 });
+  assert.equal((up.prepare('PRAGMA foreign_key_check').all() as unknown[]).length, 0, '重建后外键都还对得上');
+  // 新状态能写、乱写的状态被拦；同一供应商任务 id 仍只能落库一次
+  up.exec(`INSERT INTO generation_task (target_version_id, capability, provider, model, status, planned_input, created_at, updated_at) VALUES (1, 'video', 'minimax', 'm', 'submitting', '{}', 'now', 'now')`);
+  assert.throws(() => up.exec(`INSERT INTO generation_task (target_version_id, capability, provider, model, status, planned_input, created_at, updated_at) VALUES (1, 'video', 'minimax', 'm', 'weird', '{}', 'now', 'now')`), /CHECK/);
+  assert.throws(() => up.exec(`INSERT INTO generation_task (target_version_id, capability, provider, model, status, provider_task_id, planned_input, created_at, updated_at) VALUES (1, 'video', 'minimax', 'm', 'submitted', 't-1', '{}', 'now', 'now')`), /UNIQUE/);
+  up.close();
+  rmSync(dir, { recursive: true, force: true });
+});

@@ -59,3 +59,13 @@ cli prices show --model minimax:MiniMax-H3-Lite
 - 配置目录：`$AVP_CONFIG_DIR` > `$XDG_CONFIG_HOME/ai-video-platform` > `~/.config/ai-video-platform`。
 - 文件必须是 600 权限，否则拒绝读取。凭据永不写进项目目录或项目库，错误消息里不回显 key。
 - `cli cred set <provider>` 只从 stdin 读；`cli cred list` 只显示末 4 位。
+
+### 图片、视频供应商的地域
+
+百炼（`dashscope`）和 MiniMax（`minimax`）都分国际区与国内区：key 按地域发放、不能跨区，价格也不同。默认国际区（`https://dashscope-intl.aliyuncs.com`、`https://api.minimax.io`），与内置的美元价格一致。用国内区就在配置目录写 `endpoints.json`：
+
+```json
+{ "dashscope": "https://dashscope.aliyuncs.com", "minimax": "https://api.minimax.cn" }
+```
+
+地址必须是 https、不能带查询串或账号。国内区的价格要另外写进 `<配置目录>/prices.json`。付费生成的细节见 [generation.md](generation.md)。
