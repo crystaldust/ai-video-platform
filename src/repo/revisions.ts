@@ -28,6 +28,52 @@ export function addRevisionRequest(db: DatabaseSync, input: { stage: Stage; epis
   return { id: row.id, stage: row.stage, episodeKey: row.episode_key, note: row.note, baseArtifactVersionId: row.base_artifact_version_id, createdAt: row.created_at };
 }
 
+/** 这条打回意见放弃了没有；没有这条是 null。 */
+export function revisionDismissed(db: DatabaseSync, id: number): boolean | null {
+  const row = db.prepare('SELECT dismissed_at FROM revision_request WHERE id = ?').get(id) as { dismissed_at: string | null } | undefined;
+  return row ? row.dismissed_at !== null : null;
+}
+
+/** 放弃一条打回意见（不要了）：记下放弃时间，意见本身留在记录里。不存在、已放弃都报错。 */
+export function dismissRevision(db: DatabaseSync, id: number): void {
+  const row = db.prepare('SELECT dismissed_at FROM revision_request WHERE id = ?').get(id) as { dismissed_at: string | null } | undefined;
+  if (!row) throw new Error(`没有这条打回意见：${id}`);
+  if (row.dismissed_at) throw new Error(`这条打回意见已经放弃了：${id}`);
+  // 只在还没放弃时写：另一个进程（命令行）抢先放弃了，这里不覆盖它的时间
+  const done = db.prepare('UPDATE revision_request SET dismissed_at = ? WHERE id = ? AND dismissed_at IS NULL').run(nowIso(), id);
+  if (Number(done.changes) === 0) throw new Error(`这条打回意见已经放弃了：${id}`);
+}
+
+export interface UnfulfilledRevision {
+  readonly id: number;
+  readonly stage: Stage;
+  readonly episodeKey: string | null;
+  readonly note: string;
+  readonly latestRunId: number;
+  readonly latestRunStatus: 'needs_human' | 'failed';
+  readonly createdAt: string;
+}
+
+/**
+ * 没落实的打回：这条意见引出的最近一次运行转人工或失败、没有任何一次运行过了门、没被放弃，
+ * 且同一阶段同一集（整个阶段对整个阶段）没有更新的打回取代它。
+ */
+export function unfulfilledRevisions(db: DatabaseSync): UnfulfilledRevision[] {
+  const rows = db
+    .prepare(
+      `SELECT r.id, r.stage, r.episode_key, r.note, r.created_at, l.id AS run_id, l.status AS run_status
+       FROM revision_request r
+       JOIN node_run l ON l.id = (SELECT MAX(id) FROM node_run WHERE revision_request_id = r.id)
+       WHERE l.status IN ('needs_human', 'failed')
+         AND r.dismissed_at IS NULL
+         AND NOT EXISTS (SELECT 1 FROM node_run p WHERE p.revision_request_id = r.id AND p.status = 'passed')
+         AND NOT EXISTS (SELECT 1 FROM revision_request n WHERE n.id > r.id AND n.stage = r.stage AND n.episode_key IS r.episode_key)
+       ORDER BY r.id`,
+    )
+    .all() as { id: number; stage: Stage; episode_key: string | null; note: string; created_at: string; run_id: number; run_status: 'needs_human' | 'failed' }[];
+  return rows.map((r) => ({ id: r.id, stage: r.stage, episodeKey: r.episode_key, note: r.note, latestRunId: r.run_id, latestRunStatus: r.run_status, createdAt: r.created_at }));
+}
+
 /** 确认时各上游的版本：键是 `<kind>/<key>/<facet>`。 */
 export type AckSnapshot = Readonly<Record<string, number>>;
 

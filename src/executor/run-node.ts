@@ -44,6 +44,8 @@ export interface RunNodeOptions {
   readonly revise?: { readonly note?: string; readonly requestId?: number };
   /** 由哪次编排发起 */
   readonly orchestrationId?: number;
+  /** 不沿用之前写好或过了门的集，整份从头写 */
+  readonly fresh?: boolean;
 }
 
 /** 一次调用的实际费用：输入、输出 token 都查得到单价才算，否则 null（不猜）。 */
@@ -498,7 +500,8 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
   run.emit({ type: 'run-start', runId, stage, skill: `${p.skill.name}@${p.skill.version}`, model: run.opts.model.id });
   const key = resumeKey(p, run.opts);
   writeFileSync(join(dir, 'out', 'resume.key'), key);
-  const resumed = resumable(project, stage, runId, p, run.opts, RECIPES[p.recipeName]!);
+  // fresh：人明确要从头写，连能沿用的集也不看
+  const resumed = run.opts.fresh ? null : resumable(project, stage, runId, p, run.opts, RECIPES[p.recipeName]!);
   if (resumed) run.resumed = resumed.doc;
   const ctx = run.context();
   if (resumed) {
@@ -508,6 +511,7 @@ async function execute(run: NodeRun, project: Project, stage: Stage, p: Prepared
     const changedNote = resumed.changed ? `；另有 ${resumed.changed} 集上游变了，重写` : '';
     run.emit({ type: 'notice', runId, message: `沿用之前（${runs}）已写好、没被质量门点到的 ${episodesOf(resumed.doc).length} 集，只写其余的${changedNote}` });
   }
+  if (run.opts.fresh) run.emit({ type: 'notice', runId, message: '不沿用之前写好的集，整份重写' });
   const notice = run.priceProblem ?? unpricedNotice(run.opts.model.id, run.prices);
   if (notice) run.emit({ type: 'notice', runId, message: notice });
   const doc = await run.finalGate(ctx, await RECIPES[p.recipeName]!.run(ctx));

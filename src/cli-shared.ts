@@ -9,7 +9,7 @@ export const print = (x: unknown): void => {
 };
 
 /** 不带取值的开关：出现即为 'true'。 */
-export const BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['only-stale', 'keep']);
+export const BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['only-stale', 'keep', 'fresh']);
 
 /** 拆出 --flag value（开关类只有 --flag），其余为位置参数。 */
 export function parseArgs(argv: readonly string[]): { args: string[]; flags: Record<string, string> } {

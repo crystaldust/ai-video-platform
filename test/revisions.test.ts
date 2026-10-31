@@ -94,3 +94,64 @@ test('整阶段打回美术：意见进场景、道具两遍，底稿是当前�
   }
   cleanup();
 });
+
+/** 造一条打回意见，和它引出的一次运行（给了状态就结案到这个状态） */
+async function rejectedRun(db: DatabaseSync, stage: 'script' | 'staging', episodeKey: string | null, status: 'needs_human' | 'failed' | 'passed' | null, note = '汽笛提前') {
+  const { createRun, finishRun } = await import('../src/repo/runs.ts');
+  const { currentMount } = await import('../src/repo/skills.ts');
+  const { currentInput } = await import('../src/repo/inputs.ts');
+  const { addRevisionRequest } = await import('../src/repo/revisions.ts');
+  const request = addRevisionRequest(db, { stage, episodeKey, note, baseArtifactVersionId: null });
+  const runId = createRun(db, { stage, skillId: currentMount(db, stage)!.id, model: 'fake:fake', inputId: currentInput(db)!.id, maxAttempts: 3, episodeKey, revisionRequestId: request.id });
+  if (status) finishRun(db, runId, status === 'passed' ? { status } : { status, error: '没跑完' });
+  return { request, runId };
+}
+
+test('没落实的打回：最近一次运行转人工或失败才算；运行中、过了门的不算', async () => {
+  const { unfulfilledRevisions } = await import('../src/repo/revisions.ts');
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  const { db } = project;
+  const human = await rejectedRun(db, 'script', DUKO.ep3, 'needs_human', '甲');
+  const failed = await rejectedRun(db, 'staging', null, 'failed', '乙');
+  await rejectedRun(db, 'script', 'ep_other', 'passed', '丙');
+  await rejectedRun(db, 'staging', 'ep_running', null, '丁');
+  const got = unfulfilledRevisions(db);
+  assert.deepEqual(got.map((r) => [r.id, r.stage, r.episodeKey, r.note, r.latestRunId, r.latestRunStatus]), [
+    [human.request.id, 'script', DUKO.ep3, '甲', human.runId, 'needs_human'],
+    [failed.request.id, 'staging', null, '乙', failed.runId, 'failed'],
+  ]);
+  assert.ok(got[0]!.createdAt);
+  cleanup();
+});
+
+test('没落实的打回：重打回过一次并且过了门就不列；放弃了不列；同一阶段同一集有更新的打回，旧的被取代', async () => {
+  const { unfulfilledRevisions, dismissRevision } = await import('../src/repo/revisions.ts');
+  const { project, cleanup } = tempProject();
+  await setupNovel(project);
+  const { db } = project;
+  const first = await rejectedRun(db, 'script', DUKO.ep3, 'needs_human', '第一次');
+  assert.equal(unfulfilledRevisions(db).length, 1);
+  // 取代：同阶段同一集更新的一条（不管它自己结果如何）
+  const second = await rejectedRun(db, 'script', DUKO.ep3, 'failed', '第二次');
+  assert.deepEqual(unfulfilledRevisions(db).map((r) => r.id), [second.request.id]);
+  // 整个阶段（NULL）与某一集互不取代，NULL 与 NULL 互相取代
+  const whole = await rejectedRun(db, 'script', null, 'failed', '整个阶段');
+  assert.deepEqual(unfulfilledRevisions(db).map((r) => r.id), [second.request.id, whole.request.id]);
+  const wholeAgain = await rejectedRun(db, 'script', null, 'failed', '整个阶段又一次');
+  assert.deepEqual(unfulfilledRevisions(db).map((r) => r.id), [second.request.id, wholeAgain.request.id]);
+  // 放弃
+  dismissRevision(db, second.request.id);
+  assert.deepEqual(unfulfilledRevisions(db).map((r) => r.id), [wholeAgain.request.id]);
+  assert.throws(() => dismissRevision(db, second.request.id), /已经放弃/);
+  assert.throws(() => dismissRevision(db, 9999), /没有这条打回意见/);
+  // 同一条意见后来有一次运行过了门：落实了
+  const { createRun, finishRun } = await import('../src/repo/runs.ts');
+  const { currentMount } = await import('../src/repo/skills.ts');
+  const { currentInput } = await import('../src/repo/inputs.ts');
+  const again = createRun(db, { stage: 'script', skillId: currentMount(db, 'script')!.id, model: 'fake:fake', inputId: currentInput(db)!.id, maxAttempts: 3, revisionRequestId: wholeAgain.request.id });
+  finishRun(db, again, { status: 'passed' });
+  assert.deepEqual(unfulfilledRevisions(db), []);
+  void first;
+  cleanup();
+});

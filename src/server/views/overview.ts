@@ -10,6 +10,7 @@ import { loadPresets } from '../../presets/presets.ts';
 import type { Project } from '../../project.ts';
 import { listOrchestrations } from '../../repo/orchestrations.ts';
 import { listPaidGates } from '../../repo/paid-gates.ts';
+import { unfulfilledRevisions, type UnfulfilledRevision } from '../../repo/revisions.ts';
 import type { RunStatus } from '../../repo/runs.ts';
 import type { App } from '../app.ts';
 import type { JobInfo } from '../jobs.ts';
@@ -39,7 +40,7 @@ export interface UpstreamBlame {
 
 export interface PendingItem {
   /** gate：已有产物，但按当前挂载 skill 的质量门不过（skill 升级后门变严，旧产物不会自己重查） */
-  readonly kind: 'stale' | 'needs_human' | 'failed' | 'gate';
+  readonly kind: 'stale' | 'needs_human' | 'failed' | 'gate' | 'revision';
   readonly stage: Stage;
   readonly episode: string | null;
   readonly ep: number | null;
@@ -49,6 +50,16 @@ export interface PendingItem {
   readonly reasons: MatrixCell['reasons'];
   /** 没过的运行：上游有门不过时指向它 */
   readonly upstream: UpstreamBlame | null;
+  /** 这一项背后有没落实的打回意见（转人工 / 失败的运行就是为它跑的，或 kind 为 revision 时就是它自己） */
+  readonly revision: PendingRevision | null;
+}
+
+/** 打回过、但运行没跑完，意见没有落实。 */
+export interface PendingRevision {
+  readonly id: number;
+  readonly note: string;
+  readonly episode: string | null;
+  readonly ep: number | null;
 }
 
 export interface LogRun {
@@ -136,7 +147,7 @@ const epPrefix = (ep: number | null): string => (ep ? `第 ${String(ep).padStart
  * 待你处理：最近一次没过的运行、按当前质量门不过的阶段、需复核的格子。
  * gates 与 cards 一一对应（各阶段对最新产物跑当前 skill 的检查；没有产物或检查跑挂了是 null）。
  */
-function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: readonly StageCard[], gates: readonly (GateResult | null)[]): PendingItem[] {
+function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: readonly StageCard[], gates: readonly (GateResult | null)[], revisions: readonly UnfulfilledRevision[]): PendingItem[] {
   const outline = episodesIn(docOf(db, 'outline'));
   const epNo = new Map(outline.map((e) => [e['id'], Number(e['ep'])]));
   const epId = new Map(outline.map((e) => [Number(e['ep']), String(e['id'])]));
@@ -147,12 +158,21 @@ function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: rea
     const named = episodeNamed(failedGates.get(up)!, epId);
     return { stage: up, episode: named?.episode ?? null, ep: named?.ep ?? null };
   };
+  const revisionOf = (r: UnfulfilledRevision): PendingRevision => ({ id: r.id, note: r.note, episode: r.episodeKey, ep: r.episodeKey ? (epNo.get(r.episodeKey) ?? null) : null });
   const failed = cards.flatMap((c): PendingItem[] => {
     const run = c.lastRun;
     if (!run || (run.status !== 'needs_human' && run.status !== 'failed')) return [];
     const last = db.prepare('SELECT violations FROM node_attempt WHERE run_id = ? ORDER BY id DESC LIMIT 1').get(run.id) as { violations: string } | undefined;
     const violations: string[] = last ? JSON.parse(last.violations) : [];
-    return [{ kind: run.status, stage: c.stage, episode: null, ep: null, title: `${c.title}${run.status === 'needs_human' ? '未通过' : '失败'}`, detail: violations[0] ?? run.error ?? '', runId: run.id, reasons: [], upstream: blameOf(c.stage) }];
+    const attached = revisions.find((r) => r.stage === c.stage && r.latestRunId === run.id);
+    return [{ kind: run.status, stage: c.stage, episode: null, ep: null, title: `${c.title}${run.status === 'needs_human' ? '未通过' : '失败'}`, detail: violations[0] ?? run.error ?? '', runId: run.id, reasons: [], upstream: blameOf(c.stage), revision: attached ? revisionOf(attached) : null }];
+  });
+  // 打回的运行就是这一阶段最近那次没过的运行：意见附在它那一项上；否则（后来别的运行盖过了它）单独列
+  const attachedIds = new Set(failed.flatMap((f) => (f.revision ? [f.revision.id] : [])));
+  const revisionItems = revisions.filter((r) => !attachedIds.has(r.id)).map((r): PendingItem => {
+    const rev = revisionOf(r);
+    const title = STAGE_TITLES[r.stage];
+    return { kind: 'revision', stage: r.stage, episode: rev.episode, ep: rev.ep, title: `${epPrefix(rev.ep)}${title}的打回没落实`, detail: r.note, runId: r.latestRunId, reasons: [], upstream: null, revision: rev };
   });
   const listed = new Set(failed.map((f) => f.stage));
   const gateItems = cards.flatMap((c): PendingItem[] => {
@@ -160,13 +180,13 @@ function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: rea
     if (!bad || listed.has(c.stage)) return [];
     const named = episodeNamed(bad, epId);
     const more = bad.length > 1 ? `（共 ${bad.length} 项）` : '';
-    return [{ kind: 'gate', stage: c.stage, episode: named?.episode ?? null, ep: named?.ep ?? null, title: `${epPrefix(named?.ep ?? null)}${c.title}按当前质量门不过`, detail: `${bad[0]}${more}`, runId: c.lastRun?.id ?? null, reasons: [], upstream: null }];
+    return [{ kind: 'gate', stage: c.stage, episode: named?.episode ?? null, ep: named?.ep ?? null, title: `${epPrefix(named?.ep ?? null)}${c.title}按当前质量门不过`, detail: `${bad[0]}${more}`, runId: c.lastRun?.id ?? null, reasons: [], upstream: null, revision: null }];
   });
   const stale = cells.map((c): PendingItem => {
     const ep = c.episode ? (epNo.get(c.episode) ?? null) : null;
-    return { kind: 'stale', stage: c.stage, episode: c.episode, ep, title: `${epPrefix(ep)}${STAGE_TITLES[c.stage]}需复核`, detail: `${reasonOf(c)}：${c.reasons.length} 处引用还钉着旧版本`, runId: c.lastRun?.id ?? null, reasons: c.reasons, upstream: null };
+    return { kind: 'stale', stage: c.stage, episode: c.episode, ep, title: `${epPrefix(ep)}${STAGE_TITLES[c.stage]}需复核`, detail: `${reasonOf(c)}：${c.reasons.length} 处引用还钉着旧版本`, runId: c.lastRun?.id ?? null, reasons: c.reasons, upstream: null, revision: null };
   });
-  return [...failed, ...gateItems, ...stale];
+  return [...failed, ...revisionItems, ...gateItems, ...stale];
 }
 
 /** 运行记录最多带多少次运行（最近的），免得项目跑久了全貌越来越大 */
@@ -241,7 +261,7 @@ export async function overview(app: App, project: Project, id: string): Promise<
   const orch = listOrchestrations(db).at(-1) ?? null;
   const cost = textCost(db);
   const gate = listPaidGates(db).filter((g) => g.status === 'awaiting_confirmation').at(-1) ?? null;
-  const pending = pendingItems(db, cells, cards, gates);
+  const pending = pendingItems(db, cells, cards, gates, unfulfilledRevisions(db));
   const elapsed = orch ? (orch.endedAt ? Date.parse(orch.endedAt) : Date.now()) - Date.parse(orch.startedAt) : null;
   return {
     project: projectHead(project, id),

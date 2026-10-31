@@ -100,3 +100,24 @@ test('v5：编排、打回、复核、付费确认单的表都在；node_run 新
   assert.throws(() => db.exec(`INSERT INTO revision_request (stage, note, base_artifact_version_id, created_at) VALUES ('script', 'x', 999, 'now')`), /FOREIGN KEY/);
   db.close();
 });
+
+test('v6：revision_request 有 dismissed_at 列（放弃的打回意见），v5 库升上来旧行为空', () => {
+  const db = openDb(':memory:');
+  assert.ok(MIGRATIONS.length >= 6);
+  const cols = (db.prepare('PRAGMA table_info(revision_request)').all() as { name: string }[]).map((c) => c.name);
+  assert.ok(cols.includes('dismissed_at'), 'revision_request 缺列 dismissed_at');
+  db.close();
+
+  const dir = mkdtempSync(join(tmpdir(), 'avp-mig-'));
+  const path = join(dir, 'x.sqlite');
+  const raw = new DatabaseSync(path);
+  for (const sql of MIGRATIONS.slice(0, 5)) raw.exec(sql);
+  raw.exec(`INSERT INTO revision_request (stage, note, created_at) VALUES ('script', 'x', 'now')`);
+  raw.exec('PRAGMA user_version = 5');
+  raw.close();
+  const upgraded = openDb(path);
+  assert.equal(schemaVersion(upgraded), MIGRATIONS.length);
+  assert.deepEqual({ ...(upgraded.prepare('SELECT dismissed_at FROM revision_request').get() as object) }, { dismissed_at: null });
+  upgraded.close();
+  rmSync(dir, { recursive: true, force: true });
+});

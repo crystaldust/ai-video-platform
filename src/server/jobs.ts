@@ -61,16 +61,16 @@ export class Jobs {
     return info;
   }
 
-  go(projectId: string, mode: OrchestrationMode, only?: Stage): JobInfo {
+  go(projectId: string, mode: OrchestrationMode, only?: Stage, fresh?: boolean): JobInfo {
     const { app } = this;
     const publish = (e: OrchestrateEvent) => app.bus.publish(projectId, fromOrchestrate(e));
-    return this.start(projectId, 'go', only ? `只跑 ${only}` : mode === 'only-stale' ? '只重跑需复核' : '一键跑', () =>
+    return this.start(projectId, 'go', only ? `只跑 ${only}${fresh ? '（整份重写）' : ''}` : mode === 'only-stale' ? '只重跑需复核' : '一键跑', () =>
       app.withProject(projectId, async (p) => {
         const r = await orchestrate(p, {
           modelFor: (stage) => app.modelFor(p, stage),
           ...(only ? { only } : { mode }),
           onProgress: publish,
-          ...(app.config.run ? { run: app.config.run } : {}),
+          ...(app.config.run || fresh ? { run: { ...app.config.run, ...(fresh ? { fresh } : {}) } } : {}),
           ...(app.config.estimate ? { estimate: app.config.estimate } : {}),
         });
         return { orchestrationId: r.id, status: r.status, paidGateId: r.paidGate?.id ?? null };

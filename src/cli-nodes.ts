@@ -14,10 +14,11 @@ export const NODE_USAGE = `  pack register <dir> <manifest.json> --root <skills 
   mount <dir> <stage> <skill>                   把阶段挂到另一个已注册的 skill
   input <dir> <file.txt> --episodes N --seconds S --genre <题材> [--kind synopsis|novel]
                                                 设置项目输入（梗概或小说正文 + 参数）
-  run <dir> <stage> [--model-cmd "<命令>"] [--max-attempts 3]
+  run <dir> <stage> [--model-cmd "<命令>"] [--max-attempts 3] [--fresh]
                                                 用平台执行器跑一个阶段；不给 --model-cmd 就用预设或节点覆盖里
                                                 text:<stage> 的模型；--model-cmd 从 stdin 读提示词、stdout 输出
-                                                （按空白切分参数，不支持引号）；转人工时退出码 2
+                                                （按空白切分参数，不支持引号）；--fresh 不沿用之前写好的集，整份重写；
+                                                转人工时退出码 2
   runs <dir> [--id N]                           列出运行记录；--id 看某次运行的每次尝试
   runs unlock <dir> --id N                      把卡在 running 的运行标为失败（进程已不在但没被认出来时用）`;
 
@@ -63,13 +64,13 @@ async function cmdInput(args: string[], flags: Record<string, string>): Promise<
 }
 
 async function cmdRun(args: string[], flags: Record<string, string>): Promise<CommandResult> {
-  const usage = 'run <dir> <stage> [--model-cmd "<命令>"] [--max-attempts 3]';
+  const usage = 'run <dir> <stage> [--model-cmd "<命令>"] [--max-attempts 3] [--fresh]';
   const [dir, stage] = [need(args[0], usage), stageArg(need(args[1], usage))];
   const maxAttempts = intFlag(flags['max-attempts'], '--max-attempts');
   const out = await withProject(dir, (p) => {
     const modelId = flags['model-cmd'] ? `cmd:${flags['model-cmd']}` : resolveNodeModel(p.db, `text:${stage}`).model;
     const model = createTextModel(modelId);
-    return runNode(p, stage, { model, ...(maxAttempts === undefined ? {} : { maxAttempts }), onProgress: (e) => process.stderr.write(`${progressLine(e)}\n`) });
+    return runNode(p, stage, { model, ...(maxAttempts === undefined ? {} : { maxAttempts }), ...(flags['fresh'] ? { fresh: true } : {}), onProgress: (e) => process.stderr.write(`${progressLine(e)}\n`) });
   });
   if (out.status === 'needs_human') {
     process.stderr.write(`  最后一版：${out.dir}/out/${stage}.json，违规：${out.dir}/violations.txt\n`);

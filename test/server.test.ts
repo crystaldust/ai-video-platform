@@ -410,6 +410,26 @@ test('运行记录：重跑某个阶段、打回之后，之前的记录还在�
   assert.deepEqual(afterReject.map((r) => r.id), [...afterReject.map((r) => r.id)].sort((a, b) => a - b), '按时间先后');
 });
 
+test('整份重写：go 的 fresh 要是布尔、且只能配合 only；带上后这次运行发「整份重写」提示', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  await h.call('POST', '/api/projects', { body: { name: '渡口', kind: 'novel', text: DUKO_BOOK, params: { episodes: 6, seconds: 120, genre: '悬疑' }, start: true } });
+  await h.app.jobs.settled('渡口');
+  const go = (body: unknown) => h.call('POST', encodeURI('/api/p/渡口/go'), { body });
+  assert.equal((await go({ only: 'storyboard', fresh: 'yes' })).status, 400);
+  const noOnly = await go({ fresh: true });
+  assert.equal(noOnly.status, 400);
+  assert.match(noOnly.body.error.message, /整份重写只能针对单个阶段/);
+  assert.equal((await go({ fresh: false })).status, 200, 'fresh 为 false 等于没给');
+  await h.app.jobs.settled('渡口');
+
+  const events = collectEvents(h, encodeURI('/api/p/渡口/events'), (e) => e.type === 'job-end');
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal((await go({ only: 'storyboard', fresh: true })).status, 200);
+  const got = await events;
+  assert.ok(got.some((e) => typeof e['message'] === 'string' && e['message'].includes('不沿用之前写好的集，整份重写')), JSON.stringify(got.map((e) => e.type)));
+});
+
 test('上游按当前质量门不过：全貌列出这一阶段并认出是哪一集；转人工的下游指向它', async (t) => {
   const { createRun, finishRun, startAttempt, endAttempt } = await import('../src/repo/runs.ts');
   const { currentMount } = await import('../src/repo/skills.ts');
@@ -440,6 +460,68 @@ test('上游按当前质量门不过：全貌列出这一阶段并认出是哪�
   assert.equal(human.upstream?.stage, 'script', '转人工的分镜指向门不过的上游');
   assert.equal(human.upstream?.episode, DUKO.ep3);
   assert.ok(!o.pending.some((p: { kind: string; stage: string }) => p.kind === 'gate' && p.stage === 'storyboard'), '已经转人工的阶段不再另列门不过');
+});
+
+/** 打回的运行：造一条打回意见和它引出的一次运行（给了状态就结案），或一次不带意见的普通运行 */
+async function seedRun(db: DatabaseSync, stage: 'script' | 'staging', opts: { episodeKey?: string | null; note?: string; status: 'needs_human' | 'failed' | 'passed' }) {
+  const { createRun, finishRun, startAttempt, endAttempt } = await import('../src/repo/runs.ts');
+  const { currentMount } = await import('../src/repo/skills.ts');
+  const { currentInput } = await import('../src/repo/inputs.ts');
+  const { addRevisionRequest } = await import('../src/repo/revisions.ts');
+  const episodeKey = opts.episodeKey ?? null;
+  const request = opts.note === undefined ? null : addRevisionRequest(db, { stage, episodeKey, note: opts.note, baseArtifactVersionId: null });
+  const runId = createRun(db, { stage, skillId: currentMount(db, stage)!.id, model: 'fake:fake', inputId: currentInput(db)!.id, maxAttempts: 3, episodeKey, revisionRequestId: request?.id ?? null });
+  if (opts.status !== 'passed') endAttempt(db, startAttempt(db, { runId, step: 'validate', n: 1, system: '', user: '' }), { output: null, violations: ['还有违规'], usage: null });
+  finishRun(db, runId, opts.status === 'passed' ? { status: 'passed' } : { status: opts.status, error: '没跑完' });
+  return { requestId: request?.id ?? null, runId };
+}
+
+test('没落实的打回：转人工的运行带上意见；之后别的运行过了门，意见单独列出；放弃后消失', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  const project = await dukoProject(h);
+  const rejected = await seedRun(project.db, 'script', { episodeKey: DUKO.ep3, note: '汽笛提前', status: 'needs_human' });
+  const view = async () => (await h.call('GET', encodeURI('/api/p/渡口/overview'))).body.data.pending as { kind: string; stage: string; ep: number | null; episode: string | null; title: string; detail: string; runId: number | null; revision: { id: number; note: string; episode: string | null; ep: number | null } | null }[];
+
+  const first = await view();
+  const human = first.find((p) => p.kind === 'needs_human')!;
+  assert.deepEqual(human.revision, { id: rejected.requestId, note: '汽笛提前', episode: DUKO.ep3, ep: 3 });
+  assert.ok(!first.some((p) => p.kind === 'revision'), '已附在转人工那一项上，不重复列');
+
+  // 之后一次普通重跑过了门：意见仍没落实，单独成一项
+  const later = await seedRun(project.db, 'script', { status: 'passed' });
+  const second = await view();
+  const item = second.find((p) => p.kind === 'revision')!;
+  assert.ok(item, JSON.stringify(second.map((p) => [p.kind, p.stage])));
+  assert.deepEqual([item.stage, item.episode, item.ep, item.runId, item.detail], ['script', DUKO.ep3, 3, rejected.runId, '汽笛提前']);
+  assert.match(item.title, /第 03 集 · 剧本的打回没落实/);
+  assert.ok(later.runId > rejected.runId);
+  assert.deepEqual(second.filter((p) => p.revision).map((p) => p.kind), ['revision'], '没有 needs_human 项了，只剩单独列出的那一项');
+
+  const id = rejected.requestId!;
+  const dismiss = (rid: string) => h.call('POST', encodeURI(`/api/p/渡口/revisions/${rid}/dismiss`), { body: {} });
+  assert.equal((await dismiss('abc')).status, 400);
+  assert.equal((await dismiss('0')).status, 400);
+  assert.equal((await dismiss('1.5')).status, 400);
+  assert.equal((await dismiss('9999')).status, 404);
+  assert.equal((await h.call('POST', encodeURI(`/api/p/渡口/revisions/${id}/dismiss`), { body: {}, token: false })).status, 403, '和别的变更一样要令牌');
+  assert.equal((await dismiss(String(id))).status, 200);
+  assert.ok(!(await view()).some((p) => p.kind === 'revision'));
+  assert.equal((await dismiss(String(id))).status, 409);
+  project.close();
+});
+
+test('没落实的打回：同阶段同一集更新的打回取代旧的；自己的运行过了门的不列', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  const project = await dukoProject(h);
+  await seedRun(project.db, 'script', { episodeKey: DUKO.ep3, note: '旧意见', status: 'failed' });
+  const newer = await seedRun(project.db, 'script', { episodeKey: DUKO.ep3, note: '新意见', status: 'failed' });
+  await seedRun(project.db, 'staging', { episodeKey: DUKO.ep3, note: '站位已落实', status: 'passed' });
+  const pending = (await h.call('GET', encodeURI('/api/p/渡口/overview'))).body.data.pending as { kind: string; stage: string; revision: { id: number; note: string } | null }[];
+  assert.deepEqual(pending.filter((p) => p.revision).map((p) => [p.stage, p.revision!.id, p.revision!.note]), [['script', newer.requestId, '新意见']]);
+  assert.ok(!pending.some((p) => p.stage === 'staging'), '过了门的打回不列');
+  project.close();
 });
 
 test('门不过的违规认集：每条都点到同一集才认，点到多集或有一条没点集就不猜', async () => {

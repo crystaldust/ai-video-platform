@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router';
 import { api, ApiError, projectPath } from '../api.ts';
 import { epLabel } from '../format.ts';
 import { rejectChoices, rejectScope, STAGE_TITLE } from '../reject.ts';
+import { rerunRequest } from '../rerun.ts';
+import { dismissPath, repeatRejectBody, revisionLabel } from '../revision.ts';
 import type { EpisodeRow, PendingItem, Stage, StageCard } from '../types.ts';
 import { Button } from './ui.tsx';
 import s from './overview.module.css';
@@ -140,10 +142,13 @@ function StaleBody({ projectId, item, episode, busy, onDone, onError }: { item: 
 }
 
 function FailedBody({ projectId, item, busy, onDone, onError }: { item: PendingItem } & Pick<PanelProps, 'projectId' | 'busy' | 'onDone' | 'onError'>) {
+  const [fresh, setFresh] = useState(false);
   const rerun = async () => {
+    const req = rerunRequest(item.stage, fresh);
+    if (req.confirm && !window.confirm(req.confirm)) return;
     try {
-      await api.post(projectPath(projectId, '/go'), { only: item.stage });
-      onDone(`开始重跑${STAGE_TITLE[item.stage]}`);
+      await api.post(projectPath(projectId, '/go'), req.body);
+      onDone(`开始${fresh ? '整份重写' : '重跑'}${STAGE_TITLE[item.stage]}`);
     } catch (e) {
       onError(e as ApiError);
     }
@@ -164,7 +169,40 @@ function FailedBody({ projectId, item, busy, onDone, onError }: { item: PendingI
       <Button variant={item.upstream ? undefined : 'primary'} block disabled={busy} onClick={() => void rerun()}>
         <RefreshCw size={14} /> 重跑{STAGE_TITLE[item.stage]}
       </Button>
+      <label className={s.muted}>
+        <input type="checkbox" checked={fresh} disabled={busy} onChange={(e) => setFresh(e.target.checked)} /> 不沿用之前写好的集，整份重写
+      </label>
     </>
+  );
+}
+
+/** 打回过、运行却没跑完：意见没有落实。可以带同样的意见再打回，或放弃这条意见。 */
+function RevisionBlock({ projectId, stage, revision, busy, onDone, onError }: { stage: Stage; revision: NonNullable<PendingItem['revision']> } & Pick<PanelProps, 'projectId' | 'busy' | 'onDone' | 'onError'>) {
+  const where = revisionLabel(stage, revision);
+  const act = async (path: string, body: unknown, message: string) => {
+    try {
+      await api.post(projectPath(projectId, path), body);
+      onDone(message);
+    } catch (e) {
+      onError(e as ApiError);
+    }
+  };
+  return (
+    <div className={`${s.why} ${s['why-warn']}`}>
+      <span className={s.whyTitle} style={{ color: 'var(--warn)' }}>
+        这次打回的意见还没落实
+      </span>
+      <span>{revision.note}</span>
+      <small>{where}的重跑没有跑完，这条意见没有用上。</small>
+      <div className={s.actionsRow}>
+        <Button block disabled={busy} onClick={() => void act('/reject', repeatRejectBody(stage, revision), `已带同样的意见再打回${where}，正在重跑`)}>
+          带同样意见再打回
+        </Button>
+        <Button block disabled={busy} onClick={() => void act(dismissPath(revision.id), {}, '已放弃这条打回意见')}>
+          放弃这条意见
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -199,7 +237,7 @@ function GateBody({ item }: { item: PendingItem }) {
   );
 }
 
-const KICKER: Record<PendingItem['kind'], string> = { stale: '需复核', needs_human: '未通过', failed: '失败', gate: '门不过' };
+const KICKER: Record<PendingItem['kind'], string> = { stale: '需复核', needs_human: '未通过', failed: '失败', gate: '门不过', revision: '打回没落实' };
 
 export function DetailPanel(p: PanelProps) {
   const { item, episode, next } = p;
@@ -223,7 +261,8 @@ export function DetailPanel(p: PanelProps) {
       </div>
       {item?.kind === 'stale' ? <StaleBody {...p} item={item} episode={episode} /> : null}
       {item?.kind === 'gate' ? <GateBody item={item} /> : null}
-      {item && (item.kind === 'needs_human' || item.kind === 'failed') ? <FailedBody {...p} item={item} /> : null}
+      {item && (item.kind === 'needs_human' || item.kind === 'failed') ? <FailedBody key={`${item.stage}|${item.runId ?? '-'}`} {...p} item={item} /> : null}
+      {item?.revision ? <RevisionBlock {...p} stage={item.stage} revision={item.revision} /> : null}
       {!item && episode ? (
         <p className={s.muted}>
           这一集没有待处理的地方。{' '}

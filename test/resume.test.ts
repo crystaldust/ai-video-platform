@@ -51,6 +51,19 @@ test('分镜写到第 2 集时供应商报错 → 再跑直接从第 2 集写，
   cleanup();
 });
 
+test('fresh：同样的输入、上一次第 2 集失败，也不沿用，从第 1 集重写并发提示', async () => {
+  const { project, cleanup } = await twoEpisodes();
+  const first = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });
+  assert.equal(first.status, 'failed');
+
+  const events: ProgressEvent[] = [];
+  const second = await runNode(project, 'storyboard', { model: dukoModel(), fresh: true, onProgress: (e) => events.push(e) });
+  assert.equal(steps(project, second.runId)[0], 'episodes:1-1', '不沿用第 1 集');
+  assert.ok(notices(events).some((m) => m.includes('不沿用之前写好的集，整份重写')));
+  assert.ok(!notices(events).some((m) => m.includes('沿用之前（')));
+  cleanup();
+});
+
 test('进程中断（serve 退出）后再跑也能接上', async () => {
   const { project, cleanup } = await twoEpisodes();
   const first = await runNode(project, 'storyboard', { model: failingAt('第 2–2 集') });

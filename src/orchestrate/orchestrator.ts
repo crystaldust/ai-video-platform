@@ -47,8 +47,8 @@ export interface OrchestrateOptions {
   readonly only?: Stage;
   readonly concurrency?: number;
   readonly onProgress?: (e: OrchestrateEvent) => void;
-  /** 透传给每个 runNode 的选项（重试上限、价格） */
-  readonly run?: Pick<RunNodeOptions, 'maxAttempts' | 'prices'>;
+  /** 透传给每个 runNode 的选项（重试上限、价格、是否不沿用之前的集） */
+  readonly run?: Pick<RunNodeOptions, 'maxAttempts' | 'prices' | 'fresh'>;
   /** 付费确认单的估算；默认 estimateProject（测试里换掉，免得读本机价格配置） */
   readonly estimate?: (db: DatabaseSync) => ProjectEstimate;
 }

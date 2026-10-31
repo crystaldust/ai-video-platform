@@ -12,10 +12,11 @@ import type { Project } from './project.ts';
 import { resolveNodeModel } from './repo/models.ts';
 import { listPaidGates } from './repo/paid-gates.ts';
 
-export const ORCHESTRATE_USAGE = `  go <dir> [--only-stale] [--only <stage>] [--concurrency 3] [--model-cmd "<命令>"] [--max-attempts 3]
+export const ORCHESTRATE_USAGE = `  go <dir> [--only-stale] [--only <stage> [--fresh]] [--concurrency 3] [--model-cmd "<命令>"] [--max-attempts 3]
                                                 一键跑文本阶段：按依赖分层并发，停在付费前生成确认单
                                                 （没有产物的从头跑，需复核的只改受影响的集，其余跳过）；
-                                                --only-stale 只重跑需复核的部分；--only 只跑一个阶段。
+                                                --only-stale 只重跑需复核的部分；--only 只跑一个阶段；
+                                                --fresh（配合 --only）不沿用之前写好的集，整份重写。
                                                 有阶段转人工或被阻断时退出码 2，失败退出码 1
   reject <dir> <stage> [--ep <集号|集 id>] --note "<意见>" [--model-cmd "<命令>"]
                                                 打回：带意见在当前版本上重跑（剧本、站位、分镜可只打回一集）
@@ -52,9 +53,12 @@ const runOptions = (flags: Record<string, string>) => {
   return maxAttempts === undefined ? {} : { maxAttempts };
 };
 
+const goRunOptions = (flags: Record<string, string>) => ({ ...runOptions(flags), ...(flags['fresh'] ? { fresh: true } : {}) });
+
 async function cmdGo(args: string[], flags: Record<string, string>): Promise<CommandResult> {
-  const dir = need(args[0], 'go <dir> [--only-stale] [--only <stage>] [--concurrency 3]');
+  const dir = need(args[0], 'go <dir> [--only-stale] [--only <stage> [--fresh]] [--concurrency 3]');
   if (flags['only-stale'] && flags['only']) throw new Error('--only-stale 与 --only 不能同时给');
+  if (flags['fresh'] && !flags['only']) throw new Error('--fresh 只能配合 --only 用：整份重写只针对单个阶段');
   const concurrency = intFlag(flags['concurrency'], '--concurrency');
   const result = await withProject(dir, (p) =>
     orchestrate(p, {
@@ -62,7 +66,7 @@ async function cmdGo(args: string[], flags: Record<string, string>): Promise<Com
       ...(flags['only-stale'] ? { mode: 'only-stale' as const } : {}),
       ...(flags['only'] ? { only: stageArg(flags['only']) } : {}),
       ...(concurrency === undefined ? {} : { concurrency }),
-      run: runOptions(flags),
+      run: goRunOptions(flags),
       onProgress: (e) => write(eventLine(e)),
     }),
   );

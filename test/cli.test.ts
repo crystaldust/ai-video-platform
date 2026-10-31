@@ -68,6 +68,12 @@ test('参数错误给出中文提示', () => {
   assert.match(run('import', '/tmp', 'outline', join(tmpdir(), 'avp-no-such.json')).stderr, /读不了 .*avp-no-such\.json/);
 });
 
+test('--fresh 只能配合 go --only：单独给 go --fresh 报错，--fresh 是开关不吃后面的取值', () => {
+  assert.match(run('go', join(tmpdir(), 'avp-no-such-dir'), '--fresh').stderr, /--fresh 只能配合 --only/);
+  assert.match(run('go', join(tmpdir(), 'avp-no-such-dir'), '--fresh', '--only', 'script').stderr, /不是项目目录/);
+  assert.match(run('run', join(tmpdir(), 'avp-no-such-dir'), 'script', '--fresh').stderr, /不是项目目录/);
+});
+
 test('节点协议：pack register → input → run（回放模型）→ runs → 转人工后 import --run 结案', () => {
   const root = mkdtempSync(join(tmpdir(), 'avp-cli-'));
   const dir = join(root, 'p');

@@ -5,9 +5,10 @@ import { SCHEMA_V2 } from './schema-v2.ts';
 import { SCHEMA_V3 } from './schema-v3.ts';
 import { SCHEMA_V4 } from './schema-v4.ts';
 import { SCHEMA_V5 } from './schema-v5.ts';
+import { SCHEMA_V6 } from './schema-v6.ts';
 import { withTransaction } from './transaction.ts';
 
-export const MIGRATIONS: readonly string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5];
+export const MIGRATIONS: readonly string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6];
 
 export function schemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;

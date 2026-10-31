@@ -9,6 +9,7 @@ import { acknowledge } from '../../orchestrate/review-matrix.ts';
 import { checkReject, resolveEpisode } from '../../orchestrate/revisions.ts';
 import { refreshPriceCache } from '../../pricing/openrouter.ts';
 import { clearNodeModel, setNodeModel, usePreset } from '../../repo/models.ts';
+import { dismissRevision, revisionDismissed } from '../../repo/revisions.ts';
 import { mountSkill, registerPack } from '../../repo/skills.ts';
 import { HttpError, optStr, readBody, str } from '../http.ts';
 import { route, type Route } from '../route.ts';
@@ -33,8 +34,11 @@ export const ACTION_ROUTES: readonly Route[] = [
     const mode = body['mode'] ?? 'all';
     if (mode !== 'all' && mode !== 'only-stale') throw new HttpError(400, 'mode 只能是 all 或 only-stale');
     const only = body['only'] === undefined ? undefined : stageOf(body['only']);
+    const fresh = body['fresh'];
+    if (fresh !== undefined && typeof fresh !== 'boolean') throw new HttpError(400, 'fresh 应该是 true 或 false');
+    if (fresh && only === undefined) throw new HttpError(400, '整份重写只能针对单个阶段（配合 only）');
     await app.withProject(id, () => null);
-    return app.jobs.go(id, mode, only);
+    return app.jobs.go(id, mode, only, fresh);
   }),
   route('POST', '/api/p/:id/reject', async ({ app, params, req }) => {
     const id = params['id']!;
@@ -43,6 +47,17 @@ export const ACTION_ROUTES: readonly Route[] = [
     const episode = optStr(body, 'episode');
     const checked = await app.withProject(id, (p) => checkReject(p.db, stage, { note: str(body, 'note'), ...(episode ? { episode } : {}) }));
     return app.jobs.reject(id, stage, checked.note, checked.episode ?? undefined);
+  }),
+  route('POST', '/api/p/:id/revisions/:rid/dismiss', async ({ app, params }) => {
+    const rid = Number(params['rid']);
+    if (!Number.isSafeInteger(rid) || rid < 1 || String(rid) !== params['rid']) throw new HttpError(400, '打回意见编号应该是正整数');
+    return app.withProject(params['id']!, (p) => {
+      const dismissed = revisionDismissed(p.db, rid);
+      if (dismissed === null) throw new HttpError(404, `没有这条打回意见：${rid}`);
+      if (dismissed) throw new HttpError(409, '这条打回意见已经放弃了');
+      dismissRevision(p.db, rid);
+      return { ok: true };
+    });
   }),
   route('POST', '/api/p/:id/review', async ({ app, params, req }) => {
     const body = await readBody(req);
