@@ -7,6 +7,7 @@ import { ENTITY_KINDS, STAGES, isEntityKind, isFacet, type Facet } from './domai
 import { MODEL_USAGE, modelCommand } from './cli-models.ts';
 import { NODE_USAGE, nodeCommand } from './cli-nodes.ts';
 import { ORCHESTRATE_USAGE, orchestrateCommand } from './cli-orchestrate.ts';
+import { GENERATE_USAGE, generateCommand } from './cli-generate.ts';
 import { SERVE_USAGE, serveCommand } from './cli-serve.ts';
 import { intFlag, need, parseArgs, print, readJson, stageArg, withProject } from './cli-shared.ts';
 import { ImportError, importArtifact } from './import/import-artifact.ts';
@@ -27,6 +28,7 @@ const USAGE = `cli.ts — AI 短剧平台
   media verify <dir>                            重算哈希，核验素材
 ${NODE_USAGE}
 ${ORCHESTRATE_USAGE}
+${GENERATE_USAGE}
 ${MODEL_USAGE}
 ${SERVE_USAGE}`;
 
@@ -77,7 +79,7 @@ async function main(argv: readonly string[]): Promise<number> {
   else if (cmd === 'stale') print(await withProject(need(args[0], 'stale <dir>'), (p) => findStaleRefs(p.db)));
   else if (cmd === 'media') print(await cmdMedia(args));
   else {
-    const result = (await nodeCommand(cmd, args, flags)) ?? (await orchestrateCommand(cmd, args, flags)) ?? (await modelCommand(cmd, args, flags)) ?? (await serveCommand(cmd, args, flags));
+    const result = (await nodeCommand(cmd, args, flags)) ?? (await orchestrateCommand(cmd, args, flags)) ?? (await generateCommand(cmd, args, flags)) ?? (await modelCommand(cmd, args, flags)) ?? (await serveCommand(cmd, args, flags));
     if (!result) throw new Error(`未知命令 ${cmd}\n\n${USAGE}`);
     print(result.output);
     return result.exitCode;

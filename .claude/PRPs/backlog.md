@@ -35,6 +35,8 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 25 | 质量门缓存键带上 skill 内容哈希 | 后端 | 2026-10-31 单句上限排查 | 待规划 | — |
 | 26 | `web:dev` 下也能操作（令牌与同源） | 工程 | 2026-10-31 讨论 | 暂缓 | — |
 | 27 | 平台测试夹具里的 skill 拷贝同步到 3.0.1 | 工程 | shuohao-skills fork PR #2 | 待 PR #2 合并 | — |
+| 28 | 场景图、道具图的生成（关键帧挂场景参考） | 功能 | Phase 5 计划 GATE 1 | 待规划 | — |
+| 29 | character-refs 加「只出提示词」命令，短剧工坊改调它 | 工程 | Phase 5 计划 GATE 1（方案 C） | 待规划 | — |
 
 ---
 
@@ -186,6 +188,14 @@ DeepSeek Flash 的价格来自第三方（标「未核对官方」），V4 Pro �
 ### 27. 平台测试夹具里的 skill 拷贝同步到 3.0.1
 
 `test/fixtures/skills/` 是平台测试用的 skill 拷贝，novel-script 还是 3.0.0（单句上限 35 字）。fork 的 PR #2（crystaldust/shuohao-skills，35→22 字，novel-script 3.0.1）合并后，整份重新拷贝，跑平台测试确认不受影响（渡口样例的台词句数变了）。
+
+### 28. 场景图、道具图的生成
+
+novel-storyboard 的 `references/frame.md` 要求关键帧挂场景图（场景卡）、出场角色图和叙事道具图；短剧工坊的付费节点只有角色参考图、关键帧、视频，美术（art.json）里的场景、道具只有提示词没有图。Phase 5 的关键帧因此只挂角色锚点（Qwen-Image 3.0 最多 3 张参考），计划输入里记下想挂但没有的参考。要做的话：加 `image:scene-refs`（及道具）付费节点、估算口径、确认单勾选，关键帧参考的取舍规则改成场景图优先 + 主要角色。来源：`plans/image-video-generation.plan.md`「已定」第 2 条。
+
+### 29. character-refs 加「只出提示词」命令，短剧工坊改调它
+
+Phase 5 的角色参考图在短剧工坊里照 character-refs `scripts/core.mjs` 的 5 个视图写了一份常量（方案 A），视图规则因此有两份，skill 改了不会自动同步。做法：在 shuohao-skills fork 给 character-refs 加一个只出提示词的命令（输入 novel-characters 的角色卡，输出各视图的提示词、比例与参考关系，不出图），短剧工坊调它拿提示词、出图仍走自己的任务状态机，然后删掉平台里的常量。PR 只提到 fork（crystaldust/shuohao-skills）。来源：同上第 3 条。
 
 ### 22. 固定常用的 skills 目录（暂缓）
 
