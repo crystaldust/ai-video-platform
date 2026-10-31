@@ -4,6 +4,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { STAGES, type Stage } from '../../domain/types.ts';
 import { estimateProject, type ProjectEstimate } from '../../estimate/estimate.ts';
 import { listOf } from '../../executor/recipe-kit.ts';
+import { STAGE_DEPS } from '../../orchestrate/deps.ts';
 import { pendingCells, type MatrixCell } from '../../orchestrate/review-matrix.ts';
 import { loadPresets } from '../../presets/presets.ts';
 import type { Project } from '../../project.ts';
@@ -29,8 +30,16 @@ export interface EpisodeRow {
   readonly estimate: { readonly low: number; readonly high: number } | null;
 }
 
+/** 哪个上游、哪一集按当前质量门不过——下游怎么修都过不了，得先回去改它。 */
+export interface UpstreamBlame {
+  readonly stage: Stage;
+  readonly episode: string | null;
+  readonly ep: number | null;
+}
+
 export interface PendingItem {
-  readonly kind: 'stale' | 'needs_human' | 'failed';
+  /** gate：已有产物，但按当前挂载 skill 的质量门不过（skill 升级后门变严，旧产物不会自己重查） */
+  readonly kind: 'stale' | 'needs_human' | 'failed' | 'gate';
   readonly stage: Stage;
   readonly episode: string | null;
   readonly ep: number | null;
@@ -38,6 +47,8 @@ export interface PendingItem {
   readonly detail: string;
   readonly runId: number | null;
   readonly reasons: MatrixCell['reasons'];
+  /** 没过的运行：上游有门不过时指向它 */
+  readonly upstream: UpstreamBlame | null;
 }
 
 export interface LogRun {
@@ -91,21 +102,71 @@ function episodeRows(db: DatabaseSync, cells: readonly MatrixCell[], estimate: P
   });
 }
 
-/** 待你处理：需复核的格子，加上最近一次没过的运行。 */
-function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: readonly StageCard[]): PendingItem[] {
-  const epNo = new Map(episodesIn(docOf(db, 'outline')).map((e) => [e['id'], Number(e['ep'])]));
+/** 一个阶段的全部上游（含可选的、间接的），按流水线顺序。 */
+function upstreamsOf(stage: Stage): Stage[] {
+  const found = new Set<Stage>();
+  const visit = (s: Stage) => {
+    for (const u of [...STAGE_DEPS[s].needs, ...STAGE_DEPS[s].optional]) {
+      if (!found.has(u)) {
+        found.add(u);
+        visit(u);
+      }
+    }
+  };
+  visit(stage);
+  return STAGES.filter((s) => found.has(s));
+}
+
+/**
+ * 每一条违规都点到同一集（「第 14 集」）才认出是哪一集；有一条没点集或点到别的集就不猜——
+ * 认错了会把别处的问题漏在打回范围外。
+ */
+export function episodeNamed(failed: readonly string[], epId: ReadonlyMap<number, string>): { episode: string; ep: number } | null {
+  const per = failed.map((f) => new Set([...f.matchAll(/第 ?(\d+) ?集/g)].map((m) => Number(m[1]))));
+  const eps = new Set(per.flatMap((s) => [...s]));
+  if (eps.size !== 1 || per.some((s) => s.size === 0)) return null;
+  const ep = [...eps][0]!;
+  const episode = epId.get(ep);
+  return episode ? { episode, ep } : null;
+}
+
+const epPrefix = (ep: number | null): string => (ep ? `第 ${String(ep).padStart(2, '0')} 集 · ` : '');
+
+/**
+ * 待你处理：最近一次没过的运行、按当前质量门不过的阶段、需复核的格子。
+ * gates 与 cards 一一对应（各阶段对最新产物跑当前 skill 的检查；没有产物或检查跑挂了是 null）。
+ */
+function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: readonly StageCard[], gates: readonly (GateResult | null)[]): PendingItem[] {
+  const outline = episodesIn(docOf(db, 'outline'));
+  const epNo = new Map(outline.map((e) => [e['id'], Number(e['ep'])]));
+  const epId = new Map(outline.map((e) => [Number(e['ep']), String(e['id'])]));
+  const failedGates = new Map(cards.flatMap((c, i) => (gates[i]?.failed.length ? [[c.stage, gates[i]!.failed] as const] : [])));
+  const blameOf = (stage: Stage): UpstreamBlame | null => {
+    const up = upstreamsOf(stage).find((s) => failedGates.has(s));
+    if (!up) return null;
+    const named = episodeNamed(failedGates.get(up)!, epId);
+    return { stage: up, episode: named?.episode ?? null, ep: named?.ep ?? null };
+  };
   const failed = cards.flatMap((c): PendingItem[] => {
     const run = c.lastRun;
     if (!run || (run.status !== 'needs_human' && run.status !== 'failed')) return [];
     const last = db.prepare('SELECT violations FROM node_attempt WHERE run_id = ? ORDER BY id DESC LIMIT 1').get(run.id) as { violations: string } | undefined;
     const violations: string[] = last ? JSON.parse(last.violations) : [];
-    return [{ kind: run.status, stage: c.stage, episode: null, ep: null, title: `${c.title}${run.status === 'needs_human' ? '未通过' : '失败'}`, detail: violations[0] ?? run.error ?? '', runId: run.id, reasons: [] }];
+    return [{ kind: run.status, stage: c.stage, episode: null, ep: null, title: `${c.title}${run.status === 'needs_human' ? '未通过' : '失败'}`, detail: violations[0] ?? run.error ?? '', runId: run.id, reasons: [], upstream: blameOf(c.stage) }];
+  });
+  const listed = new Set(failed.map((f) => f.stage));
+  const gateItems = cards.flatMap((c): PendingItem[] => {
+    const bad = failedGates.get(c.stage);
+    if (!bad || listed.has(c.stage)) return [];
+    const named = episodeNamed(bad, epId);
+    const more = bad.length > 1 ? `（共 ${bad.length} 项）` : '';
+    return [{ kind: 'gate', stage: c.stage, episode: named?.episode ?? null, ep: named?.ep ?? null, title: `${epPrefix(named?.ep ?? null)}${c.title}按当前质量门不过`, detail: `${bad[0]}${more}`, runId: c.lastRun?.id ?? null, reasons: [], upstream: null }];
   });
   const stale = cells.map((c): PendingItem => {
     const ep = c.episode ? (epNo.get(c.episode) ?? null) : null;
-    return { kind: 'stale', stage: c.stage, episode: c.episode, ep, title: `${ep ? `第 ${String(ep).padStart(2, '0')} 集 · ` : ''}${STAGE_TITLES[c.stage]}需复核`, detail: `${reasonOf(c)}：${c.reasons.length} 处引用还钉着旧版本`, runId: c.lastRun?.id ?? null, reasons: c.reasons };
+    return { kind: 'stale', stage: c.stage, episode: c.episode, ep, title: `${epPrefix(ep)}${STAGE_TITLES[c.stage]}需复核`, detail: `${reasonOf(c)}：${c.reasons.length} 处引用还钉着旧版本`, runId: c.lastRun?.id ?? null, reasons: c.reasons, upstream: null };
   });
-  return [...failed, ...stale];
+  return [...failed, ...gateItems, ...stale];
 }
 
 /** 运行记录最多带多少次运行（最近的），免得项目跑久了全貌越来越大 */
@@ -180,7 +241,7 @@ export async function overview(app: App, project: Project, id: string): Promise<
   const orch = listOrchestrations(db).at(-1) ?? null;
   const cost = textCost(db);
   const gate = listPaidGates(db).filter((g) => g.status === 'awaiting_confirmation').at(-1) ?? null;
-  const pending = pendingItems(db, cells, cards);
+  const pending = pendingItems(db, cells, cards, gates);
   const elapsed = orch ? (orch.endedAt ? Date.parse(orch.endedAt) : Date.now()) - Date.parse(orch.startedAt) : null;
   return {
     project: projectHead(project, id),

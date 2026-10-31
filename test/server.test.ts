@@ -409,3 +409,45 @@ test('运行记录：重跑某个阶段、打回之后，之前的记录还在�
   assert.equal(afterReject.at(-1)!.stage, 'script');
   assert.deepEqual(afterReject.map((r) => r.id), [...afterReject.map((r) => r.id)].sort((a, b) => a - b), '按时间先后');
 });
+
+test('上游按当前质量门不过：全貌列出这一阶段并认出是哪一集；转人工的下游指向它', async (t) => {
+  const { createRun, finishRun, startAttempt, endAttempt } = await import('../src/repo/runs.ts');
+  const { currentMount } = await import('../src/repo/skills.ts');
+  const { currentInput } = await import('../src/repo/inputs.ts');
+  const h = await startHarness();
+  t.after(() => h.close());
+  const project = await dukoProject(h);
+  // 剧本早先过了门，后来 skill 的门变严（这里直接写一句超长台词来模拟）
+  const script = loadFixture('script');
+  const beat = script.episodes[2].scenes[0].flow.find((b: { line?: string }) => typeof b.line === 'string');
+  beat.line = '这一句台词故意写得特别特别长，长到任何一个分镜都装不下，只为了让单句上限这道门不过。';
+  importArtifact(project, 'script', script);
+  // 分镜修了三轮仍转人工
+  const db = project.db;
+  const runId = createRun(db, { stage: 'storyboard', skillId: currentMount(db, 'storyboard')!.id, model: 'fake:fake', inputId: currentInput(db)!.id, maxAttempts: 3 });
+  endAttempt(db, startAttempt(db, { runId, step: 'repair:validate:ep3', n: 1, system: '', user: '' }), { output: null, violations: ['质量门未过：认领节拍的台词装得进分镜秒数'], usage: null });
+  finishRun(db, runId, { status: 'needs_human', error: 'validate 重试 3 次仍未通过' });
+  project.close();
+
+  const o = (await h.call('GET', encodeURI('/api/p/渡口/overview'))).body.data;
+  const gate = o.pending.find((p: { kind: string }) => p.kind === 'gate');
+  assert.ok(gate, JSON.stringify(o.pending.map((p: { kind: string; stage: string }) => [p.kind, p.stage])));
+  assert.equal(gate.stage, 'script');
+  assert.equal(gate.episode, DUKO.ep3, '从违规里认出是第 3 集');
+  assert.match(gate.detail, /单句台词/);
+  const human = o.pending.find((p: { kind: string }) => p.kind === 'needs_human');
+  assert.equal(human.stage, 'storyboard');
+  assert.equal(human.upstream?.stage, 'script', '转人工的分镜指向门不过的上游');
+  assert.equal(human.upstream?.episode, DUKO.ep3);
+  assert.ok(!o.pending.some((p: { kind: string; stage: string }) => p.kind === 'gate' && p.stage === 'storyboard'), '已经转人工的阶段不再另列门不过');
+});
+
+test('门不过的违规认集：每条都点到同一集才认，点到多集或有一条没点集就不猜', async () => {
+  const { episodeNamed } = await import('../src/server/views/overview.ts');
+  const ids = new Map([[3, 'ep_3'], [14, 'ep_14']]);
+  assert.deepEqual(episodeNamed(['单句台词 ≤ 22 字 — 第 14 集「三个月…」25 字'], ids), { episode: 'ep_14', ep: 14 });
+  assert.deepEqual(episodeNamed(['第14集 A', '第 14 集 B'], ids), { episode: 'ep_14', ep: 14 }, '同一集的多条违规');
+  assert.equal(episodeNamed(['第 3 集 A', '第 14 集 B'], ids), null, '点到两集');
+  assert.equal(episodeNamed(['第 14 集 A', '角色表缺 C09'], ids), null, '有一条没点集');
+  assert.equal(episodeNamed(['第 9 集 A'], ids), null, '大纲里没有这一集');
+});
