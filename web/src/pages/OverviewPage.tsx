@@ -12,6 +12,7 @@ import { StagePipeline } from '../components/StagePipeline.tsx';
 import { Button, ButtonHint, ErrorView, Loading, PageHead, Segmented, useToast } from '../components/ui.tsx';
 import s from '../components/overview.module.css';
 import { clock, yuan, yuanRange } from '../format.ts';
+import { overviewTab, sidePanel, type OverviewTab } from '../overview-tabs.ts';
 import type { Overview, PendingItem } from '../types.ts';
 
 const RELOAD_MS = 700;
@@ -42,6 +43,7 @@ export function OverviewPage() {
   const [selectedEp, setSelectedEp] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
+  const [pickedTab, setPickedTab] = useState<OverviewTab | null>(null);
   const [now, setNow] = useState(Date.now());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,6 +59,8 @@ export function OverviewPage() {
 
   const data = o.data;
   const running = Boolean(data?.job) || data?.orchestration?.status === 'running';
+  // 任务开始、结束时回到自动：开跑看运行记录，跑完回到分集全貌
+  useEffect(() => setPickedTab(null), [running]);
   // 运行中让用时走起来
   useEffect(() => {
     if (!running) return;
@@ -77,6 +81,7 @@ export function OverviewPage() {
   const next = pending.find((p) => p !== item && !(item && p.stage === item.stage && p.episode === item.episode)) ?? null;
   const elapsed = data.orchestration ? (data.orchestration.endedAt ? data.summary.elapsedMs : now - Date.parse(data.orchestration.startedAt)) : null;
   const total = paidTotal(data);
+  const tab = overviewTab(pickedTab, running);
   const done = (msg: string) => {
     notify(msg);
     o.reload();
@@ -122,42 +127,57 @@ export function OverviewPage() {
         <Metric label="待你处理" value={String(data.summary.pending)} unit="项" />
       </div>
       <StagePipeline stages={data.stages} log={data.log} estimate={data.estimate} estimateError={data.estimateError} />
-      {running ? (
-        <div className={s.body}>
-          <RunLog log={data.log} />
-          <CurrentPanel log={data.log} stages={data.stages} />
-        </div>
-      ) : null}
-      {/* 运行中也留着分集表：能看各集进度、选好集；任务在跑时打回、重跑按钮是禁用的 */}
+      {/* 分集全貌与运行记录并列成两个 tab：运行中也能切去分集表选好集（打回、重跑按钮在跑时是禁用的） */}
+      <div className={s.tabs} role="tablist" aria-label="全貌内容">
+        {(
+          [
+            ['episodes', '分集全貌', `${data.episodes.length} 集`],
+            ['log', '运行记录', `${data.log.length} 次${running ? ' · 运行中' : ''}`],
+          ] as const
+        ).map(([k, label, sub]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={s.tab} onClick={() => setPickedTab(k)}>
+            {label}
+            <small>{sub}</small>
+          </button>
+        ))}
+      </div>
       <div className={s.body}>
-        <EpisodeTable
-          episodes={data.episodes}
-          selected={episodeId}
-          estimate={data.estimate}
-          onSelect={(ep) => {
-            setSelectedEp(ep);
-            setSelectedItem(null);
-          }}
-        />
-        <DetailPanel
-          projectId={id}
-          item={item}
-          episode={episode}
-          next={next}
-          busy={Boolean(data.job)}
-          stages={data.stages}
-          totalEpisodes={data.episodes.length}
-          onNext={(n) => {
-            setSelectedItem(n);
-            setSelectedEp(n.episode);
-          }}
-          onClose={() => {
-            setSelectedEp(null);
-            setSelectedItem(null);
-          }}
-          onDone={done}
-          onError={fail}
-        />
+        {tab === 'log' ? (
+          <RunLog log={data.log} />
+        ) : (
+          <EpisodeTable
+            episodes={data.episodes}
+            selected={episodeId}
+            estimate={data.estimate}
+            onSelect={(ep) => {
+              setSelectedEp(ep);
+              setSelectedItem(null);
+            }}
+          />
+        )}
+        {sidePanel(tab, running) === 'current' ? (
+          <CurrentPanel log={data.log} stages={data.stages} />
+        ) : (
+          <DetailPanel
+            projectId={id}
+            item={item}
+            episode={episode}
+            next={next}
+            busy={Boolean(data.job)}
+            stages={data.stages}
+            totalEpisodes={data.episodes.length}
+            onNext={(n) => {
+              setSelectedItem(n);
+              setSelectedEp(n.episode);
+            }}
+            onClose={() => {
+              setSelectedEp(null);
+              setSelectedItem(null);
+            }}
+            onDone={done}
+            onError={fail}
+          />
+        )}
       </div>
       {gateOpen && data.gate ? (
         <PaidGateModal
