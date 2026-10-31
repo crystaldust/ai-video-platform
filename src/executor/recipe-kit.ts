@@ -144,6 +144,12 @@ export interface RecipeContext {
   runMounted(stage: Stage, args: readonly string[]): Promise<string>;
 }
 
+/** 上游按集切开：各集共用的部分，和每集各自用到的那一片（集 id → 片）。 */
+export interface UpstreamSlices {
+  readonly shared: unknown;
+  readonly episodes: ReadonlyMap<string, unknown>;
+}
+
 export interface Recipe {
   readonly name: string;
   /** 必须已有的上游 */
@@ -156,6 +162,12 @@ export interface Recipe {
   readonly needsInput: boolean;
   /** 能只重跑其中几集（产物按集负责）；大纲、角色、美术是整份负责，不能 */
   readonly perEpisode: boolean;
+  /**
+   * 续跑按集比上游：把上游分成各集共用的部分和每集各自用到的那一片（集 id → 片）。
+   * 共用部分一样时，片没变的集沿用、变了的重写；没给就整份比（任何一处变了都不沿用）。
+   * 只有每集的提示词确实只用到自己那一片时才能给——剧本每批都带整份大纲，就不给。
+   */
+  sliceUpstream?(upstream: Partial<Record<Stage, Doc>>): UpstreamSlices;
   run(ctx: RecipeContext): Promise<Doc>;
 }
 

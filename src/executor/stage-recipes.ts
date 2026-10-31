@@ -25,6 +25,7 @@ import {
   type Recipe,
   type RecipeContext,
   type RepairSplit,
+  type UpstreamSlices,
 } from './recipe-kit.ts';
 import type { Stage } from '../domain/types.ts';
 
@@ -338,10 +339,37 @@ function storyboardSplit(sb: Omit<StoryboardPass, 'head'>): RepairSplit {
   };
 }
 
+/**
+ * 分镜每集只问这一集：用到剧本里这一集、站位里这一集那几场；剧本与站位的其余部分、大纲、角色、美术各集共用。
+ * 角色、美术虽然也只带这几场用到的，但按整份算共用——宁可多重写，不拿变过的卡片沿用旧分镜。
+ */
+export function storyboardSlices(upstream: Partial<Record<Stage, Doc>>): UpstreamSlices {
+  const script = upstream.script ?? null;
+  const staging = upstream.staging ?? null;
+  const stagingScenes = listOf(staging, 'scenes');
+  const owned = new Set<unknown>();
+  const episodes = new Map(
+    listOf(script, 'episodes').map((e) => {
+      const refs = new Set(listOf(e, 'scenes').map((sc) => sc['id']));
+      const scenes = stagingScenes.filter((x) => refs.has(x['sceneRef']));
+      for (const x of scenes) owned.add(x);
+      return [String(e['id']), { script: e, staging: scenes }] as const;
+    }),
+  );
+  const shared = {
+    ...upstream,
+    ...(script ? { script: omit(script, ['episodes']) } : {}),
+    // 落不到任何一集的站位场次（对不上剧本）留在共用部分里
+    ...(staging ? { staging: { ...omit(staging, ['scenes']), scenes: stagingScenes.filter((x) => !owned.has(x)) } } : {}),
+  };
+  return { shared, episodes };
+}
+
 const novelStoryboard: Recipe = {
   name: 'novel-storyboard',
   ...deps('storyboard'),
   keysOf: (violation, doc) => storyboardKeysOf(violation, doc),
+  sliceUpstream: storyboardSlices,
   needsInput: false,
   perEpisode: true,
   async run(ctx) {
