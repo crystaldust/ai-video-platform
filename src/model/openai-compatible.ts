@@ -31,7 +31,7 @@ const finishOf = (raw: unknown): FinishReason =>
 const num = (x: unknown): number | null => (typeof x === 'number' && Number.isFinite(x) ? x : null);
 
 /** 毫秒；Retry-After 可以是秒数，也可以是 HTTP 日期。 */
-function retryAfterMs(header: string | null, now = Date.now()): number | null {
+export function retryAfterMs(header: string | null, now = Date.now()): number | null {
   if (!header) return null;
   const secs = Number(header);
   if (Number.isFinite(secs)) return Math.max(0, secs * 1000);
@@ -39,7 +39,7 @@ function retryAfterMs(header: string | null, now = Date.now()): number | null {
   return Number.isNaN(at) ? null : Math.max(0, at - now);
 }
 
-function classify(status: number, provider: string, body: string, retryAfter: number | null): ModelError {
+export function classify(status: number, provider: string, body: string, retryAfter: number | null): ModelError {
   const detail = body.slice(0, 300);
   if (status === 401 || status === 403) return new ModelError('auth', `${provider} 鉴权失败（HTTP ${status}）：检查凭据，cred set ${provider}`, status);
   if (status === 429) return new ModelError('rate', `${provider} 限流（HTTP 429）：${detail}`, status, retryAfter);

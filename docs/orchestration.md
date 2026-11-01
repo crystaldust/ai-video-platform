@@ -34,7 +34,7 @@ cli go <dir> --concurrency 2 --model-cmd "<命令>"
 cli gates <dir>
 ```
 
-确认与勾选由 Phase 5 的生成器处理。
+确认后用 `cli generate <dir>` 按勾选的节点与集生成（到预算上限就停），见 [generation.md](generation.md)。
 
 ## 打回
 
