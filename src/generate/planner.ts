@@ -10,7 +10,7 @@ import { latestArtifactDoc } from '../repo/artifacts.ts';
 import { currentVersion } from '../repo/entities.ts';
 import type { PaidGateRow } from '../repo/paid-gates.ts';
 import { createTask, listTasks, type PaidNode, type TaskRow } from '../repo/tasks.ts';
-import { ANCHOR_VIEW, CHARACTER_VIEWS, characterViewPrompt, keyframePrompt, pickRefs, sizeFor, VIEW_ORDER, type Ratio } from './prompts.ts';
+import { ANCHOR_VIEW, isRatio, KEYFRAME_NEGATIVE, keyframePrompt, pickRefs, sizeFor, VIEW_ORDER, type Ratio } from './prompts.ts';
 
 /** Qwen-Image 3.0 最多 3 张参考图 */
 const MAX_IMAGE_REFS = 3;
@@ -76,10 +76,22 @@ function versionId(db: DatabaseSync, kind: 'character' | 'cut' | 'segment', key:
   throw new Error(`项目库里没有 ${kind} ${key} 的当前版本（先导入或重跑上游）`);
 }
 
+/** 尺寸档：默认 2k（qwen-image-3.0 两档同价），确认单的估算显式选了 1k 才用 1k。 */
+const tierOf = (c: NodeChoice): '1k' | '2k' => (c.params['size'] === '1k' ? '1k' : '2k');
+
+/** 角色卡里 character-refs 生成的这个视图（角色阶段存的 characterRefs.views）；缺了就报错，不退回别的提示词。 */
+function viewOf(card: Doc, name: string, id: string, view: string): { prompt: string; negative: string; ratio: Ratio; refs: string[] } {
+  const views = isDoc(card['characterRefs']) ? card['characterRefs']['views'] : undefined;
+  if (!isDoc(views)) throw new Error(`角色卡「${name}」（${id}）没有出图提示词：先重跑角色阶段（角色图提示词由 character-refs 生成）`);
+  const v = views[view];
+  if (!isDoc(v) || !text(v['prompt']).trim()) throw new Error(`角色卡「${name}」（${id}）的出图提示词缺视图 ${view}：先重跑角色阶段`);
+  if (!isRatio(v['ratio'])) throw new Error(`角色卡「${name}」（${id}）的视图 ${view} 画幅是 ${String(v['ratio'])}，百炼的尺寸表里没有（character-refs 改了视图比例？要先在平台的尺寸表里加上）`);
+  return { prompt: text(v['prompt']), negative: text(v['negative']), ratio: v['ratio'], refs: Array.isArray(v['refs']) ? (v['refs'] as unknown[]).map(text) : [] };
+}
+
 function characterDrafts(db: DatabaseSync, prices: PriceSources, c: NodeChoice): Draft[] {
   const outline = latestArtifactDoc(db, 'outline')?.doc;
   const cards = new Map(list(latestArtifactDoc(db, 'cast')?.doc, 'characters').map((card) => [text(card['name']), card]));
-  const size = (view: (typeof VIEW_ORDER)[number]) => sizeFor(CHARACTER_VIEWS[view].ratio, c.params['size'] === '2k' ? '2k' : '1k');
   return list(outline, 'characters')
     .filter((ch) => ch['tier'] !== 'functional')
     .flatMap((ch) => {
@@ -87,17 +99,16 @@ function characterDrafts(db: DatabaseSync, prices: PriceSources, c: NodeChoice):
       const name = text(ch['name']);
       const card = cards.get(name);
       if (!card) throw new Error(`角色卡里没有「${name}」（${id}）：先跑或导入角色阶段`);
-      const appearance = text(isDoc(card['image']) ? card['image']['prompt'] : '');
       const target = versionId(db, 'character', id, ['cast', 'outline']);
       return VIEW_ORDER.map((view): Draft => {
-        const p = characterViewPrompt(appearance, view);
-        const deps = CHARACTER_VIEWS[view].usesAnchor ? [taskKey('image:character-refs', `${id}:${ANCHOR_VIEW}`)] : [];
+        const v = viewOf(card, name, id, view);
+        const deps = v.refs.includes(ANCHOR_VIEW) ? [taskKey('image:character-refs', `${id}:${ANCHOR_VIEW}`)] : [];
         return {
           node: 'image:character-refs',
           label: `${id}:${view}`,
           episodeKey: null,
           targetVersionId: target,
-          plannedInput: { kind: 'character-view', character: id, view, prompt: p.prompt, negativePrompt: p.negativePrompt, size: size(view), deps },
+          plannedInput: { kind: 'character-view', character: id, view, prompt: v.prompt, negativePrompt: v.negative, size: sizeFor(v.ratio, tierOf(c)), deps },
           usd: priced(prices, c, [['image', 1], ['ref_image', deps.length]]),
         };
       });
@@ -146,7 +157,7 @@ function keyframeDrafts(db: DatabaseSync, prices: PriceSources, c: NodeChoice, e
           label: text(cut['id']),
           episodeKey: ep.id,
           targetVersionId: versionId(db, 'cut', text(cut['id']), ['storyboard']),
-          plannedInput: { kind: 'keyframe', cut: cut['id'], prompt: keyframePrompt(text(cut['frame']), refs.used.map((id) => names.get(id) ?? id)), size: sizeFor(ep.aspect, c.params['size'] === '2k' ? '2k' : '1k'), deps, unavailable },
+          plannedInput: { kind: 'keyframe', cut: cut['id'], prompt: keyframePrompt(text(cut['frame']), refs.used.map((id) => names.get(id) ?? id)), negativePrompt: KEYFRAME_NEGATIVE, size: sizeFor(ep.aspect, tierOf(c)), deps, unavailable },
           usd: priced(prices, c, [['image', 1], ['ref_image', deps.length]]),
         };
       }),

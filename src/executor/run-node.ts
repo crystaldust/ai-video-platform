@@ -13,13 +13,13 @@ import { latestArtifactDoc } from '../repo/artifacts.ts';
 import { characterKeyIndex, sceneEpisodeIndex } from '../repo/entities.ts';
 import { currentInput } from '../repo/inputs.ts';
 import { createRun, endAttempt, failInterruptedRuns, finishRun, runningRun, startAttempt } from '../repo/runs.ts';
-import { currentMount, type SkillRow } from '../repo/skills.ts';
+import { currentMount, findSkill, type SkillRow } from '../repo/skills.ts';
 import { mergeScoped } from './scoped.ts';
 import { boundarySection, parseFrontmatter, type SkillFrontmatter } from '../skills/frontmatter.ts';
 import { describeFailure, runScript } from '../skills/script-runner.ts';
 import { extractJson } from './json-output.ts';
 import { buildPrompt } from './prompt.ts';
-import { episodesOf, isDoc, mergeEpisodes, OutputTruncated, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type Recipe, type RecipeContext, type RepairSplit, type UpstreamSlices } from './recipes.ts';
+import { episodesOf, isDoc, mergeEpisodes, OutputTruncated, parseViolations, passedEpisodes, planRepair, RECIPES, withTask, type AskParts, type Check, type Doc, type Recipe, type RecipeContext, type RepairSplit, type UpstreamSlices } from './recipes.ts';
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
@@ -98,15 +98,7 @@ export class NeedsHuman extends Error {
   }
 }
 
-/** validate 的输出：首行「✗ N 处违规」，其后每行一条。通过时 exit 0。 */
-export function parseViolations(code: number, stdout: string, stderr: string): string[] {
-  if (code === 0) return [];
-  const lines = `${stdout}\n${stderr}`
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith('✗') && !l.startsWith('✓'));
-  return lines.length ? lines : [describeFailure('validate', { code, stdout, stderr })];
-}
+export { parseViolations };
 
 const stripFrontmatter = (md: string): string => md.replace(/^---\n[\s\S]*?\n---\n/, '');
 
@@ -347,6 +339,21 @@ class NodeRun {
         const r = await runScript(join(mounted.dir, mounted.script), args, { cwd: this.dir });
         if (r.code !== 0) throw new Error(describeFailure(`${mounted.name} ${args[0]}`, r));
         return r.stdout;
+      },
+      companion: (name) => {
+        const other = findSkill(this.project.db, p.skill.packId, name);
+        if (!other) return null;
+        return {
+          version: other.version,
+          readFile: (rel) => {
+            const path = join(other.dir, rel);
+            return existsSync(path) ? readFileSync(path, 'utf8') : '';
+          },
+          run: async (args) => {
+            if (!other.script) throw new Error(`skill ${other.name} 没有脚本，不能运行 ${args[0]}`);
+            return runScript(join(other.dir, other.script), args, { cwd: this.dir });
+          },
+        };
       },
     };
   }

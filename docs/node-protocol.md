@@ -32,7 +32,7 @@ cli runs ~/dramas/duko --id 1     # 某次运行的每次尝试（步骤、违�
 ```
 
 - `name` 是 skill 目录名，注册时到 `--root/<name>/SKILL.md` 读名称与版本（不信清单）。
-- `stage` 为 `null` 的 skill 只注册不挂载（例如出图，Phase 5 再接）。
+- `stage` 为 `null` 的 skill 只注册不挂载，由配方在**同一个包**里按名字调用（`RecipeContext.companion`）。例如 character-refs：角色配方调它的 `intake-check`、`new`、`prompt` 生成出图提示词。
 - `script` 必须是 skill 目录内的相对路径；只有提示词的 skill 写 `null`。
 - `requires.major`：挂到 outline / art / script / staging / storyboard 的 skill 主版本不能低于它——这些阶段的产物要带稳定 id，平台的键依赖它们。
 - 注册时记下 `SKILL.md` 与脚本的 sha256，并无参运行脚本探测它支持哪些子命令（seed / ids / validate / blocking）。

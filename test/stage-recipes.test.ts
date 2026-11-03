@@ -28,10 +28,23 @@ test('角色卡：seed 名单 → 每人一张卡 → 故事摘要 → validate�
   const out = await runNode(project, 'cast', { model });
 
   assert.equal(out.status, 'passed', `${out.message}\n${out.violations?.join('\n')}`);
-  assert.deepEqual(steps(project, out.runId), ['card:C01', 'card:C02', 'card:C03', 'card:C04', 'card:C05', 'summary']);
-  const doc = latestArtifactDoc(project.db, 'cast')?.doc as { characters: { id: string; name: string; seedNote?: string }[] };
+  assert.deepEqual(steps(project, out.runId), ['card:C01', 'card:C02', 'card:C03', 'card:C04', 'card:C05', 'summary', 'refs:C01', 'refs:C02', 'refs:C03', 'refs:C04'], '过了门才生成出图提示词；功能角色 C05 不出图，没有 refs 一遍');
+  const doc = latestArtifactDoc(project.db, 'cast')?.doc as { characters: { id: string; name: string; seedNote?: string; characterRefs?: { skill: string; look: string; views: Record<string, { prompt: string; negative: string; ratio: string; refs: string[] }> } }[] };
   assert.deepEqual(doc.characters.map((c) => c.id), ['C01', 'C02', 'C03', 'C04', 'C05'], '角色码照抄大纲，名单以大纲为准');
   assert.ok(doc.characters.every((c) => c.seedNote === undefined), 'seedNote 不进成品');
+  // 出图提示词由 character-refs 拼：取景在第一句、写实画风层、派生视图只参考锚点；novel-characters 的 validate 不管多出来的键
+  const refs = doc.characters[0]!.characterRefs!;
+  assert.equal(refs.skill, 'character-refs@2.1.0');
+  assert.equal(refs.look, 'realistic-photo');
+  assert.deepEqual(Object.keys(refs.views), ['front-full', 'face-front', 'side-full', 'back-full', 'face-45']);
+  assert.match(refs.views['front-full']!.prompt, /^Full-body front view/);
+  assert.match(refs.views['front-full']!.prompt, /A real photograph, not a render/);
+  assert.match(refs.views['face-front']!.prompt, /^Zoom in to an extreme close-up/);
+  assert.deepEqual(refs.views['front-full']!.refs, []);
+  assert.deepEqual(refs.views['side-full']!.refs, ['front-full']);
+  assert.match(refs.views['front-full']!.negative, /plastic skin/);
+  assert.ok(doc.characters.slice(0, 4).every((c) => c.characterRefs), '4 个出图角色都有');
+  assert.equal(doc.characters[4]!.characterRefs, undefined, '功能角色没有');
   assert.match(promptSection(model.requests[0]!.user, '同批其他角色') ?? '', /陆行远/);
   assert.match(model.requests[0]!.user, /【原文】/);
   cleanup();
@@ -49,8 +62,12 @@ test('角色卡：validate 不过（出图提示词带人名）时整份修复',
   });
   const out = await runNode(project, 'cast', { model });
   assert.equal(out.status, 'passed', out.message);
-  assert.deepEqual(steps(project, out.runId).slice(-1), ['repair:validate']);
-  assert.match(promptSection(model.requests.at(-1)!.user, '上一次的违规') ?? '', /沈知微/);
+  assert.deepEqual(steps(project, out.runId).slice(-5), ['repair:validate', 'refs:C01', 'refs:C02', 'refs:C03', 'refs:C04'], '修完再生成出图提示词');
+  const repair = model.requests.find((r) => r.user.includes('【上一次的违规'))!;
+  assert.match(promptSection(repair.user, '上一次的违规') ?? '', /沈知微/);
+  assert.doesNotMatch(promptSection(repair.user, '当前版本')!, /characterRefs/, '修复时不带出图提示词，篇幅小');
+  const doc = latestArtifactDoc(project.db, 'cast')?.doc as { characters: { characterRefs?: unknown }[] };
+  assert.ok(doc.characters.slice(0, 4).every((c) => c.characterRefs), '按修好的卡片生成');
   cleanup();
 });
 

@@ -4,12 +4,13 @@
 
 - 来源：`crystaldust/shuohao-skills` 的 `main`，提交 `9dd7129`（合并 `feat/stable-ids`，内容同 `d1b0ad4`），skill 版本 3.0.0（novel-characters 是 2.0.0：角色卡不带稳定 id，不受 3.0 主版本要求约束）
 - 拷贝内容：`novel-outline`、`novel-script`、`novel-characters`、`novel-art`、`novel-staging`、`novel-storyboard` 的 `SKILL.md`、`references/*.md`、`scripts/*.mjs`（不含 `selftest.mjs`）
+- `character-refs/`：来源是 `fix/line-fits-cut` 分支的提交 `b25d728`（character-refs 自 `9dd7129` 起没有改动），skill 版本 2.1.0；拷 `SKILL.md`、`references/*.md`、`scripts/*.mjs`（不含 `selftest.mjs`）。角色配方调它的 `intake-template`、`intake-check`、`new`、`prompt`，不出图
 - `prompt-only/`：平台自己写的假 skill，只有 `SKILL.md`，用来测「只有提示词」的通用配方
 
 上游更新后重新拷贝（在平台仓库根目录执行，`U` 指向上游仓库）：
 
 ```bash
-for s in novel-outline novel-script novel-characters novel-art novel-staging novel-storyboard; do
+for s in novel-outline novel-script novel-characters novel-art novel-staging novel-storyboard character-refs; do
   rm -rf test/fixtures/skills/$s && mkdir -p test/fixtures/skills/$s/references test/fixtures/skills/$s/scripts
   cp $U/skills/$s/SKILL.md test/fixtures/skills/$s/
   cp $U/skills/$s/references/*.md test/fixtures/skills/$s/references/
@@ -18,6 +19,8 @@ done
 ```
 
 另把 `$U/skills/novel-characters/examples/渡口.txt` 拷到 `test/fixtures/duko/渡口.txt`（角色卡的引文要逐字对原文）。
+
+character-refs 改了提示词的拼法后，`渡口-cast.json` 里 4 个出图角色的 `characterRefs` 要重新生成：按 `渡口-intake.json` 对每个角色跑 `new --look 写实` 和 5 个视图的 `prompt`，写回卡片（键放在 `voice` 后面）。不要手改提示词。
 
 然后更新本文件里的提交号，并跑 `pnpm test`。
 

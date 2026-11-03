@@ -13,7 +13,7 @@ export const SKILLS = join(ROOT, 'test', 'fixtures', 'skills');
 
 export const novelManifest = (): { skills: { name: string }[] } & Record<string, unknown> => JSON.parse(readFileSync(join(ROOT, 'packs', 'novel.pack.json'), 'utf8'));
 
-/** 副本里没有 character-refs：注册时记问题不阻断。manifest 可以换成删掉某些 skill 的版本。 */
+/** 副本里有 character-refs（stage 为 null，只注册不挂载，角色配方调它生成出图提示词）。manifest 可以换成删掉某些 skill 的版本。 */
 export async function setupNovel(project: Project, manifest: unknown = novelManifest()): Promise<void> {
   await registerPack(project.db, manifest, SKILLS, RECIPE_NAMES);
   addInput(project.db, { kind: 'novel', text: DUKO_BOOK, params: { episodes: 6, seconds: 120, genre: '民国情感悬疑' } });

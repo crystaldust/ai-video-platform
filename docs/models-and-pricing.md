@@ -15,7 +15,7 @@
 
 | 预设 | 文本 | 图片 | 视频 |
 |---|---|---|---|
-| `budget` 小成本验证 | DeepSeek Flash | Qwen-Image 3.0 1K | MiniMax H3-Lite 480P |
+| `budget` 小成本验证 | DeepSeek Flash | Qwen-Image 3.0 2K（国际站 1k、2k 同价） | MiniMax H3-Lite 480P |
 | `production` 生产级 | DeepSeek V4 Pro | Qwen-Image 3.0 Pro 2K | MiniMax H3 768P |
 
 - `text:*` 这类通配对整类节点生效，具体节点优先。
