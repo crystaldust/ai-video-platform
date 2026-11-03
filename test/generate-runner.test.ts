@@ -9,7 +9,7 @@ import { candidateOfTask } from '../src/repo/candidates.ts';
 import { getTask, listTasks } from '../src/repo/tasks.ts';
 import type { PaidGateRow } from '../src/repo/paid-gates.ts';
 import type { Project } from '../src/project.ts';
-import { DUKO } from './helpers.ts';
+import { DUKO, loadFixture } from './helpers.ts';
 import { FakeMediaModel, fakeDownload, type FakeBehavior } from './support/fake-media.ts';
 import { confirmGate, genProject, PRICES } from './support/gen-fixture.ts';
 
@@ -33,8 +33,9 @@ test('全勾第 1 集：全部入库为候选；锚点先于派生视图；关�
   assert.equal(img.submits.length, 54, '20 张参考图 + 34 帧关键帧，各提交一次');
   assert.equal(vid.submits.length, 10);
   const order = img.submits.map((s) => s.prompt);
-  const anchorAt = order.findIndex((p) => p.includes('Full-body front view') && p.includes('slender nineteen-year-old'));
-  const sideAt = order.findIndex((p) => p.includes('Full-body side profile') && p.includes('slender nineteen-year-old'));
+  const views = loadFixture('cast').characters[0].characterRefs.views;
+  const anchorAt = order.indexOf(views['front-full'].prompt);
+  const sideAt = order.indexOf(views['side-full'].prompt);
   assert.ok(anchorAt >= 0 && sideAt > anchorAt, '派生视图在锚点入库之后才提交');
   assert.equal(img.submits.find((s) => s.prompt.startsWith('参考图 1 是「沈知微」'))!.refs.length, 1);
   assert.equal(vid.submits.find((s) => s.prompt === vid.submits[0]!.prompt)!.refs.length, 4, '第 1 段 4 切');

@@ -2,6 +2,7 @@
 // 骨架里的事实（名单、分档、场次、节拍、出场人物）由 seed 确定性搬运，不让模型重想一遍。
 // 站位、分镜能只重跑几集（产物按集负责）；底稿（ctx.base）按每一遍切片后给模型，意见由执行器统一附上。
 import { STAGE_DEPS } from '../orchestrate/deps.ts';
+import { characterRefsFor, refsKit } from './character-refs.ts';
 import { parseBlocking, stagingCarryCheck } from './gates/staging-carry.ts';
 import {
   allChecks,
@@ -43,8 +44,30 @@ const readAll = (ctx: RecipeContext, files: readonly string[]): string => files.
 
 /* ---------------------------------------------------------------- 角色卡 */
 
-/** 名单、角色码由大纲定：模型交回的卡片以骨架的 id、name 为准，seedNote 不进成品。 */
-const cardFrom = (skeleton: Doc, card: Doc): Doc => omit({ ...card, name: skeleton['name'], ...(skeleton['id'] !== undefined ? { id: skeleton['id'] } : {}) }, ['seedNote']);
+/** 名单、角色码由大纲定：模型交回的卡片以骨架的 id、name 为准，seedNote 不进成品；characterRefs 只认 character-refs 生成的那份。 */
+const cardFrom = (skeleton: Doc, card: Doc): Doc => omit({ ...card, name: skeleton['name'], ...(skeleton['id'] !== undefined ? { id: skeleton['id'] } : {}) }, ['seedNote', 'characterRefs']);
+
+/**
+ * 要出图的角色（大纲分档不是 functional）各生成一份 characterRefs（character-refs 拼的出图提示词），按顺序逐个问。
+ * 返回补回 characterRefs 的函数（按角色名，名字对不上再按角色码）：平台门的修复只管导入问题，模型交回的整份可能弄丢或改坏它。
+ */
+async function withCharacterRefs(ctx: RecipeContext, cards: readonly Doc[], baseCards: ReadonlyMap<unknown, Doc>): Promise<(doc: Doc) => Promise<Doc>> {
+  const drawn = new Map(listOf(ctx.upstream.outline, 'characters').filter((c) => c['tier'] !== 'functional').map((c) => [c['name'], String(c['id'] ?? c['name'])]));
+  const made: { readonly name: unknown; readonly id: unknown; readonly refs: Doc }[] = [];
+  const kit = drawn.size ? await refsKit(ctx) : null;
+  for (const card of cards) {
+    const id = drawn.get(card['name']);
+    if (id === undefined || !kit) continue;
+    const old = baseCards.get(card['name'])?.['characterRefs'];
+    made.push({ name: card['name'], id: card['id'], refs: await characterRefsFor(ctx, kit, id, card, isDoc(old) ? old['intake'] : undefined) });
+  }
+  const refsOf = (c: Doc): Doc | undefined => (made.find((m) => m.name === c['name']) ?? made.find((m) => m.id !== undefined && m.id === c['id']))?.refs;
+  const put = (c: Doc): Doc => {
+    const refs = refsOf(c);
+    return refs ? { ...c, characterRefs: refs } : omit(c, ['characterRefs']);
+  };
+  return async (doc) => ({ ...doc, characters: listOf(doc, 'characters').map(put) });
+}
 
 const novelCharacters: Recipe = {
   name: 'novel-characters',
@@ -66,7 +89,7 @@ const novelCharacters: Recipe = {
         schema,
         source,
         sections: [{ title: '同批其他角色（长相、声线不要撞车）', body: names.filter((n) => n !== c['name']).join('、') || '无' }],
-        base: baseCards.get(c['name']),
+        base: baseCards.has(c['name']) ? omit(baseCards.get(c['name'])!, ['characterRefs']) : undefined,
         draft: c,
         draftLabel: '这个角色的骨架（seed 预填：名单、分档、弧光由大纲定，不要推翻）',
         outputSpec: '只输出这一个角色的完整角色卡（一个 JSON 对象），name 与骨架一致，seedNote 不要输出。',
@@ -80,9 +103,14 @@ const novelCharacters: Recipe = {
       base: isDoc(ctx.base) && typeof ctx.base['summary'] === 'string' ? ctx.base['summary'] : undefined,
       outputSpec: '只输出 {"summary": "…"}。',
     });
+    // 先过 novel-characters 的门，再按过了门的卡片生成出图提示词：修复改了外形，提示词也跟着最终的卡；门转人工时不白花这几遍。
+    // 门的 post 在 skill 门里什么也不做，到平台门（复用这个 post）时已换成补回 characterRefs
     const doc: Doc = { ...omit(seed, ['characters']), summary: summary['summary'], characters: cards };
     const book = ctx.writeWork('book.txt', ctx.source ?? '');
-    return ctx.gate(validateCheck(ctx, 'validate', 'cast.json', [book]), doc, { task, schema, source, outputSpec: '输出修正后的整份 cast.json。' });
+    let attachRefs = async (d: Doc): Promise<Doc> => d;
+    const passed = await ctx.gate(validateCheck(ctx, 'validate', 'cast.json', [book]), doc, { task, schema, source, outputSpec: '输出修正后的整份 cast.json。' }, (d) => attachRefs(d));
+    attachRefs = await withCharacterRefs(ctx, listOf(passed, 'characters'), baseCards);
+    return attachRefs(passed);
   },
 };
 

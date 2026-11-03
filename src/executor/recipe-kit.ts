@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import type { Stage } from '../domain/types.ts';
 import type { InputParams } from '../repo/inputs.ts';
 import type { SkillRow } from '../repo/skills.ts';
+import { describeFailure, type ScriptResult } from '../skills/script-runner.ts';
 import type { PromptParts } from './prompt.ts';
 
 export type Doc = Record<string, unknown>;
@@ -108,6 +109,25 @@ export function planRepair(violations: readonly string[], doc: Doc, split: Repai
   return { parts, whole: parts.size === 0 };
 }
 
+/** validate 的输出：首行「✗ N 处违规」，其后每行一条。通过时 exit 0。 */
+export function parseViolations(code: number, stdout: string, stderr: string): string[] {
+  if (code === 0) return [];
+  const lines = `${stdout}\n${stderr}`
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('✗') && !l.startsWith('✓'));
+  return lines.length ? lines : [describeFailure('validate', { code, stdout, stderr })];
+}
+
+/** 同包里的另一个 skill（不挂在任何阶段，只被配方调用）。 */
+export interface Companion {
+  readonly version: string;
+  /** skill 目录下的文件；不存在返回空串 */
+  readFile(rel: string): string;
+  /** 跑它的脚本（cwd 是运行目录），原样返回结果：非零退出由调用方判断 */
+  run(args: readonly string[]): Promise<ScriptResult>;
+}
+
 export interface RecipeContext {
   readonly skill: SkillRow;
   readonly params: InputParams | null;
@@ -142,6 +162,8 @@ export interface RecipeContext {
   readonly resumed: Doc | null;
   /** 跑另一个阶段挂载的 skill 的脚本（如分镜要站位的 blocking），返回 stdout；非零退出抛错 */
   runMounted(stage: Stage, args: readonly string[]): Promise<string>;
+  /** 同一个包里叫这个名字的 skill；没注册返回 null */
+  companion(name: string): Companion | null;
 }
 
 /** 上游按集切开：各集共用的部分，和每集各自用到的那一片（集 id → 片）。 */

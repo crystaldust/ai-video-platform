@@ -1,7 +1,8 @@
 // 测试用：按提示词作答、吐渡口样例的模型。像一个「守规矩」的模型：已有的 id 原样保留，
 // 分镜每场第一段照抄提示词里给的开场走位句。并发跑几个阶段时也能答对（按内容路由，不按顺序）。
+import { readFileSync } from 'node:fs';
 import type { TextRequest } from '../../src/model/text-model.ts';
-import { loadFixture } from '../helpers.ts';
+import { fixturePath, loadFixture } from '../helpers.ts';
 import { fenced, promptSection, RoutedTextModel } from './scripted-model.ts';
 
 type Doc = Record<string, any>;
@@ -45,6 +46,9 @@ const WATCHMAN = {
   voice: 'A thin, carrying tenor that calls the hours across water; flat, rhythmic, almost chanting, with long pauses between the clapper strokes',
 };
 
+/** 4 个出图角色的 intake（角色名 → intake），角色配方的 refs 一遍按它作答。 */
+export const dukoIntakes = (): Record<string, Doc> => JSON.parse(readFileSync(fixturePath('cast').replace('-cast.json', '-intake.json'), 'utf8'));
+
 const draftName = (user: string): string | null => (promptSection(user, '这个角色的骨架') ?? '').match(/"name": "([^"]+)"/)?.[1] ?? null;
 
 /** 各阶段各一遍的标准回答；认不出来的请求返回 undefined。 */
@@ -72,6 +76,10 @@ export function dukoAnswer(req: TextRequest): string | undefined {
       voice: { ...last.voice, prompt: WATCHMAN.voice },
     };
     return fenced(card);
+  }
+  if (out.includes('只输出这个角色的 intake')) {
+    const name = (promptSection(u, '角色卡') ?? '').match(/"name": "([^"]+)"/)?.[1] ?? '';
+    return fenced(dukoIntakes()[name]);
   }
   if (out.includes('{"summary"')) return fenced({ summary: loadFixture('cast').summary });
   if (out.includes('{"scenes": [...]}：骨架里的每个场景')) return fenced({ scenes: loadFixture('art').scenes });

@@ -36,7 +36,9 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 26 | `web:dev` 下也能操作（令牌与同源） | 工程 | 2026-10-31 讨论 | 暂缓 | — |
 | 27 | 平台测试夹具里的 skill 拷贝同步到 3.0.1 | 工程 | shuohao-skills fork PR #2 | 待 PR #2 合并 | — |
 | 28 | 场景图、道具图的生成（关键帧挂场景参考） | 功能 | Phase 5 计划 GATE 1 | 待规划 | — |
-| 29 | character-refs 加「只出提示词」命令，短剧工坊改调它 | 工程 | Phase 5 计划 GATE 1（方案 C） | 待规划 | — |
+| 29 | 角色图提示词改由 character-refs 生成（方案 C） | 工程 | Phase 5 计划 GATE 1（方案 C） | 已完成 | [计划](plans/completed/character-refs-prompts.plan.md) |
+| 30 | 网页上查看生成结果 | 界面 | 2026-11-03 冒烟 | 待规划 | — |
+| 31 | 付费生成冒烟修复清单（币种、去重、提示词拼接…） | 后端 | 2026-11-03 冒烟 | 待规划 | — |
 
 ---
 
@@ -115,9 +117,26 @@ novel-outline 的 Step 3 要用户拍板快版骨架（砍了哪条线、合了�
 
 `designs/ai-short-video-platform.pen` 里的模型名（如 deepseek-chat、gpt-image-2）和价格是示意，和注册表、价格表不一致；视频按秒计费的示例偏低。按 `src/model/registry.ts` 与 `prices/builtin.json` 更新，并补「运行中」以外的空状态、错误状态画板。
 
+### 30. 网页上查看生成结果
+
+付费生成出的图和视频现在只能用命令行查：`tasks` 看状态和费用，再用 sql 把任务、候选、素材对上，到 `media/` 里按哈希找文件。服务端没有任务和素材的接口，前端也没有页面。要做的是按确认单列出每个任务的状态、费用、缩略图，点开看大图或播放视频，失败的显示原因。素材接口要限制在项目的 `media/` 目录里（`src/repo/media.ts` 的 `insideMedia`）。
+
 ---
 
 ## 后端与数据
+
+### 31. 付费生成冒烟修复清单
+
+2026-11-03 在冒烟副本上跑确认单 #3 时发现。这些问题都不是 #29 引入的：
+
+1. **币种显示错误**：估算按 USD 算，`decidePaidGate` 确认时却把 `currency` 改成上限的币种，确认后美元金额被标成了人民币。
+2. **新确认单不去重**：`collectedKeys` 只用来判断依赖能不能用，所以新确认单会把全部任务重新建一遍，已经出过的锚点会再花一次钱。
+3. **特写句混进正面全身**：character-refs 的特写句被一起拼进了正面全身的提示词，而且是小写开头；另外还出现了「He wears A …」这样的大小写错误。结果是小细节被放大成整件衣服的特征：C04 只要求右袖口边缘磨亮，出来的两只袖口都是发亮的黑皮。
+4. **`gates` 命令看不到勾选内容**：不打印 selection 和 budgetCap，只能查 sqlite 才能确认勾了什么。
+5. **确认弹窗不显示确认单编号**（`PaidGateModal.tsx`）。
+6. **估算假设和实际不符**：估算假设里写了「挂场景参考」，实际没有挂。
+7. **价格表区域不对**：价格表是国际区的，但 dashscope 和 minimax 的 key 都是国内区。
+8. **角色之间撞色（上游）**：同时代、同阶层的角色撞主色，C02–C04 都穿深蓝或靛蓝外套。可以考虑在 novel-characters 加一道主色区分检查。
 
 ### 13. 本地服务令牌改为不向任意本机进程暴露
 
@@ -193,10 +212,6 @@ DeepSeek Flash 的价格来自第三方（标「未核对官方」），V4 Pro �
 
 novel-storyboard 的 `references/frame.md` 要求关键帧挂场景图（场景卡）、出场角色图和叙事道具图；短剧工坊的付费节点只有角色参考图、关键帧、视频，美术（art.json）里的场景、道具只有提示词没有图。Phase 5 的关键帧因此只挂角色锚点（Qwen-Image 3.0 最多 3 张参考），计划输入里记下想挂但没有的参考。要做的话：加 `image:scene-refs`（及道具）付费节点、估算口径、确认单勾选，关键帧参考的取舍规则改成场景图优先 + 主要角色。来源：`plans/image-video-generation.plan.md`「已定」第 2 条。
 
-### 29. character-refs 加「只出提示词」命令，短剧工坊改调它
-
-Phase 5 的角色参考图在短剧工坊里照 character-refs `scripts/core.mjs` 的 5 个视图写了一份常量（方案 A），视图规则因此有两份，skill 改了不会自动同步。做法：在 shuohao-skills fork 给 character-refs 加一个只出提示词的命令（输入 novel-characters 的角色卡，输出各视图的提示词、比例与参考关系，不出图），短剧工坊调它拿提示词、出图仍走自己的任务状态机，然后删掉平台里的常量。PR 只提到 fork（crystaldust/shuohao-skills）。来源：同上第 3 条。
-
 ### 22. 固定常用的 skills 目录（暂缓）
 
 前几次真实模型验证注册的是会话临时目录里的导出副本，那些项目在库里记的是绝对路径，临时目录清掉后要重新 `pack register`。能用的长期目录是 worktree `shuohao-skills-stable-ids/skills`（3.0.0）；用户在用的 `shuohao-skills` 主干还是 2.x。用户说先不处理。
@@ -212,3 +227,7 @@ Phase 5 的角色参考图在短剧工坊里照 character-refs `scripts/core.mjs
 ### 5（全貌部分）. 全貌列出没落实的打回（[PR #15](https://github.com/crystaldust/ai-video-platform/pull/15)）
 
 迁移 v6 给 `revision_request` 加 `dismissed_at`；`unfulfilledRevisions` 认出没落实的打回，附在对应的未通过项上或单独列出；详情里可「带同样意见再打回」或「放弃这条意见」（`POST /api/p/:id/revisions/:rid/dismiss`）。命令行汇总那部分仍在上面 #5。
+
+### 29. 角色图提示词改由 character-refs 生成（分支 `feat/character-refs-prompts`）
+
+不用给 skill 加命令：character-refs 已有 `intake-template`、`intake-check`、`new`、`prompt`，平台直接调用，没改 skill。角色卡过了 novel-characters 的校验后，给每个出图角色多问一遍模型，把角色卡拆成 intake，过 `intake-check`（不过带违规重问，最多 3 次），`new --look 写实` 建资产，`prompt` 取 5 个视图的提示词与反向词，存进角色卡的 `characterRefs`。生成计划只读它，平台里自拼的角色提示词常量删掉。顺带：关键帧加写实画风句与反向词，budget 预设的图片改成 2K（qwen-image-3.0 的 1k、2k 同价）。

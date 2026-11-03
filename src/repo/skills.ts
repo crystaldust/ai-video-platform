@@ -178,6 +178,12 @@ export function mountSkill(db: DatabaseSync, stage: Stage, skillName: string, pa
   return toSkillRow(row);
 }
 
+/** 同一个包里按名字找 skill（配方调同包的另一个 skill，如角色配方调 character-refs）；没有返回 null。不跨包：注册过几份副本时会取到别的版本。 */
+export function findSkill(db: DatabaseSync, packId: number, name: string): SkillRow | null {
+  const row = db.prepare('SELECT * FROM skill WHERE pack_id = ? AND name = ?').get(packId, name) as RawSkill | undefined;
+  return row ? toSkillRow(row) : null;
+}
+
 export function currentMount(db: DatabaseSync, stage: Stage): SkillRow | null {
   const row = db
     .prepare('SELECT s.* FROM stage_mount m JOIN skill s ON s.id = m.skill_id WHERE m.stage = ? ORDER BY m.id DESC LIMIT 1')

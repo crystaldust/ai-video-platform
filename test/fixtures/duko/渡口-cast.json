@@ -66,6 +66,116 @@
         "emotion": "试探、戒备，有所保留",
         "prompt": "19-year-old female, light breathy soprano, mid-to-high pitch, thin chest support, narrow dynamic range. Quiet volume, slightly hesitant pace, rising inflection at phrase ends. Standard Mandarin, no regional accent. Tentative and watchful.",
         "referenceHint": "像一个在陌生地方问路、又怕对方追问下去的人"
+      },
+      "characterRefs": {
+        "skill": "character-refs@2.1.0",
+        "look": "realistic-photo",
+        "intake": {
+          "name": "沈知微",
+          "lang": "zh",
+          "identity": {
+            "age": 19,
+            "gender": "female",
+            "en": "A slender nineteen-year-old Chinese young woman, a student in 1930s Republican-era China",
+            "text": "19 岁女学生，民国",
+            "source": "inferred"
+          },
+          "face": {
+            "en": "Oval face with soft rounded cheeks and a delicate jaw, large dark wary eyes, straight fine eyebrows, small straight nose, thin lips held lightly closed",
+            "text": "鹅蛋脸，眼睛偏大带戒备，细直眉，薄唇",
+            "source": "stated"
+          },
+          "hair": {
+            "en": "Centre-parted black hair in two long braids tied at the tips with faded red string",
+            "text": "中分黑发，两条长辫，辫梢系褪色红绳",
+            "source": "stated"
+          },
+          "build": {
+            "en": "A thin frame with shoulders drawn slightly inward",
+            "text": "身形单薄，肩膀习惯性往内缩",
+            "source": "stated"
+          },
+          "outfit": {
+            "id": "default",
+            "label": "常态",
+            "top": {
+              "en": "a dark navy-blue cotton student tunic with a plain white collar washed pale",
+              "text": "藏青学生装，衣领洗得发白",
+              "source": "stated"
+            },
+            "bottom": {
+              "en": "a dark mid-calf pleated skirt, white cotton socks and black cloth shoes",
+              "text": "深色及膝百褶裙、白棉袜、黑布鞋",
+              "source": "inferred"
+            },
+            "details": [
+              {
+                "slot": "hair",
+                "en": "the tip of one of her long black braids, tied with faded red string",
+                "text": "辫梢系褪色红绳",
+                "source": "stated"
+              },
+              {
+                "slot": "neck",
+                "en": "the plain white collar of her dark navy-blue cotton tunic, washed pale",
+                "text": "洗白的衣领",
+                "source": "stated"
+              },
+              {
+                "slot": "sleeve",
+                "en": "the dark navy-blue cotton cuff, faded and slightly frayed at the edge",
+                "text": "洗旧的袖口",
+                "source": "inferred"
+              },
+              {
+                "slot": "feet",
+                "en": "black cloth shoes with a single strap and white cotton socks",
+                "text": "一字带黑布鞋、白棉袜",
+                "source": "inferred"
+              }
+            ]
+          }
+        },
+        "views": {
+          "front-full": {
+            "prompt": "Full-body front view: she stands straight and faces the camera squarely, shoulders, hips and feet square to the camera, her face pointing straight at the camera with her nose on the vertical centre line of her face and both ears equally visible, arms relaxed at her sides, the whole figure from head to feet visible and centered, with margin above the head and below the feet. A slender nineteen-year-old Chinese young woman, a student in 1930s Republican-era China. Oval face with soft rounded cheeks and a delicate jaw, large dark wary eyes, straight fine eyebrows, small straight nose, thin lips held lightly closed. Centre-parted black hair in two long braids tied at the tips with faded red string. A thin frame with shoulders drawn slightly inward. She wears a dark navy-blue cotton student tunic with a plain white collar washed pale; a dark mid-calf pleated skirt, white cotton socks and black cloth shoes. the tip of one of her long black braids, tied with faded red string. the plain white collar of her dark navy-blue cotton tunic, washed pale. the dark navy-blue cotton cuff, faded and slightly frayed at the edge. black cloth shoes with a single strap and white cotton socks. Young skin with faint pores on the nose and cheeks and a slightly uneven natural tone, no makeup. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, cropped feet, cropped head, three-quarter view, turned body, head turned to the side, contrapposto, dynamic pose",
+            "ratio": "2:3",
+            "refs": []
+          },
+          "face-front": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same young woman facing the camera squarely. Framing: the top of her head is just below the top edge of the image, her chin sits at the vertical middle of the image, and the bottom edge of the image cuts across her collarbones. She faces straight at the camera: her nose is on the vertical centre line of the image and both ears are equally visible. Keep her exactly the same person as in the reference image: same face, eyes and eyebrows, centre-parted black hair in two long braids tied at the tips with faded red string, the same dark navy-blue cotton student tunic with a plain white collar washed pale. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark. Framing reminder: the bottom edge of the image cuts across her collarbones, so her arms, sleeves and cuffs are out of frame.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, three-quarter view, head turned to the side, profile, tilted head",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "side-full": {
+            "prompt": "Full-body side profile of this same young woman: her whole body and her head both face the right edge of the image, looking straight ahead to the right, not at the camera. Only the right side of her face is visible. Head to feet in frame. Keep her exactly the same person as in the reference image: same face, eyes and eyebrows, centre-parted black hair in two long braids tied at the tips with faded red string, the same dark navy-blue cotton student tunic with a plain white collar washed pale, the same dark mid-calf pleated skirt, white cotton socks and black cloth shoes. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, looking at camera, front view, three-quarter view, both eyes visible, cropped feet",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "back-full": {
+            "prompt": "Rotate the camera 180 degrees around her: a full-body back view. She stands with her back to the camera and her face is completely hidden. We see the back of her head with her hair as seen from behind (centre-parted black hair in two long braids tied at the tips with faded red string), the back of her dark navy-blue cotton student tunic with a plain white collar washed pale and of her dark mid-calf pleated skirt, white cotton socks and black cloth shoes, and her heels. Head to feet in frame. Keep her exactly the same person as in the reference image: same face, eyes and eyebrows, centre-parted black hair in two long braids tied at the tips with faded red string, the same dark navy-blue cotton student tunic with a plain white collar washed pale, the same dark mid-calf pleated skirt, white cotton socks and black cloth shoes. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, face, eyes, nose, front view, buttons, pockets, looking at camera",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "face-45": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same young woman, and turn her head and shoulders about 45 degrees toward the left side of the image: a three-quarter view with her nose pointing toward the left edge of the image, her left ear visible and her right ear hidden. Framing: the top of her head is just below the top edge of the image, her chin sits at the vertical middle of the image, and the bottom edge of the image cuts across her collarbones. Keep her exactly the same person as in the reference image: same face, eyes and eyebrows, centre-parted black hair in two long braids tied at the tips with faded red string, the same dark navy-blue cotton student tunic with a plain white collar washed pale. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, frontal face, looking at camera, symmetrical face",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          }
+        }
       }
     },
     {
@@ -131,6 +241,116 @@
         "emotion": "表面无波澜，底下绷着",
         "prompt": "Late-20s male, dry tight baritone, mid-low pitch, narrow resonant core, hard forward consonants. Low volume, fast clipped pace, abrupt full stops, minimal filler. Northern Mandarin, crisp. Controlled with held tension.",
         "referenceHint": "像一个习惯了下达指令、不需要对方回话的人"
+      },
+      "characterRefs": {
+        "skill": "character-refs@2.1.0",
+        "look": "realistic-photo",
+        "intake": {
+          "name": "陆行远",
+          "lang": "zh",
+          "identity": {
+            "age": 28,
+            "gender": "male",
+            "en": "A lean Chinese man in his late twenties, a former soldier in 1930s Republican-era China",
+            "text": "二十七八岁的男人，退伍军人，民国",
+            "source": "inferred"
+          },
+          "face": {
+            "en": "Gaunt angular face with high sharp cheekbones and hollow cheeks, a square jaw, flat dark eyes under a heavy brow, a two-inch old scar across the right brow ridge, long healed, thin, flat and slightly paler than the skin, a straight thin mouth",
+            "text": "脸瘦，颧骨高，右眉骨一道两寸长的旧疤",
+            "source": "stated"
+          },
+          "hair": {
+            "en": "Short cropped black hair with closely trimmed sides",
+            "text": "短发",
+            "source": "inferred"
+          },
+          "build": {
+            "en": "A lean, rigidly upright frame",
+            "text": "精瘦挺拔",
+            "source": "stated"
+          },
+          "outfit": {
+            "id": "default",
+            "label": "常态",
+            "top": {
+              "en": "a washed-out grey military wool greatcoat with the collar turned up",
+              "text": "洗得发灰的军呢大衣，领子拉起",
+              "source": "stated"
+            },
+            "bottom": {
+              "en": "the long skirt of the greatcoat over dark wool trousers and worn, creased leather boots",
+              "text": "大衣下摆、深色呢裤、磨损的皮靴",
+              "source": "inferred"
+            },
+            "details": [
+              {
+                "slot": "hair",
+                "en": "his short cropped black hair at the crown",
+                "text": "短发",
+                "source": "inferred"
+              },
+              {
+                "slot": "neck",
+                "en": "the turned-up collar of his washed-out grey military wool greatcoat",
+                "text": "拉起的大衣领子",
+                "source": "stated"
+              },
+              {
+                "slot": "sleeve",
+                "en": "the grey wool greatcoat cuff, pilled and worn shiny",
+                "text": "起球磨亮的大衣袖口",
+                "source": "inferred"
+              },
+              {
+                "slot": "feet",
+                "en": "worn leather boots creased across the instep",
+                "text": "磨损的皮靴",
+                "source": "stated"
+              }
+            ]
+          }
+        },
+        "views": {
+          "front-full": {
+            "prompt": "Full-body front view: he stands straight and faces the camera squarely, shoulders, hips and feet square to the camera, his face pointing straight at the camera with his nose on the vertical centre line of his face and both ears equally visible, arms relaxed at his sides, the whole figure from head to feet visible and centered, with margin above the head and below the feet. A lean Chinese man in his late twenties, a former soldier in 1930s Republican-era China. Gaunt angular face with high sharp cheekbones and hollow cheeks, a square jaw, flat dark eyes under a heavy brow, a two-inch old scar across the right brow ridge, long healed, thin, flat and slightly paler than the skin, a straight thin mouth. Short cropped black hair with closely trimmed sides. A lean, rigidly upright frame. He wears a washed-out grey military wool greatcoat with the collar turned up; the long skirt of the greatcoat over dark wool trousers and worn, creased leather boots. his short cropped black hair at the crown. the turned-up collar of his washed-out grey military wool greatcoat. the grey wool greatcoat cuff, pilled and worn shiny. worn leather boots creased across the instep. Natural adult skin with visible pores and a slightly uneven tone. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, cropped feet, cropped head, three-quarter view, turned body, head turned to the side, contrapposto, dynamic pose",
+            "ratio": "2:3",
+            "refs": []
+          },
+          "face-front": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same young man facing the camera squarely. Framing: the top of his head is just below the top edge of the image, his chin sits at the vertical middle of the image, and the bottom edge of the image cuts across his collarbones. He faces straight at the camera: his nose is on the vertical centre line of the image and both ears are equally visible. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, short cropped black hair with closely trimmed sides, the same washed-out grey military wool greatcoat with the collar turned up. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark. Framing reminder: the bottom edge of the image cuts across his collarbones, so his arms, sleeves and cuffs are out of frame.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, three-quarter view, head turned to the side, profile, tilted head",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "side-full": {
+            "prompt": "Full-body side profile of this same young man: his whole body and his head both face the right edge of the image, looking straight ahead to the right, not at the camera. Only the right side of his face is visible. Head to feet in frame. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, short cropped black hair with closely trimmed sides, the same washed-out grey military wool greatcoat with the collar turned up, the same long skirt of the greatcoat over dark wool trousers and worn, creased leather boots. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, looking at camera, front view, three-quarter view, both eyes visible, cropped feet",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "back-full": {
+            "prompt": "Rotate the camera 180 degrees around him: a full-body back view. He stands with his back to the camera and his face is completely hidden. We see the back of his head with his hair as seen from behind (short cropped black hair with closely trimmed sides), the back of his washed-out grey military wool greatcoat with the collar turned up and of his long skirt of the greatcoat over dark wool trousers and worn, creased leather boots, and his heels. Head to feet in frame. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, short cropped black hair with closely trimmed sides, the same washed-out grey military wool greatcoat with the collar turned up, the same long skirt of the greatcoat over dark wool trousers and worn, creased leather boots. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, face, eyes, nose, front view, buttons, pockets, looking at camera",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "face-45": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same young man, and turn his head and shoulders about 45 degrees toward the left side of the image: a three-quarter view with his nose pointing toward the left edge of the image, his left ear visible and his right ear hidden. Framing: the top of his head is just below the top edge of the image, his chin sits at the vertical middle of the image, and the bottom edge of the image cuts across his collarbones. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, short cropped black hair with closely trimmed sides, the same washed-out grey military wool greatcoat with the collar turned up. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, frontal face, looking at camera, symmetrical face",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          }
+        }
       }
     },
     {
@@ -196,6 +416,116 @@
         "emotion": "疲惫而平静，几乎没有起伏",
         "prompt": "75-year-old male, gravelled husky bass-baritone, low pitch, thick chest resonance, blurred word endings. Low volume, slow pace, long breath pauses, minimal pitch variation. Southern riverside accent, worn-smooth consonants. Settled and weary.",
         "referenceHint": "像一个在同一个渡口喊了四十年\"开船\"、嗓子早就磨平的人"
+      },
+      "characterRefs": {
+        "skill": "character-refs@2.1.0",
+        "look": "realistic-photo",
+        "intake": {
+          "name": "老周",
+          "lang": "zh",
+          "identity": {
+            "age": 70,
+            "gender": "male",
+            "en": "An elderly Chinese ferryman around seventy on a Jiangnan river in 1930s Republican-era China",
+            "text": "七十岁上下的老船夫，民国江南",
+            "source": "inferred"
+          },
+          "face": {
+            "en": "Deeply weathered dark brown face with sunken cheeks and prominent cheekbones, the left eye clouded a pale milky white while the right stays sharp, sparse grey stubble, a nearly toothless mouth in a faint weary smile",
+            "text": "面皮深褐、沟壑纵横，左眼白翳，牙只剩几颗",
+            "source": "stated"
+          },
+          "hair": {
+            "en": "Thin grey hair cropped close to a balding scalp",
+            "text": "稀疏灰白短发，头顶半秃",
+            "source": "inferred"
+          },
+          "build": {
+            "en": "A heavily hunched back bent like a drawn bow, thick gnarled hands",
+            "text": "背驼得像拉满的弓，手掌粗厚变形",
+            "source": "stated"
+          },
+          "outfit": {
+            "id": "default",
+            "label": "常态",
+            "top": {
+              "en": "a faded indigo padded cotton jacket with frayed cuffs and mismatched patches",
+              "text": "褪色靛蓝棉袄，袖口磨破，打着补丁",
+              "source": "inferred"
+            },
+            "bottom": {
+              "en": "rolled dark cotton trousers and worn straw sandals",
+              "text": "挽起的深色布裤、旧草鞋",
+              "source": "inferred"
+            },
+            "details": [
+              {
+                "slot": "hair",
+                "en": "his thin grey hair cropped close to a balding scalp",
+                "text": "稀疏灰白短发",
+                "source": "inferred"
+              },
+              {
+                "slot": "neck",
+                "en": "the frayed collar of his faded indigo padded cotton jacket",
+                "text": "磨破的棉袄领口",
+                "source": "inferred"
+              },
+              {
+                "slot": "sleeve",
+                "en": "the faded indigo cuff, frayed and patched in mismatched thread",
+                "text": "打补丁的袖口",
+                "source": "inferred"
+              },
+              {
+                "slot": "feet",
+                "en": "worn straw sandals frayed at the weave on bare weathered feet",
+                "text": "旧草鞋",
+                "source": "inferred"
+              }
+            ]
+          }
+        },
+        "views": {
+          "front-full": {
+            "prompt": "Full-body front view: he stands straight and faces the camera squarely, shoulders, hips and feet square to the camera, his face pointing straight at the camera with his nose on the vertical centre line of his face and both ears equally visible, arms relaxed at his sides, the whole figure from head to feet visible and centered, with margin above the head and below the feet. An elderly Chinese ferryman around seventy on a Jiangnan river in 1930s Republican-era China. Deeply weathered dark brown face with sunken cheeks and prominent cheekbones, the left eye clouded a pale milky white while the right stays sharp, sparse grey stubble, a nearly toothless mouth in a faint weary smile. Thin grey hair cropped close to a balding scalp. A heavily hunched back bent like a drawn bow, thick gnarled hands. He wears a faded indigo padded cotton jacket with frayed cuffs and mismatched patches; rolled dark cotton trousers and worn straw sandals. his thin grey hair cropped close to a balding scalp. the frayed collar of his faded indigo padded cotton jacket. the faded indigo cuff, frayed and patched in mismatched thread. worn straw sandals frayed at the weave on bare weathered feet. Aged, weathered skin with visible pores, age spots and wrinkles that follow the expression lines. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, cropped feet, cropped head, three-quarter view, turned body, head turned to the side, contrapposto, dynamic pose",
+            "ratio": "2:3",
+            "refs": []
+          },
+          "face-front": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same old man facing the camera squarely. Framing: the top of his head is just below the top edge of the image, his chin sits at the vertical middle of the image, and the bottom edge of the image cuts across his collarbones. He faces straight at the camera: his nose is on the vertical centre line of the image and both ears are equally visible. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thin grey hair cropped close to a balding scalp, the same faded indigo padded cotton jacket with frayed cuffs and mismatched patches. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark. Framing reminder: the bottom edge of the image cuts across his collarbones, so his arms, sleeves and cuffs are out of frame.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, three-quarter view, head turned to the side, profile, tilted head",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "side-full": {
+            "prompt": "Full-body side profile of this same old man: his whole body and his head both face the right edge of the image, looking straight ahead to the right, not at the camera. Only the right side of his face is visible. Head to feet in frame. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thin grey hair cropped close to a balding scalp, the same faded indigo padded cotton jacket with frayed cuffs and mismatched patches, the same rolled dark cotton trousers and worn straw sandals. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, looking at camera, front view, three-quarter view, both eyes visible, cropped feet",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "back-full": {
+            "prompt": "Rotate the camera 180 degrees around him: a full-body back view. He stands with his back to the camera and his face is completely hidden. We see the back of his head with his hair as seen from behind (thin grey hair cropped close to a balding scalp), the back of his faded indigo padded cotton jacket with frayed cuffs and mismatched patches and of his rolled dark cotton trousers and worn straw sandals, and his heels. Head to feet in frame. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thin grey hair cropped close to a balding scalp, the same faded indigo padded cotton jacket with frayed cuffs and mismatched patches, the same rolled dark cotton trousers and worn straw sandals. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, face, eyes, nose, front view, buttons, pockets, looking at camera",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "face-45": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same old man, and turn his head and shoulders about 45 degrees toward the left side of the image: a three-quarter view with his nose pointing toward the left edge of the image, his left ear visible and his right ear hidden. Framing: the top of his head is just below the top edge of the image, his chin sits at the vertical middle of the image, and the bottom edge of the image cuts across his collarbones. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thin grey hair cropped close to a balding scalp, the same faded indigo padded cotton jacket with frayed cuffs and mismatched patches. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, frontal face, looking at camera, symmetrical face",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          }
+        }
       }
     },
     {
@@ -262,6 +592,116 @@
         "emotion": "外放、乐呵，毫无防备",
         "prompt": "Mid-40s male, bright brassy tenor, mid-high pitch, broad forward ring, strong breath support. Loud carrying volume, fast tumbling pace, wide springy intonation, laughter breaking in. Rural northern accent, wide open vowels. Unguardedly cheerful.",
         "referenceHint": "像一个隔着两条街就能听见他招呼你的人"
+      },
+      "characterRefs": {
+        "skill": "character-refs@2.1.0",
+        "look": "realistic-photo",
+        "intake": {
+          "name": "胡二爷",
+          "lang": "zh",
+          "identity": {
+            "age": 45,
+            "gender": "male",
+            "en": "A plump Chinese travelling peddler in his mid-forties in 1930s Republican-era China",
+            "text": "四十来岁的胖货郎，民国",
+            "source": "stated"
+          },
+          "face": {
+            "en": "Round full face with fat cheeks that push the eyes into thin creased slits when he grins, a broad flat nose, a wide mouth, a double chin, sweat beading on a high forehead",
+            "text": "圆脸，笑起来眼睛眯成缝，满头是汗",
+            "source": "stated"
+          },
+          "hair": {
+            "en": "Thinning black hair receding from a high forehead",
+            "text": "额头高、头发稀",
+            "source": "inferred"
+          },
+          "build": {
+            "en": "A round soft body on stout short legs",
+            "text": "胖乎乎，腿短",
+            "source": "stated"
+          },
+          "outfit": {
+            "id": "default",
+            "label": "常态",
+            "top": {
+              "en": "a short russet cotton jacket with the sleeves rolled to the elbow and a cloth sash tied at the waist",
+              "text": "赭色短褐，袖子挽到肘，腰间束带",
+              "source": "stated"
+            },
+            "bottom": {
+              "en": "loose dark cotton trousers and black cloth shoes",
+              "text": "宽松深色布裤、黑布鞋",
+              "source": "inferred"
+            },
+            "details": [
+              {
+                "slot": "hair",
+                "en": "his thinning black hair at the temples",
+                "text": "稀疏的鬓发",
+                "source": "inferred"
+              },
+              {
+                "slot": "neck",
+                "en": "the sweat-darkened collar of his short russet cotton jacket",
+                "text": "汗湿的领口",
+                "source": "inferred"
+              },
+              {
+                "slot": "sleeve",
+                "en": "the russet cotton sleeve rolled to the elbow with a permanent crease",
+                "text": "挽到肘部的袖子",
+                "source": "stated"
+              },
+              {
+                "slot": "feet",
+                "en": "black cloth shoes under loose dark cotton trousers",
+                "text": "黑布鞋",
+                "source": "inferred"
+              }
+            ]
+          }
+        },
+        "views": {
+          "front-full": {
+            "prompt": "Full-body front view: he stands straight and faces the camera squarely, shoulders, hips and feet square to the camera, his face pointing straight at the camera with his nose on the vertical centre line of his face and both ears equally visible, arms relaxed at his sides, the whole figure from head to feet visible and centered, with margin above the head and below the feet. A plump Chinese travelling peddler in his mid-forties in 1930s Republican-era China. Round full face with fat cheeks that push the eyes into thin creased slits when he grins, a broad flat nose, a wide mouth, a double chin, sweat beading on a high forehead. Thinning black hair receding from a high forehead. A round soft body on stout short legs. He wears a short russet cotton jacket with the sleeves rolled to the elbow and a cloth sash tied at the waist; loose dark cotton trousers and black cloth shoes. his thinning black hair at the temples. the sweat-darkened collar of his short russet cotton jacket. the russet cotton sleeve rolled to the elbow with a permanent crease. black cloth shoes under loose dark cotton trousers. Natural adult skin with visible pores and a slightly uneven tone. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, cropped feet, cropped head, three-quarter view, turned body, head turned to the side, contrapposto, dynamic pose",
+            "ratio": "2:3",
+            "refs": []
+          },
+          "face-front": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same man facing the camera squarely. Framing: the top of his head is just below the top edge of the image, his chin sits at the vertical middle of the image, and the bottom edge of the image cuts across his collarbones. He faces straight at the camera: his nose is on the vertical centre line of the image and both ears are equally visible. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thinning black hair receding from a high forehead, the same short russet cotton jacket with the sleeves rolled to the elbow and a cloth sash tied at the waist. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark. Framing reminder: the bottom edge of the image cuts across his collarbones, so his arms, sleeves and cuffs are out of frame.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, three-quarter view, head turned to the side, profile, tilted head",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "side-full": {
+            "prompt": "Full-body side profile of this same man: his whole body and his head both face the right edge of the image, looking straight ahead to the right, not at the camera. Only the right side of his face is visible. Head to feet in frame. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thinning black hair receding from a high forehead, the same short russet cotton jacket with the sleeves rolled to the elbow and a cloth sash tied at the waist, the same loose dark cotton trousers and black cloth shoes. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, looking at camera, front view, three-quarter view, both eyes visible, cropped feet",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "back-full": {
+            "prompt": "Rotate the camera 180 degrees around him: a full-body back view. He stands with his back to the camera and his face is completely hidden. We see the back of his head with his hair as seen from behind (thinning black hair receding from a high forehead), the back of his short russet cotton jacket with the sleeves rolled to the elbow and a cloth sash tied at the waist and of his loose dark cotton trousers and black cloth shoes, and his heels. Head to feet in frame. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thinning black hair receding from a high forehead, the same short russet cotton jacket with the sleeves rolled to the elbow and a cloth sash tied at the waist, the same loose dark cotton trousers and black cloth shoes. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, face, eyes, nose, front view, buttons, pockets, looking at camera",
+            "ratio": "2:3",
+            "refs": [
+              "front-full"
+            ]
+          },
+          "face-45": {
+            "prompt": "Zoom in to an extreme close-up head-and-shoulders portrait, passport-photo framing, of this same man, and turn his head and shoulders about 45 degrees toward the left side of the image: a three-quarter view with his nose pointing toward the left edge of the image, his left ear visible and his right ear hidden. Framing: the top of his head is just below the top edge of the image, his chin sits at the vertical middle of the image, and the bottom edge of the image cuts across his collarbones. Keep him exactly the same person as in the reference image: same face, eyes and eyebrows, thinning black hair receding from a high forehead, the same short russet cotton jacket with the sleeves rolled to the elbow and a cloth sash tied at the waist. A real photograph, not a render: shot on a full-frame digital camera with an 85mm portrait lens at f/5.6, natural true-to-life colors and white balance. Natural skin texture with the pores and fine lines the person's age calls for, a no-makeup look, no retouching, no beauty filter. Real fabric with natural creases. Subtle film grain. White seamless paper backdrop lit to pure white. A soft directional key light from the front-left with a weaker fill, so the face and clothes have gentle natural shadows and volume. Exactly one person, empty hands, no props, no text, no watermark.",
+            "negative": "text, watermark, border, multiple people, extra limbs, deformed hands, props, scenery, colored background, oversaturated colors, waist, torso, arms, hands, full body, legs, feet, wide shot, medium shot, CGI, 3D render, digital painting, illustration, anime, airbrushed skin, smooth plastic skin, waxy skin, doll face, beauty filter, overly symmetrical face, oversharpened, HDR, glossy, over-saturated, flat lighting, porcelain skin, big anime eyes, frontal face, looking at camera, symmetrical face",
+            "ratio": "4:5",
+            "refs": [
+              "front-full"
+            ]
+          }
+        }
       }
     }
   ]
