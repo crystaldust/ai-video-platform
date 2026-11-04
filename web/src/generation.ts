@@ -164,3 +164,13 @@ export function paidButton(s: { readonly gateId: number | null; readonly busy: b
   const disabledReason = s.busy ? '有任务在跑，等它结束' : !s.hasEstimate ? '估算算不出来（看付费条上的原因），没法开确认单' : null;
   return { action, gateId: s.gateId, disabledReason };
 }
+
+/**
+ * 因为项目已有后台任务在跑而置灰的按钮，悬停和提示行都用这一句说明原因。没有任务为 null。
+ * 付费生成可以在生成任务页停下，顺带提一句。
+ */
+export function busyReason(job: { readonly kind: string; readonly detail: string } | null | undefined): string | null {
+  if (!job) return null;
+  const tail = job.kind === 'generate' || job.kind === 'resume' ? '（生成任务页可以停止）' : '';
+  return `「${job.detail}」正在跑，等它跑完再操作${tail}`;
+}

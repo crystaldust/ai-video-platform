@@ -1,5 +1,5 @@
 // 全貌右侧面板：选中的待处理项（需复核 / 未通过）或某一集——为什么、影响范围、三个操作、附意见打回、下一项。
-import { ArrowRight, Clapperboard, MapPin, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, Clapperboard, MapPin, RefreshCw, ShieldCheck, X, Loader } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api, ApiError, projectPath } from '../api.ts';
@@ -16,7 +16,8 @@ export interface PanelProps {
   readonly item: PendingItem | null;
   readonly episode: EpisodeRow | null;
   readonly next: PendingItem | null;
-  readonly busy: boolean;
+  /** 有后台任务在跑时，为什么不能点（busyReason）；没任务为 null */
+  readonly busy: string | null;
   /** 阶段卡：哪些阶段有产物（没有的打回不了） */
   readonly stages: readonly StageCard[];
   readonly totalEpisodes: number;
@@ -66,10 +67,15 @@ function RejectForm({ projectId, episode, preferred, busy, stages: cards, totalE
           {scope ? scope.text : '还没有能打回的产物'}
           {scope && downstream ? `，${downstream}自动标为需复核` : ''}
         </span>
-        <Button variant="dark" disabled={!stage || !note.trim() || busy} onClick={() => void submit()}>
+        <Button variant="dark" disabled={!stage || !note.trim() || Boolean(busy)} title={busy ?? undefined} onClick={() => void submit()}>
           打回重跑
         </Button>
       </div>
+      {busy ? (
+        <div className={s.busyHint} role="status">
+          <Loader size={12} /> {busy}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -121,7 +127,7 @@ function StaleBody({ projectId, item, episode, busy, onDone, onError }: { item: 
         </div>
       </div>
       <div className={s.actions}>
-        <Button variant="primary" block disabled={busy} onClick={() => void rerun()}>
+        <Button variant="primary" block disabled={Boolean(busy)} title={busy ?? undefined} onClick={() => void rerun()}>
           <RefreshCw size={14} /> 只重跑需复核的部分
         </Button>
         <div className={s.actionsRow}>
@@ -132,7 +138,7 @@ function StaleBody({ projectId, item, episode, busy, onDone, onError }: { item: 
           ) : (
             <span />
           )}
-          <Button block disabled={busy} onClick={() => void keep()}>
+          <Button block disabled={Boolean(busy)} title={busy ?? undefined} onClick={() => void keep()}>
             保持现状，标记已复核
           </Button>
         </div>
@@ -166,11 +172,11 @@ function FailedBody({ projectId, item, busy, onDone, onError }: { item: PendingI
         人工接管：最后一版在项目目录 runs/{item.runId}/out/ 下，改好后用命令行 <span className="mono">import &lt;项目&gt; {item.stage} &lt;文件&gt; --run {item.runId}</span> 结案。也可以直接重跑或附意见打回。
       </p>
       {item.upstream ? <UpstreamHint item={item} upstream={item.upstream} /> : null}
-      <Button variant={item.upstream ? undefined : 'primary'} block disabled={busy} onClick={() => void rerun()}>
+      <Button variant={item.upstream ? undefined : 'primary'} block disabled={Boolean(busy)} title={busy ?? undefined} onClick={() => void rerun()}>
         <RefreshCw size={14} /> 重跑{STAGE_TITLE[item.stage]}
       </Button>
       <label className={s.muted}>
-        <input type="checkbox" checked={fresh} disabled={busy} onChange={(e) => setFresh(e.target.checked)} /> 不沿用之前写好的集，整份重写
+        <input type="checkbox" checked={fresh} disabled={Boolean(busy)} title={busy ?? undefined} onChange={(e) => setFresh(e.target.checked)} /> 不沿用之前写好的集，整份重写
       </label>
     </>
   );
@@ -195,10 +201,10 @@ function RevisionBlock({ projectId, stage, revision, busy, onDone, onError }: { 
       <span>{revision.note}</span>
       <small>{where}的重跑没有跑完，这条意见没有用上。</small>
       <div className={s.actionsRow}>
-        <Button block disabled={busy} onClick={() => void act('/reject', repeatRejectBody(stage, revision), `已带同样的意见再打回${where}，正在重跑`)}>
+        <Button block disabled={Boolean(busy)} title={busy ?? undefined} onClick={() => void act('/reject', repeatRejectBody(stage, revision), `已带同样的意见再打回${where}，正在重跑`)}>
           带同样意见再打回
         </Button>
-        <Button block disabled={busy} onClick={() => void act(dismissPath(revision.id), {}, '已放弃这条打回意见')}>
+        <Button block disabled={Boolean(busy)} title={busy ?? undefined} onClick={() => void act(dismissPath(revision.id), {}, '已放弃这条打回意见')}>
           放弃这条意见
         </Button>
       </div>

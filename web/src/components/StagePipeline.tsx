@@ -73,7 +73,7 @@ const PAID: readonly { node: string; title: string; unit: (n: NodeEstimate) => s
 const cny = (r: { low: number; high: number } | null, fx: number) => (r ? { low: r.low * fx, high: r.high * fx } : null);
 
 /** 确认单没出图（计划不出来、后台失败）：红色的付费条，说原因；能一键补救的给按钮（设计稿「全貌视图 · 生成没开始」）。 */
-function PaidFailed({ g, onRemedy }: { g: GenerationProgress; onRemedy: ((r: Remedy) => void) | undefined }) {
+function PaidFailed({ g, onRemedy, busy }: { g: GenerationProgress; onRemedy: ((r: Remedy) => void) | undefined; busy: string | null | undefined }) {
   const remedy = remedyFor(g.error);
   const started = g.total > 0;
   const firstUnfinished = g.byNode.find((n) => n.done < n.total)?.node;
@@ -107,7 +107,7 @@ function PaidFailed({ g, onRemedy }: { g: GenerationProgress; onRemedy: ((r: Rem
         })}
       </div>
       {remedy && onRemedy ? (
-        <Button variant="primary" onClick={() => onRemedy(remedy)}>
+        <Button variant="primary" disabled={Boolean(busy)} title={busy ?? undefined} onClick={() => onRemedy(remedy)}>
           <RotateCcw size={13} /> {remedy.label}
         </Button>
       ) : null}
@@ -116,7 +116,7 @@ function PaidFailed({ g, onRemedy }: { g: GenerationProgress; onRemedy: ((r: Rem
 }
 
 /** 确认单确认了还没开跑（设计稿「全貌视图 · 待开始」）：说会建几条、上限，给「开始生成」。 */
-function PaidPending({ g, onStart, startDisabled }: { g: GenerationProgress; onStart: ((gateId: number) => void) | undefined; startDisabled: boolean | undefined }) {
+function PaidPending({ g, onStart, startDisabled }: { g: GenerationProgress; onStart: ((gateId: number) => void) | undefined; startDisabled: string | null | undefined }) {
   return (
     <div className={`${s.paid} ${s.paidLive}`} aria-label={`确认单 #${g.gateId} 待开始`}>
       <div className={s.paidHead}>
@@ -144,7 +144,7 @@ function PaidPending({ g, onStart, startDisabled }: { g: GenerationProgress; onS
         })}
       </div>
       {onStart ? (
-        <Button variant="primary" disabled={startDisabled} title={startDisabled ? '有任务在跑，等它结束' : undefined} onClick={() => onStart(g.gateId)}>
+        <Button variant="primary" disabled={Boolean(startDisabled)} title={startDisabled ?? undefined} onClick={() => onStart(g.gateId)}>
           <Play size={13} /> 开始生成
         </Button>
       ) : null}
@@ -218,7 +218,7 @@ function PaidEstimate({ estimate, estimateError }: { estimate: ProjectEstimate |
   );
 }
 
-export function StagePipeline({ stages, log, estimate, estimateError, generation, onRemedy, onStart, startDisabled }: { stages: readonly CardData[]; log: readonly LogRun[]; estimate: ProjectEstimate | null; estimateError: string | null; generation?: GenerationProgress | null; onRemedy?: (r: Remedy) => void; onStart?: (gateId: number) => void; startDisabled?: boolean }) {
+export function StagePipeline({ stages, log, estimate, estimateError, generation, onRemedy, onStart, startDisabled }: { stages: readonly CardData[]; log: readonly LogRun[]; estimate: ProjectEstimate | null; estimateError: string | null; generation?: GenerationProgress | null; onRemedy?: (r: Remedy) => void; onStart?: (gateId: number) => void; startDisabled?: string | null }) {
   const phase = generation ? gatePhase(generation) : null;
   return (
     <section className={s.pipeline} aria-label="阶段">
@@ -231,7 +231,7 @@ export function StagePipeline({ stages, log, estimate, estimateError, generation
         ))}
       </div>
       {generation && phase === 'failed' ? (
-        <PaidFailed g={generation} onRemedy={onRemedy} />
+        <PaidFailed g={generation} onRemedy={onRemedy} busy={startDisabled} />
       ) : generation && phase === 'pending' ? (
         <PaidPending g={generation} onStart={onStart} startDisabled={startDisabled} />
       ) : generation ? (
