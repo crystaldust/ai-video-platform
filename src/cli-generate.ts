@@ -3,15 +3,11 @@
 import type { CommandResult } from './cli-nodes.ts';
 import { intFlag, need, withProject } from './cli-shared.ts';
 import { regenerateTask, requeryTask } from './generate/manage.ts';
-import { planGeneration } from './generate/planner.ts';
-import { recoverTasks } from './generate/recovery.ts';
-import { runGeneration, type AnyMediaModel, type GenerateOptions, type GenerateSummary } from './generate/runner.ts';
+import type { GenerateSummary } from './generate/runner.ts';
+import { generateOnce, realGenerateDeps, resumeAll, type GenerateDeps } from './generate/session.ts';
 import { isTaskStatus } from './generate/state-machine.ts';
-import { createImageModel, createVideoModel, findModel } from './model/registry.ts';
-import { loadPriceSources } from './pricing/prices.ts';
 import type { Project } from './project.ts';
 import { getPaidGate, listPaidGates, type PaidGateRow } from './repo/paid-gates.ts';
-import { isAlive } from './repo/runs.ts';
 import { isPaidNode, listTasks } from './repo/tasks.ts';
 
 export const GENERATE_USAGE = `  generate <dir> [--gate <id>] [--concurrency <图片数>]
@@ -24,21 +20,10 @@ export const GENERATE_USAGE = `  generate <dir> [--gate <id>] [--concurrency <�
                                                 重新查询（不花钱）；未知的任务可指定在供应商控制台核对过的 id
   tasks regenerate <dir> <任务 id>              重新生成：新建一条任务（再跑 generate 时提交，计入预算）`;
 
-export type GenerateDeps = Omit<GenerateOptions, 'onProgress' | 'signal' | 'submit' | 'pid'>;
+export type { GenerateDeps } from './generate/session.ts';
 
 const done = (output: unknown, exitCode = 0): CommandResult => ({ output, exitCode });
 const write = (line: string): void => void process.stderr.write(`${line}\n`);
-
-/** 真的供应商：按模型 id 造，同一个只造一次（凭据缺失时在第一次用到才报）。 */
-function realDeps(): GenerateDeps {
-  const cache = new Map<string, AnyMediaModel>();
-  const modelFor = (provider: string, model: string): AnyMediaModel => {
-    const id = `${provider}:${model}`;
-    if (!cache.has(id)) cache.set(id, findModel(id).capability === 'video' ? createVideoModel(id) : createImageModel(id));
-    return cache.get(id)!;
-  };
-  return { modelFor, prices: loadPriceSources() };
-}
 
 function gateOf(p: Project, flag: string | undefined): PaidGateRow {
   if (flag !== undefined) {
@@ -57,23 +42,15 @@ const progress = (e: { taskId: number; label: string | null; status: string }): 
 const needsAttention = (s: GenerateSummary): boolean =>
   s.blocked.length > 0 || s.unknownSubmits.length > 0 || s.downloadFailed.length > 0 || s.pollGaveUp.length > 0 || s.budgetStopped || s.counts.failed + s.counts.rejected + s.counts.unknown > 0;
 
-/** 另一个还活着的进程正在提交：两个 generate 同时跑会让对账时间窗里出现分不清的任务，拒绝启动。 */
-function assertNoOtherSubmitter(p: Project): void {
-  const other = listTasks(p.db, { status: ['submitting'] }).find((t) => t.pid !== null && t.pid !== process.pid && isAlive(t.pid));
-  if (other) throw new Error(`另一个进程（${other.pid}）正在提交任务 ${other.id}：等它结束再跑（它要是已经没了，先 tasks resume）`);
-}
-
 async function cmdGenerate(args: string[], flags: Record<string, string>, deps: GenerateDeps): Promise<CommandResult> {
   const dir = need(args[0], 'generate <dir> [--gate <id>]');
   return withProject(dir, async (p) => {
-    assertNoOtherSubmitter(p);
     const gate = gateOf(p, flags['gate']);
-    const recovered = await recoverTasks(p, { modelFor: deps.modelFor });
-    const tasks = planGeneration(p.db, gate, deps.prices);
-    write(`确认单 ${gate.id}：${tasks.length} 个任务；上限 ${gate.budgetCap === null ? '不设' : `¥${gate.budgetCap}`}`);
+    write(`确认单 ${gate.id}：上限 ${gate.budgetCap === null ? '不设' : `¥${gate.budgetCap}`}`);
     const concurrency = flags['concurrency'] === undefined ? {} : { concurrency: { image: intFlag(flags['concurrency'], '--concurrency')! } };
-    const summary = await runGeneration(p, gate, { ...deps, ...concurrency, onProgress: progress });
-    return done({ recovered, ...summary }, needsAttention(summary) ? 2 : 0);
+    const r = await generateOnce(p, gate, deps, { ...concurrency, onProgress: progress });
+    if (r.skipped.length) write(`  跳过 ${r.skipped.length} 个已经出过的（同样的输入已入库，不再计费）`);
+    return done({ recovered: r.recovered, skipped: r.skipped, ...r.summary }, needsAttention(r.summary) ? 2 : 0);
   });
 }
 
@@ -118,17 +95,14 @@ async function cmdTasks(args: string[], flags: Record<string, string>, deps: Gen
 async function cmdResume(args: string[], deps: GenerateDeps): Promise<CommandResult> {
   const dir = need(args[0], 'tasks resume <dir>');
   return withProject(dir, async (p) => {
-    const recovered = await recoverTasks(p, { modelFor: deps.modelFor });
-    const gateIds = [...new Set(listTasks(p.db, { status: ['submitted', 'running', 'succeeded'] }).flatMap((t) => (t.paidGateId === null ? [] : [t.paidGateId])))];
-    const summaries: GenerateSummary[] = [];
-    for (const id of gateIds) summaries.push(await runGeneration(p, getPaidGate(p.db, id)!, { ...deps, submit: false, onProgress: progress }));
-    return done({ recovered, gates: summaries }, recovered.ambiguous.length || summaries.some(needsAttention) ? 2 : 0);
+    const { recovered, gates } = await resumeAll(p, deps, { onProgress: progress });
+    return done({ recovered, gates }, recovered.ambiguous.length || gates.some(needsAttention) ? 2 : 0);
   });
 }
 
 /** 不是付费生成命令时返回 null。deps 只给测试注入；不给就用真的供应商与价格。 */
 export async function generateCommand(cmd: string, args: string[], flags: Record<string, string>, deps?: GenerateDeps): Promise<CommandResult | null> {
-  if (cmd === 'generate') return cmdGenerate(args, flags, deps ?? realDeps());
-  if (cmd === 'tasks') return cmdTasks(args, flags, deps ?? realDeps());
+  if (cmd === 'generate') return cmdGenerate(args, flags, deps ?? realGenerateDeps());
+  if (cmd === 'tasks') return cmdTasks(args, flags, deps ?? realGenerateDeps());
   return null;
 }

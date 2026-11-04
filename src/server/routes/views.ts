@@ -5,6 +5,7 @@ import { castView } from '../views/cast.ts';
 import { projectHead } from '../views/common.ts';
 import { episodeDetail } from '../views/episode.ts';
 import { gateView } from '../views/gates.ts';
+import { taskDetail, tasksView } from '../views/generation.ts';
 import { modelsView } from '../views/models.ts';
 import { overview } from '../views/overview.ts';
 import { skillsView } from '../views/skills.ts';
@@ -13,6 +14,12 @@ import { outlinePage, scriptPage } from '../views/story.ts';
 const gateId = (raw: string | undefined): number => {
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 1) throw new HttpError(400, `确认单编号不对：${String(raw)}`);
+  return n;
+};
+
+const taskId = (raw: string | undefined): number => {
+  const n = Number(raw);
+  if (!Number.isSafeInteger(n) || n < 1 || String(n) !== raw) throw new HttpError(400, `任务编号不对：${String(raw)}`);
   return n;
 };
 
@@ -26,7 +33,14 @@ export const VIEW_ROUTES: readonly Route[] = [
   route('GET', '/api/p/:id/cast', ({ app, params }) => app.withProject(params['id']!, (p) => castView(p, params['id']!))),
   route('GET', '/api/p/:id/skills', ({ app, params }) => app.withProject(params['id']!, (p) => skillsView(p, params['id']!))),
   route('GET', '/api/p/:id/models', ({ app, params }) => app.withProject(params['id']!, (p) => modelsView(app, p, params['id']!))),
-  route('GET', '/api/p/:id/gates/:gid', ({ app, params }) => app.withProject(params['id']!, (p) => gateView(p, gateId(params['gid'])))),
+  route('GET', '/api/p/:id/gates/:gid', ({ app, params }) => app.withProject(params['id']!, (p) => gateView(p, gateId(params['gid']), app.generateDeps().prices))),
+  // 生成任务页：?gate=<id> 选确认单，默认最新一张已确认的
+  route('GET', '/api/p/:id/tasks', ({ app, params, url }) => {
+    const raw = url.searchParams.get('gate');
+    const id = params['id']!;
+    return app.withProject(id, (p) => tasksView(p, app.genContext(id), raw === null ? undefined : gateId(raw)));
+  }),
+  route('GET', '/api/p/:id/tasks/:tid', ({ app, params }) => app.withProject(params['id']!, (p) => taskDetail(p, taskId(params['tid'])))),
   // SSE：先确认项目存在，再把连接挂上事件总线；首条事件带当前任务，页面据此决定显示运行中还是全貌
   route('GET', '/api/p/:id/events', async ({ app, params, res }) => {
     const id = params['id']!;
@@ -36,4 +50,4 @@ export const VIEW_ROUTES: readonly Route[] = [
   }),
 ];
 
-export { gateId };
+export { gateId, taskId };

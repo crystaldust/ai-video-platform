@@ -78,7 +78,7 @@ export function ProjectShell() {
     { to: `${base}/episodes`, label: '剧集与分镜', icon: <Film {...ICON} /> },
     { to: `${base}/cast`, label: '角色与美术', icon: <Users {...ICON} /> },
     { to: null, label: '素材与候选', icon: <Image {...ICON} />, soon: 'Phase 6' },
-    { to: null, label: '生成任务', icon: <ListChecks {...ICON} />, soon: 'Phase 5' },
+    { to: `${base}/tasks`, label: '生成任务', icon: <ListChecks {...ICON} /> },
     { to: null, label: '剪辑', icon: <Scissors {...ICON} />, soon: 'Phase 7' },
     { to: `${base}/models`, label: '模型与预设', icon: <SlidersHorizontal {...ICON} /> },
     { to: `${base}/skills`, label: 'Skill 包', icon: <Package {...ICON} /> },

@@ -95,7 +95,7 @@ export function useProjectEvents(id: string, onEvent: (e: ServerEvent) => void):
         // 坏事件忽略
       }
     };
-    const types = ['hello', 'job-start', 'job-end', 'layer', 'stage', 'paid-gate', 'run-run-start', 'run-run-end', 'run-attempt', 'run-gate', 'run-notice', 'run-progress'];
+    const types = ['hello', 'job-start', 'job-end', 'layer', 'stage', 'paid-gate', 'run-run-start', 'run-run-end', 'run-attempt', 'run-gate', 'run-notice', 'run-progress', 'gen-task', 'gen-stop'];
     for (const t of types) source.addEventListener(t, listen);
     return () => source.close();
   }, [id]);

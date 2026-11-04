@@ -2,6 +2,8 @@
 // 数量口径与估算（src/estimate/usage.ts）一致：要出图的角色 × 5 视图、每切 1 帧关键帧、每段 1 段视频（秒数 = max(4, Σ切秒)）。
 // 模型取确认单里那份估算的选择——那是人确认时看到的，不按「现在的预设」重算。
 // 幂等：同一张确认单里同一个「节点 + 标签」只建一次，再计划只补缺的。
+// 跨确认单去重：同一供应商模型、同样计划输入的任务已经付过钱（入库了，或者在别的确认单里还在途）就不再建；
+// 改了提示词、尺寸、依赖的节点、模型就照常出。依赖图本身重出了不算（Phase 6「上游已变」）。
 // 依赖写进计划输入（deps）：派生视图、关键帧等锚点，视频等关键帧；也可以用以前确认单已经入库的那张。
 import type { DatabaseSync } from 'node:sqlite';
 import { findModel } from '../model/registry.ts';
@@ -9,6 +11,7 @@ import { lookupPrice, type PriceSources, type PriceUnit } from '../pricing/price
 import { latestArtifactDoc } from '../repo/artifacts.ts';
 import { currentVersion } from '../repo/entities.ts';
 import type { PaidGateRow } from '../repo/paid-gates.ts';
+import { contentHash } from '../domain/hash.ts';
 import { createTask, listTasks, type PaidNode, type TaskRow } from '../repo/tasks.ts';
 import { ANCHOR_VIEW, isRatio, KEYFRAME_NEGATIVE, keyframePrompt, pickRefs, sizeFor, VIEW_ORDER, type Ratio } from './prompts.ts';
 
@@ -43,7 +46,7 @@ interface Draft {
   readonly usd: number | null;
 }
 
-function choiceOf(gate: PaidGateRow, node: PaidNode): NodeChoice {
+function choiceOf(gate: Pick<PaidGateRow, 'id' | 'estimate'>, node: PaidNode): NodeChoice {
   const est = gate.estimate.nodes.find((n) => n.node === node);
   if (!est) throw new Error(`确认单 ${gate.id} 的估算里没有 ${node}`);
   const info = findModel(est.model);
@@ -188,11 +191,46 @@ function videoDrafts(db: DatabaseSync, prices: PriceSources, c: NodeChoice, eps:
 
 const episodesSelected = (sel: unknown): string[] => (Array.isArray(sel) ? sel.filter((x): x is string => typeof x === 'string') : []);
 
-/** 确认单 → 任务（只补没建的），返回这张确认单的全部任务。 */
-export function planGeneration(db: DatabaseSync, gate: PaidGateRow, prices: PriceSources): TaskRow[] {
-  if (gate.status !== 'confirmed') throw new Error(`确认单 ${gate.id} 还没确认（${gate.status}），不能生成`);
+/** 计划时用到的确认单字段：预览时确认单还没确认，selection 由调用方给。 */
+type GateLike = Pick<PaidGateRow, 'id' | 'estimate' | 'selection'>;
+
+/** 被跳过的草稿：同样的计划输入（指纹相同）以前已经出过、入库了，不再付一次钱。 */
+export interface SkippedDraft {
+  readonly node: PaidNode;
+  readonly label: string;
+  readonly episodeKey: string | null;
+  /** 沿用的那条任务（以前入库的，或者在别的确认单里还在供应商那边的） */
+  readonly reuse: number;
+  /** 沿用那条的状态：collected 是已出好，其余是还在途 */
+  readonly reuseStatus: TaskRow['status'];
+  /** 省下的预估（人民币）；单价查不到为 null */
+  readonly costCny: number | null;
+}
+
+/** 算「已经付过钱」的状态：入库了的，和在供应商那边、结果还没落定的（再提交一次就是重复付费）。 */
+const PAID_FOR: readonly TaskRow['status'][] = ['collected', 'submitting', 'submitted', 'running', 'succeeded', 'unknown'];
+
+/** 去重的键：同一个供应商模型 + 同样的计划输入（提示词、反向词、尺寸、依赖的节点与标签）。 */
+const reuseKey = (provider: string, model: string, fingerprint: string): string => `${provider}:${model}|${fingerprint}`;
+
+/**
+ * 已付过钱的任务按去重键索引（任何确认单都算）；同一个键有多条时，入库了的优先，其次取最新的。
+ * 依赖只按「节点 + 标签」进指纹：锚点重新生成后，用它的关键帧不会因此换指纹——那是 Phase 6「上游已变」管的事。
+ */
+function paidFingerprints(db: DatabaseSync): Map<string, TaskRow> {
+  const map = new Map<string, TaskRow>();
+  for (const t of listTasks(db, { status: [...PAID_FOR] })) {
+    if (!t.contentFingerprint) continue;
+    const key = reuseKey(t.provider, t.model, t.contentFingerprint);
+    const had = map.get(key);
+    if (!had || had.status !== 'collected' || t.status === 'collected') map.set(key, t);
+  }
+  return map;
+}
+
+/** 确认单的勾选 → 全部草稿（不看库里已有的任务）。 */
+function draftsFor(db: DatabaseSync, gate: GateLike, prices: PriceSources): { draft: Draft; choice: NodeChoice }[] {
   const sel = isDoc(gate.selection) ? gate.selection : {};
-  const fx = gate.estimate.fx.usdToCny;
   const done = collectedKeys(db);
   const drafts: { draft: Draft; choice: NodeChoice }[] = [];
   const planned = new Set<string>();
@@ -216,9 +254,42 @@ export function planGeneration(db: DatabaseSync, gate: PaidGateRow, prices: Pric
     const c = choiceOf(gate, 'video:segment');
     add(c, videoDrafts(db, prices, c, storyboardEpisodes(db, vEps), new Set([...done, ...planned])));
   }
+  return drafts;
+}
+
+/** 草稿分成要建的和被跳过的：这张确认单已经建过的（同节点 + 标签）两边都不算；指纹已入库的跳过。 */
+function partition(db: DatabaseSync, gate: GateLike, prices: PriceSources): { create: { draft: Draft; choice: NodeChoice }[]; skipped: SkippedDraft[] } {
+  const fx = gate.estimate.fx.usdToCny;
+  const fingerprints = paidFingerprints(db);
   const existing = new Set(listTasks(db, { paidGateId: gate.id }).flatMap((t) => (t.node && t.label ? [taskKey(t.node, t.label)] : [])));
-  for (const { draft: d, choice: c } of drafts) {
+  const create: { draft: Draft; choice: NodeChoice }[] = [];
+  const skipped: SkippedDraft[] = [];
+  for (const item of draftsFor(db, gate, prices)) {
+    const d = item.draft;
     if (existing.has(taskKey(d.node, d.label))) continue;
+    const reuse = fingerprints.get(reuseKey(item.choice.provider, item.choice.model, contentHash(d.plannedInput)));
+    if (reuse) skipped.push({ node: d.node, label: d.label, episodeKey: d.episodeKey, reuse: reuse.id, reuseStatus: reuse.status, costCny: d.usd === null ? null : d.usd * fx });
+    else create.push(item);
+  }
+  return { create, skipped };
+}
+
+export interface GatePlan {
+  /** 这张确认单的全部任务 */
+  readonly tasks: TaskRow[];
+  /** 这次没建、沿用以前成品的 */
+  readonly skipped: SkippedDraft[];
+}
+
+/**
+ * 确认单 → 任务（只补没建的），返回这张确认单的全部任务和被跳过的草稿。
+ * 跨确认单去重：同样的计划输入以前已经入库就跳过（重新生成走 manage.regenerateTask，不经过这里）。
+ */
+export function planGate(db: DatabaseSync, gate: PaidGateRow, prices: PriceSources): GatePlan {
+  if (gate.status !== 'confirmed') throw new Error(`确认单 ${gate.id} 还没确认（${gate.status}），不能生成`);
+  const fx = gate.estimate.fx.usdToCny;
+  const { create, skipped } = partition(db, gate, prices);
+  for (const { draft: d, choice: c } of create) {
     createTask(db, {
       targetVersionId: d.targetVersionId,
       capability: c.capability,
@@ -233,5 +304,16 @@ export function planGeneration(db: DatabaseSync, gate: PaidGateRow, prices: Pric
       paidGateId: gate.id,
     });
   }
-  return listTasks(db, { paidGateId: gate.id });
+  return { tasks: listTasks(db, { paidGateId: gate.id }), skipped };
+}
+
+/** 只要任务列表的调用方用这个。 */
+export function planGeneration(db: DatabaseSync, gate: PaidGateRow, prices: PriceSources): TaskRow[] {
+  return planGate(db, gate, prices).tasks;
+}
+
+/** 预览（只算、不写库）：按给定勾选，会新建几条、跳过哪些。确认弹窗用，确认单还没确认也能算。 */
+export function previewGeneration(db: DatabaseSync, gate: GateLike, prices: PriceSources): { create: number; skipped: SkippedDraft[] } {
+  const { create, skipped } = partition(db, gate, prices);
+  return { create: create.length, skipped };
 }

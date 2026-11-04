@@ -43,8 +43,9 @@ export interface GenerateSummary {
   /** 依赖死了、没提交的任务 */
   readonly blocked: readonly { readonly taskId: number; readonly label: string; readonly reason: string }[];
   readonly budgetStopped: boolean;
-  /** 人民币：已花 + 在途预估 */
+  /** 已花 + 在途预估（spent、cap、任务费用都是人民币） */
   readonly spent: number;
+  readonly currency: 'CNY';
   readonly cap: number | null;
   /** 提交结果未知、停在「提交中」等对账的任务 */
   readonly unknownSubmits: readonly number[];
@@ -96,6 +97,25 @@ export const fetchDownload: Download = async (url, dest, signal) => {
   return { mime: (res.headers.get('content-type') ?? '').split(';')[0]!.trim() };
 };
 
+/** 等 ms 毫秒；signal 停止时立刻返回（循环开头会看到停止）。 */
+function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((done) => {
+    if (signal?.aborted) return done();
+    const timer = setTimeout(finish, ms);
+    function finish(): void {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', finish);
+      done();
+    }
+    signal?.addEventListener('abort', finish, { once: true });
+  });
+}
+
+/** 已花（人民币）：实际费用，没有就按预估；还没花钱的状态不算。和预算比较、页面显示都用这一个口径。 */
+export function spentOf(tasks: readonly TaskRow[]): number {
+  return tasks.reduce((a, t) => a + (t.costActual ?? (UNSPENT.has(t.status) ? 0 : (t.costEstimate ?? 0))), 0);
+}
+
 const EXT: Readonly<Record<string, string>> = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'video/mp4': '.mp4' };
 
 class Run {
@@ -118,7 +138,7 @@ class Run {
     this.gate = gate;
     this.opts = opts;
     this.pid = opts.pid ?? process.pid;
-    this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.sleep = opts.sleep ?? ((ms) => abortableSleep(ms, opts.signal));
   }
 
   private get db() {
@@ -143,6 +163,12 @@ class Run {
     return listTasks(this.db, { status: ['collected'], node }).filter((t) => t.label === label).at(-1) ?? null;
   }
 
+  /** 这个依赖在别的确认单里有还没落定的任务（提交中、在途、成功未下载）。 */
+  private inFlightElsewhere(key: string): boolean {
+    const [node, label] = key.split('|') as [PaidNode, string];
+    return listTasks(this.db, { status: ['submitting', 'submitted', 'running', 'succeeded'], node }).some((t) => t.label === label && t.paidGateId !== this.gate.id);
+  }
+
   /** 依赖的状态：ready 都入库了；dead 有一个再也等不到（原因）；否则等着。 */
   depState(t: TaskRow, inGate: readonly TaskRow[]): { state: 'ready' } | { state: 'waiting' } | { state: 'dead'; reason: string } {
     let waiting = false;
@@ -150,6 +176,11 @@ class Run {
       if (this.collected(key)) continue;
       const dep = inGate.find((x) => keyOf(x) === key);
       const what = key.startsWith('image:keyframe') ? '关键帧' : '锚点图';
+      // 在别的确认单里还在途（跨确认单去重沿用的）：等它出来，这次先不提交
+      if (!dep && this.inFlightElsewhere(key)) {
+        waiting = true;
+        continue;
+      }
       if (!dep) return { state: 'dead', reason: `要用的${what} ${key.split('|')[1]} 不在这张确认单里，也没有生成过` };
       if (TERMINAL.has(dep.status) || dep.status === 'unknown' || this.unknownSubmits.includes(dep.id)) return { state: 'dead', reason: `要用的${what} ${dep.label} ${dep.status === 'submitting' ? '提交结果未知' : dep.status}` };
       waiting = true;
@@ -158,7 +189,7 @@ class Run {
   }
 
   spent(tasks: readonly TaskRow[]): number {
-    return tasks.reduce((a, t) => a + (t.costActual ?? (UNSPENT.has(t.status) ? 0 : (t.costEstimate ?? 0))), 0);
+    return spentOf(tasks);
   }
 
   /** 参考图：依赖按顺序取素材库文件，转成 data URI。 */
@@ -192,11 +223,13 @@ class Run {
       this.emit(transition(this.db, t.id, 'failed', { error: (e as Error).message }));
       return;
     }
-    this.emit(markSubmitting(this.db, t.id, this.pid));
+    // 先造模型（凭据缺失在这里报），再写「提交中」：免得没发出去的请求留下一条要对账的任务
     const model = this.model(t) as MediaModel<ImageRequest | VideoRequest>;
+    this.emit(markSubmitting(this.db, t.id, this.pid));
     for (let attempt = 0; ; attempt++) {
       try {
-        const r = await model.submit(req, this.opts.signal);
+        // 不带 signal：停止只在两次提交之间生效，不打断在路上的提交（打断了就成了「结果未知」，要对账）
+        const r = await model.submit(req);
         this.emit(recordProviderId(this.db, t.id, r.providerTaskId, r.actualInput));
         return;
       } catch (e) {
@@ -342,6 +375,7 @@ export async function runGeneration(project: Project, gate: PaidGateRow, opts: G
     blocked: [...run.blocked.entries()].filter(([id]) => getTask(project.db, id)!.status === 'planned').map(([taskId, b]) => ({ taskId, ...b })),
     budgetStopped: run.budgetStopped,
     spent: run.spent(tasks),
+    currency: 'CNY',
     cap: gate.budgetCap,
     unknownSubmits: run.unknownSubmits.filter((id) => getTask(project.db, id)!.status === 'submitting'),
     downloadFailed: [...run.downloadFailed].filter((id) => getTask(project.db, id)!.status === 'succeeded'),

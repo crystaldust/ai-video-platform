@@ -10,13 +10,25 @@ import { BUILTIN_PRESET_DIR } from '../../src/presets/presets.ts';
 import { loadPriceSources } from '../../src/pricing/prices.ts';
 import { App, type AppConfig } from '../../src/server/app.ts';
 import { startServer, TOKEN_HEADER, type RunningServer } from '../../src/server/server.ts';
+import type { ImageRequest, VideoRequest } from '../../src/model/media-model.ts';
+import type { GenerateDeps } from '../../src/generate/session.ts';
 import { dukoModel } from './duko-model.ts';
+import { FakeMediaModel, fakeDownload } from './fake-media.ts';
 import { ROOT, SKILLS } from './novel-pack.ts';
 
 const NONE = '/nonexistent-avp';
 export const PRESET_DIRS = { builtin: BUILTIN_PRESET_DIR, user: NONE };
 export const testEstimate = (db: DatabaseSync) =>
   estimateProject(db, { prices: loadPriceSources(NONE), fx: { usdToCny: 7, checkedAt: '2026-10-29', source: 'test' }, presetDirs: PRESET_DIRS });
+
+/** 假的付费生成：确认后自动开跑也碰不到真供应商、真价格配置。 */
+export function fakeGenerate(image: ConstructorParameters<typeof FakeMediaModel>[3] = {}, video: ConstructorParameters<typeof FakeMediaModel>[3] = {}) {
+  const img = new FakeMediaModel<ImageRequest>('dashscope', 'qwen-image-3.0', 'image', image);
+  const vid = new FakeMediaModel<VideoRequest>('minimax', 'MiniMax-H3-Lite', 'video', video);
+  const dl = fakeDownload();
+  const deps: GenerateDeps = { modelFor: (p) => (p === 'dashscope' ? img : vid), download: dl.download, prices: loadPriceSources(NONE), sleep: async () => {}, pollMs: 0 };
+  return { img, vid, dl, deps };
+}
 
 export interface Harness {
   readonly app: App;
@@ -41,6 +53,7 @@ export async function startHarness(over: Partial<AppConfig> = {}): Promise<Harne
     run: { prices: null },
     credentials: { dir: join(root, 'cfg'), env: {} },
     presetDirs: PRESET_DIRS,
+    generate: fakeGenerate().deps,
     ...over,
   });
   const server = await startServer(app, { port: 0 });

@@ -1,4 +1,4 @@
-// 变更类操作：一键跑、打回、复核确认、付费确认、换预设与节点模型、换挂载、注册 skill 包、拉价格。
+// 变更类操作：一键跑、打回、复核确认、付费确认（确认后开跑）、继续 / 停止生成、重新查询、换预设与节点模型、换挂载、注册 skill 包、拉价格。
 // 跑模型的操作开后台任务立即返回；其余同步完成。所有变更请求都要令牌（server.ts 统一检查）。
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
@@ -7,14 +7,22 @@ import { RECIPE_NAMES } from '../../executor/recipes.ts';
 import { isNode } from '../../model/capabilities.ts';
 import { acknowledge } from '../../orchestrate/review-matrix.ts';
 import { checkReject, resolveEpisode } from '../../orchestrate/revisions.ts';
+import { requeryTask } from '../../generate/manage.ts';
 import { refreshPriceCache } from '../../pricing/openrouter.ts';
+import { listOrchestrations } from '../../repo/orchestrations.ts';
+import { getPaidGate } from '../../repo/paid-gates.ts';
+import { getTask } from '../../repo/tasks.ts';
 import { clearNodeModel, setNodeModel, usePreset } from '../../repo/models.ts';
 import { dismissRevision, revisionDismissed } from '../../repo/revisions.ts';
 import { mountSkill, registerPack } from '../../repo/skills.ts';
 import { HttpError, optStr, readBody, str } from '../http.ts';
 import { route, type Route } from '../route.ts';
-import { decideGate } from '../views/gates.ts';
-import { gateId } from './views.ts';
+import { decideGate, openGate } from '../views/gates.ts';
+import { estimateProject } from '../../estimate/estimate.ts';
+import { gateId, taskId } from './views.ts';
+
+/** 能重新查询的：提交过、还没结束（含查询放弃了的）、结果未知、成功了但没下载下来。 */
+const REQUERYABLE: ReadonlySet<string> = new Set(['submitted', 'running', 'unknown', 'succeeded']);
 
 const stageOf = (raw: unknown): Stage => {
   if (!isStage(raw)) throw new HttpError(400, `不认识的阶段：${String(raw)}`);
@@ -65,9 +73,56 @@ export const ACTION_ROUTES: readonly Route[] = [
     const episode = optStr(body, 'episode');
     return app.withProject(params['id']!, (p) => acknowledge(p.db, stage, episode ? resolveEpisode(p.db, episode) : null, optStr(body, 'note') ?? ''));
   }),
+  // 开确认单：没有等待确认的就按当前估算开一张；有后台任务在跑时不开（跑完再估算才准）
+  route('POST', '/api/p/:id/gates', ({ app, params }) => {
+    const id = params['id']!;
+    const busy = app.jobs.current(id);
+    if (busy) throw new HttpError(409, `这个项目已有任务在跑（${busy.detail}），等它结束再开确认单`);
+    return app.withProject(id, (p) => {
+      // 别的进程（命令行 go）在跑编排：本进程的任务锁看不到，按库里的编排状态挡（withProject 已经收尾了死掉的）
+      if (listOrchestrations(p.db).at(-1)?.status === 'running') throw new HttpError(409, '文本阶段正在跑（可能是命令行），等它结束再开确认单');
+      return openGate(p, () => (app.config.estimate ? app.config.estimate(p.db) : estimateProject(p.db, app.config.presetDirs ? { presetDirs: app.config.presetDirs } : {})));
+    });
+  }),
+  // 确认后直接开跑付费生成；项目已有后台任务时只确认，返回 started: false 和原因（结束后到生成任务页点继续生成）
   route('POST', '/api/p/:id/gates/:gid', async ({ app, params, req }) => {
+    const id = params['id']!;
     const body = await readBody(req);
-    return app.withProject(params['id']!, (p) => decideGate(p, gateId(params['gid']), { action: str(body, 'action'), selection: body['selection'], budgetCap: body['budgetCap'] }));
+    const gate = await app.withProject(id, (p) => decideGate(p, gateId(params['gid']), { action: str(body, 'action'), selection: body['selection'], budgetCap: body['budgetCap'] }));
+    if (gate.status !== 'confirmed') return { gate, started: false };
+    const busy = app.jobs.current(id);
+    if (busy) return { gate, started: false, reason: `当前在跑「${busy.detail}」：等它结束后到生成任务页点「继续生成」` };
+    app.jobs.generate(id, gate.id);
+    return { gate, started: true };
+  }),
+  // 继续生成（预算停了、停止过、确认时有别的任务在跑）或停止
+  route('POST', '/api/p/:id/generate', async ({ app, params, req }) => {
+    const id = params['id']!;
+    const body = await readBody(req);
+    const action = str(body, 'action');
+    if (action === 'stop') return app.jobs.stop(id);
+    if (action !== 'continue') throw new HttpError(400, 'action 只能是 continue 或 stop');
+    if (body['gateId'] === undefined) throw new HttpError(400, '继续生成要给 gateId（哪张确认单）');
+    const gid = gateId(String(body['gateId']));
+    await app.withProject(id, (p) => {
+      const gate = getPaidGate(p.db, gid);
+      if (!gate) throw new HttpError(404, `没有这张付费确认单：${gid}`);
+      if (gate.status !== 'confirmed') throw new HttpError(400, `确认单 #${gid} 还没确认（${gate.status}），先在全貌上确认`);
+    });
+    return app.jobs.generate(id, gid);
+  }),
+  // 重新查询（不花钱）：只查询、下载，不提交
+  route('POST', '/api/p/:id/tasks/:tid/requery', async ({ app, params }) => {
+    const id = params['id']!;
+    const tid = taskId(params['tid']);
+    // 同步占住项目锁再开始：和后台生成互斥，免得同一个任务被两边一起查询、下载入库
+    return app.jobs.exclusive(id, `重新查询任务 ${tid}`, () => app.withProject(id, async (p) => {
+      const task = getTask(p.db, tid);
+      if (!task) throw new HttpError(404, `没有这个任务：${tid}`);
+      if (!REQUERYABLE.has(task.status)) throw new HttpError(400, `任务 ${tid} 是「${task.status}」，不用重新查询（只有提交过、还没结束或结果未知、没下载下来的可以）`);
+      const after = await requeryTask(p, tid, app.generateDeps());
+      return { id: after.id, status: after.status, error: after.error };
+    }));
   }),
   route('POST', '/api/p/:id/models', async ({ app, params, req }) => {
     const body = await readBody(req);

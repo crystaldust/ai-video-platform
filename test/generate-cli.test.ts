@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { generateCommand, type GenerateDeps } from '../src/cli-generate.ts';
+import { orchestrateCommand } from '../src/cli-orchestrate.ts';
 import type { ImageRequest, VideoRequest } from '../src/model/media-model.ts';
 import { regenerateTask, requeryTask } from '../src/generate/manage.ts';
 import { planGeneration } from '../src/generate/planner.ts';
@@ -79,5 +80,24 @@ test('命令行：generate 计划 + 执行并输出汇总；tasks 列表；tasks
 test('命令行：没有已确认的确认单就报错说明', async () => {
   const r = rig();
   await assert.rejects(generateCommand('generate', [r.dir], {}, r.deps), /没有已确认的付费确认单/);
+  r.cleanup();
+});
+
+test('gates：列出勾选、上限与两种币种（估算 USD、上限 CNY；不设上限时上限币种为空）', async () => {
+  const r = rig();
+  confirmGate(r.project, { 'image:keyframe': [DUKO.ep1] }, 10);
+  const out = (await orchestrateCommand('gates', [r.dir], {}))!.output as Record<string, unknown>[];
+  assert.equal(out.length, 1);
+  assert.equal(out[0]!['estimateCurrency'], 'USD');
+  assert.equal(out[0]!['capCurrency'], 'CNY');
+  assert.equal(out[0]!['budgetCap'], 10);
+  assert.deepEqual(out[0]!['selection'], { 'image:keyframe': [DUKO.ep1] });
+  assert.ok(!('currency' in out[0]!), '不再输出含义不清的 currency');
+  const { createPaidGate, decidePaidGate } = await import('../src/repo/paid-gates.ts');
+  const { testEstimate } = await import('./support/server-harness.ts');
+  const g = createPaidGate(r.project.db, { orchestrationId: null, estimate: testEstimate(r.project.db) });
+  decidePaidGate(r.project.db, g.id, { status: 'confirmed', selection: {} });
+  const two = (await orchestrateCommand('gates', [r.dir], {}))!.output as Record<string, unknown>[];
+  assert.equal(two[1]!['capCurrency'], null);
   r.cleanup();
 });

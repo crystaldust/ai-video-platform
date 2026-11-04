@@ -14,6 +14,7 @@ export interface PaidGateRow {
   readonly estimate: ProjectEstimate;
   readonly selection: unknown;
   readonly budgetCap: number | null;
+  /** 上限的币种（界面按人民币填，固定 CNY）；没有上限为 null。估算的币种看 estimate.currency */
   readonly currency: string | null;
   readonly createdAt: string;
   readonly decidedAt: string | null;
@@ -38,7 +39,8 @@ const toRow = (r: RawGate): PaidGateRow => ({
   estimate: JSON.parse(r.estimate),
   selection: r.selection === null ? null : JSON.parse(r.selection),
   budgetCap: r.budget_cap,
-  currency: r.currency,
+  // 旧数据（5b 之前）这里写的是估算币种：没有上限就当没有
+  currency: r.budget_cap === null ? null : r.currency,
   createdAt: r.created_at,
   decidedAt: r.decided_at,
 });
@@ -48,8 +50,8 @@ export function createPaidGate(db: DatabaseSync, input: { orchestrationId: numbe
     const at = nowIso();
     db.prepare(`UPDATE paid_gate SET status = 'cancelled', decided_at = ? WHERE status = 'awaiting_confirmation'`).run(at);
     const result = db
-      .prepare(`INSERT INTO paid_gate (orchestration_id, status, estimate, currency, created_at) VALUES (?, 'awaiting_confirmation', ?, ?, ?)`)
-      .run(input.orchestrationId, JSON.stringify(input.estimate), input.estimate.currency, at);
+      .prepare(`INSERT INTO paid_gate (orchestration_id, status, estimate, currency, created_at) VALUES (?, 'awaiting_confirmation', ?, NULL, ?)`)
+      .run(input.orchestrationId, JSON.stringify(input.estimate), at);
     return getPaidGate(db, Number(result.lastInsertRowid))!;
   });
 }
@@ -78,11 +80,11 @@ export function decidePaidGate(db: DatabaseSync, id: number, d: GateDecision): P
   if (!gate) throw new Error(`没有这张付费确认单：${id}`);
   if (gate.status !== 'awaiting_confirmation') throw new Error(`确认单 #${id} 已经是 ${gate.status}，不能再改`);
   if (d.budgetCap !== undefined && !(Number.isFinite(d.budgetCap) && d.budgetCap > 0)) throw new Error(`单次上限要是正数：${d.budgetCap}`);
-  db.prepare('UPDATE paid_gate SET status = ?, selection = ?, budget_cap = ?, currency = COALESCE(?, currency), decided_at = ? WHERE id = ?').run(
+  db.prepare('UPDATE paid_gate SET status = ?, selection = ?, budget_cap = ?, currency = ?, decided_at = ? WHERE id = ?').run(
     d.status,
     d.selection === undefined ? null : JSON.stringify(d.selection),
     d.budgetCap ?? null,
-    d.currency ?? null,
+    d.budgetCap === undefined ? null : (d.currency ?? 'CNY'),
     nowIso(),
     id,
   );
