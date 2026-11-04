@@ -101,7 +101,7 @@ async function cmdGates(args: string[]): Promise<CommandResult> {
   const dir = need(args[0], 'gates <dir>');
   const gates = await withProject(dir, (p) => listPaidGates(p.db));
   // 完整估算很长：列表只给合计与状态，明细见库里的 estimate
-  return done(gates.map((g) => ({ id: g.id, status: g.status, orchestrationId: g.orchestrationId, preset: g.estimate.preset, total: g.estimate.total, currency: g.currency, incomplete: g.estimate.incomplete, createdAt: g.createdAt, nodes: g.estimate.nodes.map((n) => ({ node: n.node, model: n.model, cost: n.cost })) })));
+  return done(gates.map((g) => ({ id: g.id, status: g.status, orchestrationId: g.orchestrationId, preset: g.estimate.preset, estimateCurrency: g.estimate.currency, total: g.estimate.total, incomplete: g.estimate.incomplete, selection: g.selection, budgetCap: g.budgetCap, capCurrency: g.currency, createdAt: g.createdAt, decidedAt: g.decidedAt, nodes: g.estimate.nodes.map((n) => ({ node: n.node, model: n.model, cost: n.cost })) })));
 }
 
 const COMMANDS: Readonly<Record<string, (args: string[], flags: Record<string, string>) => Promise<CommandResult>>> = {

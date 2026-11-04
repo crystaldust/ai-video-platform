@@ -1,11 +1,12 @@
 // 服务的运行时上下文：配置、项目目录解析、事件总线、后台任务。路由处理器都从这里拿东西。
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { CredentialOptions } from '../config/credentials.ts';
 import type { Stage } from '../domain/types.ts';
 import type { ProjectEstimate } from '../estimate/estimate.ts';
 import type { RunNodeOptions } from '../executor/run-node.ts';
+import { realGenerateDeps, type GenerateDeps } from '../generate/session.ts';
 import { createTextModel } from '../model/registry.ts';
 import type { TextModel } from '../model/text-model.ts';
 import type { PresetDirs } from '../presets/presets.ts';
@@ -16,6 +17,7 @@ import { failInterruptedRuns } from '../repo/runs.ts';
 import { EventBus } from './events.ts';
 import { HttpError } from './http.ts';
 import { Jobs } from './jobs.ts';
+import type { GenContext } from './views/generation.ts';
 
 export interface AppConfig {
   /** 项目根目录：下面每个含 project.sqlite 的子目录是一个项目 */
@@ -33,6 +35,8 @@ export interface AppConfig {
   readonly run?: Pick<RunNodeOptions, 'maxAttempts' | 'prices'>;
   readonly credentials?: CredentialOptions;
   readonly presetDirs?: PresetDirs;
+  /** 付费生成的供应商、价格、下载（测试与 E2E 换成假的）；默认按注册表与凭据造真的 */
+  readonly generate?: GenerateDeps | undefined;
 }
 
 /** 项目 id 就是项目根目录下的子目录名；不允许带路径分隔符、不允许以点开头。 */
@@ -45,6 +49,7 @@ export class App {
   readonly config: AppConfig;
   readonly bus = new EventBus();
   readonly jobs: Jobs;
+  private realGenerate: GenerateDeps | null = null;
 
   constructor(config: AppConfig) {
     this.config = { ...config, projectsRoot: resolve(config.projectsRoot) };
@@ -83,6 +88,40 @@ export class App {
   modelFor(project: Project, stage: Stage): TextModel {
     if (this.config.modelFor) return this.config.modelFor(project, stage);
     return createTextModel(resolveNodeModel(project.db, `text:${stage}`, this.config.presetDirs ? { dirs: this.config.presetDirs } : {}).model);
+  }
+
+  /** 项目根目录下所有项目的 id（只看目录，不打开库）。 */
+  projectIds(): string[] {
+    const root = this.config.projectsRoot;
+    if (!existsSync(root)) return [];
+    return readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('.') && existsSync(join(root, d.name, DB_FILE))).map((d) => d.name);
+  }
+
+  /**
+   * 服务启动时：每个项目在后台对账、续查中断的付费任务（不提交新任务）。没有要恢复的项目什么都不做。
+   * 失败只写日志，不影响服务起来。
+   */
+  async resumeInterrupted(): Promise<void> {
+    for (const id of this.projectIds()) {
+      try {
+        const job = await this.jobs.resume(id);
+        if (job) this.config.log(`  恢复中断的付费任务：${id}`);
+      } catch (e) {
+        this.config.log(`  恢复 ${id} 的付费任务失败：${(e as Error).message}`);
+      }
+    }
+  }
+
+  /** 生成任务页、全貌要的：在跑的后台任务、最近一次生成失败、价格。 */
+  genContext(projectId: string): GenContext {
+    return { job: this.jobs.current(projectId), failure: this.jobs.lastFailure(projectId), prices: this.generateDeps().prices };
+  }
+
+  /** 付费生成用的依赖：注入的优先；真的只造一次（凭据在第一次用到某家供应商时才读）。 */
+  generateDeps(): GenerateDeps {
+    if (this.config.generate) return this.config.generate;
+    this.realGenerate ??= realGenerateDeps(this.config.credentials ?? {});
+    return this.realGenerate;
   }
 
   close(): void {

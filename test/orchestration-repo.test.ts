@@ -35,7 +35,8 @@ test('新的付费确认单作废之前还在等确认的旧单', () => {
   const db = openDb(':memory:');
   const first = createPaidGate(db, { orchestrationId: null, estimate: ESTIMATE });
   assert.equal(first.status, 'awaiting_confirmation');
-  assert.equal(first.currency, 'USD');
+  assert.equal(first.currency, null, '没确认、没上限：上限币种为空；估算币种看 estimate.currency');
+  assert.equal(first.estimate.currency, 'USD');
   createPaidGate(db, { orchestrationId: null, estimate: ESTIMATE });
   assert.deepEqual(listPaidGates(db).map((g) => g.status), ['cancelled', 'awaiting_confirmation']);
   assert.deepEqual(listPaidGates(db)[1]!.estimate.total, { low: 1, high: 2 });
@@ -64,6 +65,9 @@ test('付费确认单：确认写入勾选与上限，定了就不能再改；�
   assert.equal(done.budgetCap, 50);
   assert.equal(done.currency, 'CNY');
   assert.throws(() => decidePaidGate(db, g.id, { status: 'cancelled' }), /已经是 confirmed/);
+  const noCap = decidePaidGate(db, createPaidGate(db, { orchestrationId: null, estimate: ESTIMATE }).id, { status: 'confirmed', selection: {} });
+  assert.equal(noCap.budgetCap, null);
+  assert.equal(noCap.currency, null, '不设上限：上限币种为空');
   assert.throws(() => decidePaidGate(db, 99, { status: 'cancelled' }), /没有这张/);
   db.close();
 });

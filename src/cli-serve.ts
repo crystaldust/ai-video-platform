@@ -37,14 +37,18 @@ export async function serveCommand(cmd: string, _args: string[], flags: Record<s
     log: (line) => process.stderr.write(`${line}\n`),
   });
   const server = await startServer(app, { port: intFlag(flags['port'], '--port') ?? DEFAULT_PORT });
-  process.stderr.write(`短剧工坊：${server.url}\n  项目目录：${app.config.projectsRoot}\n`);
-  if (!app.config.skillsRoot) process.stderr.write('  ⚠ 没有给 --skills，页面上不能新建项目\n');
-  if (!app.config.staticDir) process.stderr.write('  ⚠ 前端还没有构建（pnpm web:build），只提供 API\n');
-  if (flags['open'] !== 'no') openBrowser(server.url);
-  await new Promise<void>((done) => {
+  // 先挂退出信号再打印地址：看到地址就发 SIGTERM 的调用方（测试、脚本）不会赶在挂上之前
+  const stopped = new Promise<void>((done) => {
     const stop = () => void server.close().then(done);
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
   });
+  process.stderr.write(`短剧工坊：${server.url}\n  项目目录：${app.config.projectsRoot}\n`);
+  if (!app.config.skillsRoot) process.stderr.write('  ⚠ 没有给 --skills，页面上不能新建项目\n');
+  if (!app.config.staticDir) process.stderr.write('  ⚠ 前端还没有构建（pnpm web:build），只提供 API\n');
+  // 中断的付费任务：后台对账续查（不提交新任务），不挡服务起来
+  void app.resumeInterrupted();
+  if (flags['open'] !== 'no') openBrowser(server.url);
+  await stopped;
   return { output: { stopped: true }, exitCode: 0 };
 }

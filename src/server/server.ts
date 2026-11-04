@@ -22,13 +22,14 @@ const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'referrer-policy': 'no-referrer',
 };
 
-/** 页面的内容安全策略：脚本只许同源（构建产物没有内联脚本）；样式允许内联（React 的 style 属性）与 Google Fonts。 */
+/** 页面的内容安全策略：脚本只许同源（构建产物没有内联脚本）；样式允许内联（React 的 style 属性）与 Google Fonts；图片、视频只许同源（素材接口）。 */
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data:",
+  "media-src 'self'",
   "connect-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",

@@ -149,6 +149,38 @@
   font-size: 11px;
   white-space: nowrap;
 }
+.paidLive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: inherit;
+  text-decoration: none;
+}
+.paidLive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.paidNodeLive {
+  background: var(--surface);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.paidLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.paidTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--lock-soft);
+  overflow: hidden;
+}
+.paidTrack i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
 .paidModel {
   font-family: var(--mono);
   font-size: 11px;
@@ -624,6 +656,8 @@
   font-size: 12px;
 }
 .group {
+  /* 弹窗内容多时整块滚动，不压扁各组（压扁了底部的行会被裁掉） */
+  flex: none;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -698,4 +732,57 @@
   display: block;
   font-size: 11px;
   color: var(--text-3);
+}
+
+/* 头部「生成中 x/y」：不可点，但不该看起来像禁用的灰按钮 */
+.genBadge:disabled {
+  opacity: 1;
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--accent);
+  cursor: default;
+}
+
+/* 确认弹窗里「已生成过 N 张」：沿用，不计费 */
+.skipRow {
+  background: var(--bg);
+  color: var(--text-2);
+}
+
+/* 付费条：确认单没出图（设计稿「全貌视图 · 生成没开始」） */
+.paidFail {
+  border-color: var(--err);
+  background: var(--err-soft);
+}
+.paidNodeFail {
+  background: var(--surface);
+  border: 1px solid var(--err);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.paidError {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--err);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 确认弹窗：计划不出来的节点（设计稿「付费确认 · 计划不出来」） */
+.groupBlocked .groupHead b,
+.groupBlocked .groupHead em,
+.groupBlocked .groupRow {
+  color: var(--text-3);
+}
+.planErrorRow {
+  background: var(--err-soft);
+  color: var(--err) !important;
+  padding-left: 12px;
+}
+.planErrorRow span {
+  flex: 1;
+  min-width: 0;
 }

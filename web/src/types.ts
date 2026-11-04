@@ -6,7 +6,9 @@ export type { CastView, CharacterView, ArtItemView } from '../../src/server/view
 export type { OutlinePage, OutlineView, ScriptPage, ScriptView, FlowItem, Choice } from '../../src/server/views/story.ts';
 export type { SkillsView, MountRow } from '../../src/server/views/skills.ts';
 export type { ModelsView } from '../../src/server/views/models.ts';
-export type { GateView } from '../../src/server/views/gates.ts';
+export type { GateView, SkipByNode, SkipCount } from '../../src/server/views/gates.ts';
+export type { PaidGateRow } from '../../src/repo/paid-gates.ts';
+export type { TasksView, TaskCard, TaskDetail, GateSummary, ViewCell, GenerationProgress } from '../../src/server/views/generation.ts';
 export type { StageCard, StageState, ProjectHead } from '../../src/server/views/common.ts';
 export type { GateResult } from '../../src/server/views/checkup.ts';
 export type { JobInfo } from '../../src/server/jobs.ts';

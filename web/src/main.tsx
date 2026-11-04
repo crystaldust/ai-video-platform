@@ -12,6 +12,7 @@ import { OverviewPage } from './pages/OverviewPage.tsx';
 import { ProjectsPage } from './pages/ProjectsPage.tsx';
 import { SkillsPage } from './pages/SkillsPage.tsx';
 import { StoryPage } from './pages/StoryPage.tsx';
+import { TasksPage } from './pages/TasksPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: 'episodes', element: <EpisodesIndex /> },
       { path: 'ep/:ep', element: <EpisodePage /> },
       { path: 'cast', element: <CastPage /> },
+      { path: 'tasks', element: <TasksPage /> },
       { path: 'models', element: <ModelsPage /> },
       { path: 'skills', element: <SkillsPage /> },
     ],

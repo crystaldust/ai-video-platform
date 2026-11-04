@@ -14,6 +14,7 @@ import { unfulfilledRevisions, type UnfulfilledRevision } from '../../repo/revis
 import type { RunStatus } from '../../repo/runs.ts';
 import type { App } from '../app.ts';
 import type { JobInfo } from '../jobs.ts';
+import { generationProgress, type GenerationProgress } from './generation.ts';
 import { stageGates, type GateResult } from './checkup.ts';
 import { docOf, episodesIn, projectHead, STAGE_TITLES, stageCards, textCost, toCny, type ProjectHead, type StageCard } from './common.ts';
 
@@ -248,6 +249,8 @@ export interface Overview {
   readonly episodes: readonly EpisodeRow[];
   readonly pending: readonly PendingItem[];
   readonly gate: { readonly id: number; readonly status: string } | null;
+  /** 付费生成进度：最近一张有任务的已确认确认单 */
+  readonly generation: GenerationProgress | null;
   readonly log: readonly LogRun[];
 }
 
@@ -282,6 +285,7 @@ export async function overview(app: App, project: Project, id: string): Promise<
     episodes: episodeRows(db, cells, estimate),
     pending,
     gate: gate ? { id: gate.id, status: gate.status } : null,
+    generation: generationProgress(db, app.genContext(id)),
     log: runLog(db),
   };
 }

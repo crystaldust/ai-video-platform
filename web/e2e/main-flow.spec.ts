@@ -1,4 +1,5 @@
-// 主流程：新建项目（假模型）→ 运行中 → 全貌 6 阶段通过 → 付费确认 → 打回剧本第 1 集 → 需复核 → 保持现状后消失。全程只在页面里操作。
+// 主流程：新建项目（假模型）→ 运行中 → 全貌 6 阶段通过 → 付费确认并开始生成（假供应商）→ 付费条进度 → 生成任务页看缩略图、详情、全屏预览
+// → 打回剧本第 1 集 → 需复核 → 保持现状后消失。全程只在页面里操作。
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -6,7 +7,7 @@ import { join } from 'node:path';
 const BOOK = readFileSync(join(import.meta.dirname, '..', '..', 'test', 'fixtures', 'duko', '渡口.txt'), 'utf8');
 const SHOTS = process.env['E2E_SHOTS'];
 
-test('新建 → 一键跑 → 付费确认 → 打回单集 → 复核', async ({ page }) => {
+test('新建 → 一键跑 → 付费确认并生成 → 看任务 → 打回单集 → 复核', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('还没有项目')).toBeVisible();
   await page.getByRole('button', { name: '新建项目' }).click();
@@ -30,13 +31,41 @@ test('新建 → 一键跑 → 付费确认 → 打回单集 → 复核', async 
   await expect(page.getByText('对话推进')).toBeVisible();
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'overview.png') });
 
-  // 付费确认：弹窗按集勾选，确认后定下来
+  // 付费确认：弹窗按集勾选，确认后在后台开跑
   await page.getByRole('button', { name: /确认付费生成/ }).click();
   const dialog = page.getByRole('dialog', { name: '确认付费生成' });
+  await expect(dialog.getByRole('heading', { name: /确认付费生成 #\d+/ })).toBeVisible();
   await expect(dialog.getByText('关键帧')).toBeVisible();
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'paid.png') });
-  await dialog.getByRole('button', { name: '确认' }).click();
-  await expect(page.getByText(/已确认/)).toBeVisible();
+  await dialog.getByRole('button', { name: '确认并开始生成' }).click();
+  await expect(page.getByText(/已确认 #\d+，开始生成/)).toBeVisible();
+
+  // 全貌的付费条换成进度，跑完显示已完成
+  const paid = page.getByRole('link', { name: /生成进度/ });
+  await expect(paid).toBeVisible();
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, 'generating.png') });
+  await expect(paid).toContainText('已完成', { timeout: 60_000 });
+
+  // 生成任务页：角色参考图有缩略图；点开详情；全屏预览，Esc 关闭
+  await page.getByRole('link', { name: '生成任务' }).click();
+  const refs = page.getByRole('region', { name: '角色参考图' });
+  await expect(refs.getByRole('button', { name: /沈知微 · 正面全身：已完成/ })).toBeVisible();
+  await expect(refs.locator('img').first()).toBeVisible();
+  await refs.getByRole('button', { name: /沈知微 · 90° 侧面全身/ }).click();
+  const detail = page.getByRole('complementary', { name: '任务详情' });
+  await expect(detail.getByText('实际提示词')).toBeVisible();
+  await expect(detail.getByText(/正面全身/).first()).toBeVisible();
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, 'tasks.png') });
+  await detail.getByRole('button', { name: '全屏看' }).first().click();
+  const viewer = page.getByRole('dialog', { name: /预览：沈知微 · 90° 侧面全身/ });
+  await expect(viewer.locator('img').first()).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('dialog', { name: /预览：沈知微 · 背面全身/ })).toBeVisible();
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, 'preview.png') });
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: /预览/ })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '关键帧' })).toBeVisible();
+  await page.getByRole('link', { name: '回全貌' }).click();
 
   // 打回剧本第 1 集：选中第 1 集、选剧本、写意见
   await page.getByTestId('episode-1').click();

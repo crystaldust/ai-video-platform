@@ -61,10 +61,15 @@ export function findMedia(project: Project, sha256: string): MediaRow | null {
   return row ? toMediaRow(row) : null;
 }
 
+export function getMedia(project: Project, id: number): MediaRow | null {
+  const row = project.db.prepare('SELECT * FROM media_file WHERE id = ?').get(id) as RawMedia | undefined;
+  return row ? toMediaRow(row) : null;
+}
+
 const isUniqueViolation = (error: unknown) => error instanceof Error && /UNIQUE constraint failed/.test(error.message);
 
 /** 项目内的绝对路径；rel_path 越出媒体目录（库被改过）时返回 null。 */
-function insideMedia(project: Project, relPath: string): string | null {
+export function insideMedia(project: Project, relPath: string): string | null {
   const root = resolve(project.dir, MEDIA_DIR);
   const abs = resolve(project.dir, relPath);
   return abs.startsWith(root + sep) ? abs : null;

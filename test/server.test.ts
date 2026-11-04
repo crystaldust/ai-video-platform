@@ -277,8 +277,10 @@ test('打回单集 → 需复核 → 保持现状；付费确认；换预设与�
   const bad = await h.call('POST', p(`/gates/${gate.id}`), { body: { action: 'confirm', selection: { 'video:segment': ['ep_zzzzzzzz'] } } });
   assert.match(bad.body.error.message, /没有这些集的估算/);
   const ok = await h.call('POST', p(`/gates/${gate.id}`), { body: { action: 'confirm', selection: { 'video:segment': [DUKO.ep1], 'image:character-refs': true }, budgetCap: 50 } });
-  assert.equal(ok.body.data.status, 'confirmed');
-  assert.equal(ok.body.data.budgetCap, 50);
+  assert.equal(ok.body.data.gate.status, 'confirmed');
+  assert.equal(ok.body.data.gate.budgetCap, 50);
+  assert.equal(ok.body.data.started, true, '确认后开跑付费生成（harness 里是假供应商）');
+  await h.app.jobs.settled('渡口');
 
   assert.equal((await h.call('POST', p('/models'), { body: { action: 'preset', preset: 'production' } })).status, 200);
   assert.equal((await h.call('POST', p('/models'), { body: { action: 'set', node: 'text:art', model: 'deepseek:deepseek-v4-pro' } })).status, 200);
