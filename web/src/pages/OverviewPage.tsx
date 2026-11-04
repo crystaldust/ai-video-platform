@@ -14,7 +14,7 @@ import s from '../components/overview.module.css';
 import { clock, yuan, yuanRange } from '../format.ts';
 import { overviewTab, sidePanel, type OverviewTab } from '../overview-tabs.ts';
 import type { Overview, PendingItem } from '../types.ts';
-import { paidButton, type Remedy } from '../generation.ts';
+import { busyReason, paidButton, type Remedy } from '../generation.ts';
 import { runRemedy } from '../remedy-action.ts';
 
 const RELOAD_MS = 700;
@@ -94,6 +94,8 @@ export function OverviewPage() {
     o.reload();
   };
   const fail = (e: ApiError) => notify(e.problems.length ? `${e.message}：${e.problems[0]}` : e.message, 'err');
+  // 有后台任务在跑时，置灰的按钮都用这一句说明原因
+  const busyText = busyReason(data.job);
   const paid = paidButton({ gateId: data.gate?.id ?? null, busy: running || Boolean(data.job), hasEstimate: Boolean(data.estimate) });
   // 有等待确认的就打开它；没有就先按当前估算开一张，再打开
   const openPaid = async () => {
@@ -132,11 +134,13 @@ export function OverviewPage() {
           <>
             <Segmented label="模型预设" value={data.project.preset} options={data.presets.map((p) => ({ value: p.name, label: p.title }))} onChange={(v) => void action('/models', { action: 'preset', preset: v }, '已切换预设，估算已更新')} />
             {running ? (
-              <Button disabled title="编排暂不支持中途暂停：可以直接关掉页面，重开后从断点继续">
-                <Pause size={14} /> 运行中
+              // 正在跑什么：后台任务的说明（「打回分镜（第 02 集）」）；命令行在跑的编排没有任务说明，照旧写「运行中」
+              <Button disabled className={s.genBadge} title="编排暂不支持中途暂停：可以直接关掉页面，重开后从断点继续">
+                {data.job ? <Loader size={14} /> : <Pause size={14} />} {data.job?.detail ?? '运行中'}
               </Button>
-            ) : (
-              <Button disabled={generating} title={generating ? '付费生成在跑，等它结束或先停止' : undefined} onClick={() => void action('/go', { mode: 'all' }, '开始跑文本阶段：没产物的从头跑，需复核的只改受影响的集')}>
+            ) : null}
+            {running && !data.job ? null : (
+              <Button disabled={Boolean(data.job)} title={busyText ?? undefined} onClick={() => void action('/go', { mode: 'all' }, '开始跑文本阶段：没产物的从头跑，需复核的只改受影响的集')}>
                 <RotateCcw size={14} /> 重跑文本阶段
               </Button>
             )}
@@ -154,7 +158,7 @@ export function OverviewPage() {
             <Button
               variant="primary"
               disabled={paid.disabledReason !== null}
-              title={paid.disabledReason ?? (paid.action === 'open' ? `打开确认单 #${paid.gateId}` : '按当前估算开一张新的确认单；需复核的集默认不勾，可以先只出角色图')}
+              title={(data.job ? busyText : paid.disabledReason) ?? (paid.action === 'open' ? `打开确认单 #${paid.gateId}` : '按当前估算开一张新的确认单；需复核的集默认不勾，可以先只出角色图')}
               onClick={() => void openPaid()}
             >
               确认付费生成 <ButtonHint>约 {yuanRange(total, 0)}</ButtonHint>
@@ -174,7 +178,7 @@ export function OverviewPage() {
         <Metric label="文本花费" value={yuan(data.summary.textCost.cny)} unit={data.log[0]?.model.split(':')[0] ?? ''} />
         <Metric label="待你处理" value={String(data.summary.pending)} unit="项" />
       </div>
-      <StagePipeline stages={data.stages} log={data.log} estimate={data.estimate} estimateError={data.estimateError} generation={gen} onRemedy={(r) => void remedy(r)} startDisabled={Boolean(data.job)} onStart={(gateId) => void action('/generate', { action: 'continue', gateId }, `开始生成确认单 #${gateId}：进度在付费条和生成任务页`)} />
+      <StagePipeline stages={data.stages} log={data.log} estimate={data.estimate} estimateError={data.estimateError} generation={gen} onRemedy={(r) => void remedy(r)} startDisabled={busyText} onStart={(gateId) => void action('/generate', { action: 'continue', gateId }, `开始生成确认单 #${gateId}：进度在付费条和生成任务页`)} />
       {/* 分集全貌与运行记录并列成两个 tab：运行中也能切去分集表选好集（打回、重跑按钮在跑时是禁用的） */}
       <div className={s.tabs} role="tablist" aria-label="全貌内容">
         {(
@@ -211,7 +215,7 @@ export function OverviewPage() {
             item={item}
             episode={episode}
             next={next}
-            busy={Boolean(data.job)}
+            busy={busyText}
             stages={data.stages}
             totalEpisodes={data.episodes.length}
             onNext={(n) => {

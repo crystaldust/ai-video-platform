@@ -786,3 +786,16 @@
   flex: 1;
   min-width: 0;
 }
+
+/* 有后台任务在跑时，打回框下面说明为什么按钮是灰的（设计稿「全貌视图 · 有任务在跑时的置灰说明」） */
+.busyHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+}

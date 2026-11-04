@@ -18,6 +18,7 @@ import { mountSkill, registerPack } from '../../repo/skills.ts';
 import { HttpError, optStr, readBody, str } from '../http.ts';
 import { route, type Route } from '../route.ts';
 import { decideGate, openGate } from '../views/gates.ts';
+import { docOf, episodesIn } from '../views/common.ts';
 import { estimateProject } from '../../estimate/estimate.ts';
 import { gateId, taskId } from './views.ts';
 
@@ -53,8 +54,13 @@ export const ACTION_ROUTES: readonly Route[] = [
     const body = await readBody(req);
     const stage = stageOf(body['stage']);
     const episode = optStr(body, 'episode');
-    const checked = await app.withProject(id, (p) => checkReject(p.db, stage, { note: str(body, 'note'), ...(episode ? { episode } : {}) }));
-    return app.jobs.reject(id, stage, checked.note, checked.episode ?? undefined);
+    const checked = await app.withProject(id, (p) => {
+      const c = checkReject(p.db, stage, { note: str(body, 'note'), ...(episode ? { episode } : {}) });
+      // 集号给任务说明用（「打回分镜（第 02 集）」），集 id 人看不懂
+      const ep = c.episode ? episodesIn(docOf(p.db, 'outline')).find((e) => e['id'] === c.episode)?.['ep'] : undefined;
+      return { ...c, epNo: typeof ep === 'number' ? ep : undefined };
+    });
+    return app.jobs.reject(id, stage, checked.note, checked.episode ?? undefined, checked.epNo);
   }),
   route('POST', '/api/p/:id/revisions/:rid/dismiss', async ({ app, params }) => {
     const rid = Number(params['rid']);

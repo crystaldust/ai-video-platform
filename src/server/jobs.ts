@@ -11,6 +11,7 @@ import type { OrchestrationMode } from '../repo/orchestrations.ts';
 import { getPaidGate } from '../repo/paid-gates.ts';
 import type { App } from './app.ts';
 import { HttpError } from './http.ts';
+import { STAGE_TITLES } from './views/common.ts';
 
 export type JobKind = 'go' | 'reject' | 'generate' | 'resume' | 'requery';
 
@@ -92,7 +93,7 @@ export class Jobs {
   go(projectId: string, mode: OrchestrationMode, only?: Stage, fresh?: boolean): JobInfo {
     const { app } = this;
     const publish = (e: OrchestrateEvent) => app.bus.publish(projectId, fromOrchestrate(e));
-    return this.start(projectId, 'go', only ? `只跑 ${only}${fresh ? '（整份重写）' : ''}` : mode === 'only-stale' ? '只重跑需复核' : '一键跑', () =>
+    return this.start(projectId, 'go', only ? `重跑${STAGE_TITLES[only]}阶段${fresh ? '（整份重写）' : ''}` : mode === 'only-stale' ? '只重跑需复核' : '一键跑', () =>
       app.withProject(projectId, async (p) => {
         const r = await orchestrate(p, {
           modelFor: (stage) => app.modelFor(p, stage),
@@ -106,10 +107,12 @@ export class Jobs {
     );
   }
 
-  reject(projectId: string, stage: Stage, note: string, episode?: string): JobInfo {
+  /** epNo：给人看的集号（任务说明用）；episode 是集 id。 */
+  reject(projectId: string, stage: Stage, note: string, episode?: string, epNo?: number): JobInfo {
     const { app } = this;
     const publish = (e: ProgressEvent) => app.bus.publish(projectId, { ...e, type: `run-${e.type}` });
-    return this.start(projectId, 'reject', `打回 ${stage}${episode ? ` 第 ${episode} 集` : ''}`, () =>
+    const which = !episode ? '全部集' : epNo !== undefined ? `第 ${String(epNo).padStart(2, '0')} 集` : `集 ${episode}`;
+    return this.start(projectId, 'reject', `打回${STAGE_TITLES[stage]}（${which}）`, () =>
       app.withProject(projectId, async (p) => {
         const r = await reject(p, stage, { model: app.modelFor(p, stage), note, onProgress: publish, ...(episode ? { episode } : {}), ...app.config.run });
         return { runId: r.outcome.runId, status: r.outcome.status, pending: r.pending.length };
