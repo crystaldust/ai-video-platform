@@ -157,6 +157,46 @@
 .toastErr {
   background: var(--err);
 }
+.toastHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.toastClose {
+  border: 0;
+  padding: 0 2px;
+  background: none;
+  color: rgb(255 255 255 / 0.7);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.toastClose:hover,
+.toastClose:focus-visible {
+  color: #fff;
+}
+.toastText {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 0.9);
+}
+.toastAction {
+  margin-top: 8px;
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: #fff;
+  color: var(--err);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toastAction:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
 
 .segmented {
   display: inline-flex;

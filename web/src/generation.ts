@@ -177,6 +177,9 @@ export function busyReason(job: { readonly kind: string; readonly detail: string
   return `「${job.detail}」正在跑，等它跑完再操作${tail}`;
 }
 
+/** 文本阶段的中文名（页面提示用）。 */
+const STAGE_NAMES: Readonly<Record<string, string>> = { outline: '大纲', cast: '角色', art: '美术', script: '剧本', staging: '站位', storyboard: '分镜' };
+
 /**
  * 一次打回多集结束时的一句汇总（job-end 的 result.episodes）；单集或不是打回的结果返回 null。
  * 例：「打回分镜：第 02、04 集通过，第 05 集失败（…余额不足）」。
@@ -188,7 +191,6 @@ export function rejectSummary(result: unknown): { text: string; failed: boolean 
   const label = (e: { ep: number | null }) => (e.ep === null ? '?' : String(e.ep).padStart(2, '0'));
   const ok = eps.filter((e) => e.status === 'passed');
   const bad = eps.filter((e) => e.status !== 'passed');
-  const titles: Readonly<Record<string, string>> = { outline: '大纲', cast: '角色', art: '美术', script: '剧本', staging: '站位', storyboard: '分镜' };
   const skipped = bad.filter((e) => e.status === 'skipped');
   const failed = bad.filter((e) => e.status !== 'skipped');
   const parts = [
@@ -196,5 +198,60 @@ export function rejectSummary(result: unknown): { text: string; failed: boolean 
     ...failed.map((e) => `第 ${label(e)} 集${e.status === 'needs_human' ? '转人工' : '失败'}${e.error ? `（${e.error.slice(0, 40)}）` : ''}`),
     skipped.length ? `第 ${skipped.map(label).join('、')} 集没再试（前面连着出同样的错）` : '',
   ].filter(Boolean);
-  return { text: `打回${titles[String(r.stage)] ?? ''}：${parts.join('，')}`, failed: bad.length > 0 };
+  return { text: `打回${STAGE_NAMES[String(r.stage)] ?? ''}：${parts.join('，')}`, failed: bad.length > 0 };
+}
+
+/** 任务结束时右下角那条提示：没过的是红色、带跳转（runId 优先，找不到按阶段找）；通过的是深色。 */
+export interface JobNotice {
+  readonly title: string;
+  readonly message: string | null;
+  readonly failed: boolean;
+  readonly runId: number | null;
+  readonly stage: string | null;
+}
+
+const NOTICE_MAX = 120;
+const RUN_VERDICT: Readonly<Record<string, string>> = { passed: '通过', needs_human: '转人工', failed: '失败' };
+
+const clip = (text: unknown): string | null => (typeof text === 'string' && text ? (text.length > NOTICE_MAX ? `${text.slice(0, NOTICE_MAX)}…` : text) : null);
+const notice = (title: string, failed: boolean, rest: Partial<Omit<JobNotice, 'title' | 'failed'>> = {}): JobNotice => ({ title, message: null, failed, runId: null, stage: null, ...rest });
+
+interface StageEnd {
+  readonly stage: string;
+  readonly status: string;
+  readonly message: string | null;
+  readonly runId: number | null;
+}
+
+/** 编排停下时的一句：「剧本转人工；站位、分镜因上游没过没跑。<第一个没过阶段的原因>」 */
+function stagesText(stages: readonly StageEnd[]): string | null {
+  const name = (s: StageEnd) => STAGE_NAMES[s.stage] ?? s.stage;
+  const own = stages.filter((s) => s.status !== 'blocked');
+  const blocked = stages.filter((s) => s.status === 'blocked');
+  const parts = [...own.map((s) => `${name(s)}${RUN_VERDICT[s.status] ?? s.status}`), ...(blocked.length ? [`${blocked.map(name).join('、')}因上游没过没跑`] : [])];
+  const why = own.find((s) => s.message)?.message;
+  return clip(parts.length ? `${parts.join('；')}${why ? `。${why}` : ''}` : null);
+}
+
+/**
+ * 后台任务结束（job-end）时给页面的一条提示；不该在这里提示的返回 null：
+ * 多集打回有 rejectSummary，付费生成、恢复在生成任务页提示。
+ * 例：「打回分镜（第 05 集）转人工」+ 原因；「只重跑需复核停下了」+「剧本转人工；分镜因上游没过没跑」。
+ */
+export function jobEndNotice(e: { readonly ok?: unknown; readonly detail?: unknown; readonly message?: unknown; readonly result?: unknown }): JobNotice | null {
+  if (e.ok === false) return notice(`任务失败：${String(e.message)}`, true);
+  const detail = typeof e.detail === 'string' ? e.detail : '后台任务';
+  const r = e.result as Record<string, unknown> | null | undefined;
+  if (!r || typeof r !== 'object' || rejectSummary(r)) return null;
+  if (typeof r['orchestrationId'] === 'number') {
+    if (r['status'] === 'done') return notice(`${detail}跑完了`, false);
+    const stages = Array.isArray(r['stages']) ? (r['stages'] as StageEnd[]) : [];
+    const first = stages.find((s) => s.status !== 'blocked') ?? stages[0];
+    return notice(`${detail}停下了`, true, { message: stagesText(stages), runId: first?.runId ?? null, stage: first?.stage ?? null });
+  }
+  if (typeof r['runId'] === 'number' && typeof r['status'] === 'string') {
+    const passed = r['status'] === 'passed';
+    return notice(`${detail}${RUN_VERDICT[r['status']] ?? r['status']}`, !passed, { message: passed ? null : clip(r['message']), runId: r['runId'] });
+  }
+  return null;
 }

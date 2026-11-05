@@ -112,3 +112,53 @@ test('一次打回多集的汇总：通过的、失败的分开说；单集不�
   assert.equal(rejectSummary({ stage: 'script', episodes: [{ ep: 1, status: 'passed', error: null }] }), null);
   assert.equal(rejectSummary({ runId: 3 }), null);
 });
+
+test('任务结束的提示：单集运行通过 / 转人工 / 失败', async () => {
+  const { jobEndNotice } = await import('../web/src/generation.ts');
+  const detail = '打回分镜（第 05 集）';
+  const human = jobEndNotice({ ok: true, detail, result: { runId: 9, status: 'needs_human', message: '分镜门没过：E05-03 有未登记人名', pending: 1 } });
+  assert.deepEqual(human, { title: '打回分镜（第 05 集）转人工', message: '分镜门没过：E05-03 有未登记人名', failed: true, runId: 9, stage: null });
+  const failed = jobEndNotice({ ok: true, detail: '补出图提示词', result: { runId: 4, status: 'failed', message: null } });
+  assert.equal(failed!.title, '补出图提示词失败');
+  assert.equal(failed!.message, null);
+  assert.equal(failed!.failed, true);
+  const passed = jobEndNotice({ ok: true, detail, result: { runId: 9, status: 'passed', message: null, pending: 0 } });
+  assert.deepEqual(passed, { title: '打回分镜（第 05 集）通过', message: null, failed: false, runId: 9, stage: null });
+  const long = jobEndNotice({ ok: true, detail, result: { runId: 1, status: 'failed', message: '长'.repeat(200) } });
+  assert.equal(long!.message!.length, 121);
+});
+
+test('任务结束的提示：一键跑类停下了列出没过的阶段，跳转指向第一个；跑完了是深色', async () => {
+  const { jobEndNotice } = await import('../web/src/generation.ts');
+  const stopped = jobEndNotice({
+    ok: true,
+    detail: '只重跑需复核',
+    result: {
+      orchestrationId: 1,
+      status: 'blocked',
+      paidGateId: null,
+      stages: [
+        { stage: 'script', status: 'needs_human', message: '剧本门没过：第 3 集超时', runId: 3, episodes: null },
+        { stage: 'staging', status: 'blocked', message: '上游 script 未通过', runId: null, episodes: null },
+        { stage: 'storyboard', status: 'blocked', message: '上游 script 未通过', runId: null, episodes: null },
+      ],
+    },
+  });
+  assert.deepEqual(stopped, { title: '只重跑需复核停下了', message: '剧本转人工；站位、分镜因上游没过没跑。剧本门没过：第 3 集超时', failed: true, runId: 3, stage: 'script' });
+  const done = jobEndNotice({ ok: true, detail: '一键跑', result: { orchestrationId: 2, status: 'done', paidGateId: null, stages: [] } });
+  assert.deepEqual(done, { title: '一键跑跑完了', message: null, failed: false, runId: null, stage: null });
+});
+
+test('任务结束的提示：任务出错照旧；多集打回、付费生成不在这里提示', async () => {
+  const { jobEndNotice } = await import('../web/src/generation.ts');
+  assert.deepEqual(jobEndNotice({ ok: false, detail: '一键跑', message: 'deepseek 拒绝了请求（HTTP 402）' }), { title: '任务失败：deepseek 拒绝了请求（HTTP 402）', message: null, failed: true, runId: null, stage: null });
+  assert.equal(jobEndNotice({ ok: true, detail: '打回分镜（第 02、04 集）', result: { stage: 'storyboard', episodes: [{ ep: 2, status: 'passed', error: null }, { ep: 4, status: 'passed', error: null }] } }), null);
+  assert.equal(jobEndNotice({ ok: true, detail: '付费生成 #2', result: { gateId: 2, counts: {} } }), null);
+  assert.equal(jobEndNotice({ ok: true, detail: '恢复中断的生成任务', result: { matched: 0 } }), null);
+});
+
+test('任务结束的提示：没过的全是因上游没跑时，跳转指向第一个阶段', async () => {
+  const { jobEndNotice } = await import('../web/src/generation.ts');
+  const n = jobEndNotice({ ok: true, detail: '一键跑', result: { orchestrationId: 3, status: 'failed', paidGateId: null, stages: [{ stage: 'storyboard', status: 'blocked', message: '上游 staging 未通过', runId: null, episodes: null }] } });
+  assert.deepEqual(n, { title: '一键跑停下了', message: '分镜因上游没过没跑', failed: true, runId: null, stage: 'storyboard' });
+});

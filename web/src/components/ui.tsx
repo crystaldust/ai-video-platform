@@ -72,20 +72,61 @@ export function ErrorView({ error, onRetry }: { error: ApiError | Error; onRetry
   );
 }
 
-/** 页面底部的短提示：成功 3 秒后消失，错误要手动点掉。 */
-export function useToast(): [ReactNode, (text: string, kind?: 'ok' | 'err') => void] {
-  const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err'; n: number } | null>(null);
+/** 提示条上的按钮：点了先做动作，再关掉提示。 */
+export interface ToastAction {
+  readonly label: string;
+  readonly onClick: () => void;
+}
+
+export interface ToastOptions {
+  /** 有标题时分两行：粗体标题 + 下面的说明（说明可以为空） */
+  readonly title?: string;
+  readonly action?: ToastAction;
+}
+
+type Notify = (text: string, kind?: 'ok' | 'err', opts?: ToastOptions) => void;
+
+/** 页面底部的短提示：成功 3 秒后消失，错误要手动点掉（点提示条或 ×）。 */
+export function useToast(): [ReactNode, Notify] {
+  const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err'; n: number; opts: ToastOptions } | null>(null);
   useEffect(() => {
     if (!toast || toast.kind === 'err') return;
     const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
+  const close = () => setToast(null);
   const node = toast ? (
-    <div className={`${s.toast} ${toast.kind === 'err' ? s.toastErr : ''}`} role={toast.kind === 'err' ? 'alert' : 'status'} onClick={() => setToast(null)}>
-      {toast.text}
+    <div className={`${s.toast} ${toast.kind === 'err' ? s.toastErr : ''}`} role={toast.kind === 'err' ? 'alert' : 'status'} onClick={close}>
+      {toast.opts.title ? (
+        <>
+          <div className={s.toastHead}>
+            <strong>{toast.opts.title}</strong>
+            <button type="button" className={s.toastClose} aria-label="关掉提示" onClick={close}>
+              ×
+            </button>
+          </div>
+          {toast.text ? <div className={s.toastText}>{toast.text}</div> : null}
+        </>
+      ) : (
+        toast.text
+      )}
+      {toast.opts.action ? (
+        <button
+          type="button"
+          className={s.toastAction}
+          onClick={(e) => {
+            e.stopPropagation();
+            // 先关再做：动作里弹的新提示（例如没找到）不会被这次关掉
+            close();
+            toast.opts.action!.onClick();
+          }}
+        >
+          {toast.opts.action.label}
+        </button>
+      ) : null}
     </div>
   ) : null;
-  return [node, (text, kind = 'ok') => setToast({ text, kind, n: Date.now() })];
+  return [node, (text, kind = 'ok', opts = {}) => setToast({ text, kind, n: Date.now(), opts })];
 }
 
 export function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: readonly { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {

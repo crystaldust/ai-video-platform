@@ -72,7 +72,10 @@ test('新建 → 一键跑 → 付费确认并生成 → 看任务 → 打回单
   await page.getByRole('button', { name: '剧本', exact: true }).click();
   await page.getByLabel('打回意见').fill('汽笛提前到陆行远掏砚之前');
   await page.getByRole('button', { name: '打回重跑' }).click();
-  await expect(page.getByText(/已打回第 01 集的剧本/)).toBeVisible();
+  // 假模型跑得快：开跑的提示可能马上被结束的提示顶掉，两个认一个
+  await expect(page.getByText(/已打回第 01 集的剧本|打回剧本（第 01 集）通过/)).toBeVisible();
+  // 跑完弹深色提示（#37）
+  await expect(page.getByRole('status').filter({ hasText: '打回剧本（第 01 集）通过' })).toBeVisible({ timeout: 60_000 });
 
   // 需复核：站位与分镜第 1 集
   await expect(page.getByText('第 01 集 · 需复核').first()).toBeVisible({ timeout: 60_000 });

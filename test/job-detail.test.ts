@@ -90,3 +90,26 @@ test('一次打回多集：POST /reject 带 episodes，任务说明列出集号�
   const result = end['result'] as { episodes: { ep: number; status: string }[] };
   assert.deepEqual(result.episodes.map((e) => [e.ep, e.status]), [[1, 'passed'], [3, 'passed']]);
 });
+
+test('任务结束事件带任务说明；单集打回的结果带没过的原因（通过时为 null），单阶段重跑的结果带没过的阶段', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  await setup(h);
+  const { collectEvents } = await import('./support/server-harness.ts');
+  const ends = async (call: () => Promise<unknown>) => {
+    const events = collectEvents(h, p('/events'), (e) => e.type === 'job-end');
+    for (let i = 0; i < 200 && h.app.bus.subscribers(ID) === 0; i++) await new Promise((r) => setTimeout(r, 5));
+    await call();
+    await h.app.jobs.settled(ID);
+    return (await events).find((e) => e.type === 'job-end')!;
+  };
+  const one = await ends(() => h.call('POST', p('/reject'), { body: { stage: 'script', episode: '2', note: '汽笛提前' } }));
+  assert.equal(one['detail'], '打回剧本（第 02 集）');
+  const r = one['result'] as { status: string; message: unknown };
+  assert.equal(r.status, 'passed');
+  assert.ok('message' in r);
+  assert.equal(r.message, null);
+  const go = await ends(() => h.call('POST', p('/go'), { body: { only: 'cast' } }));
+  assert.equal(go['detail'], '重跑角色阶段');
+  assert.deepEqual((go['result'] as { stages: unknown[] }).stages, []);
+});
