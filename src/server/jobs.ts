@@ -121,14 +121,14 @@ export class Jobs {
     );
   }
 
-  /** 只补出图提示词：角色卡不重写，只补 characterRefs；因此新冒出来的需复核确认掉。 */
+  /** 只补出图提示词：角色卡不重写，只补 characterRefs（分镜不读它，不会因此需复核）。 */
   refs(projectId: string): JobInfo {
     const { app } = this;
     const publish = (e: ProgressEvent) => app.bus.publish(projectId, { ...e, type: `run-${e.type}` });
     return this.start(projectId, 'go', '补出图提示词', () =>
       app.withProject(projectId, async (p) => {
         const r = await fillCharacterRefs(p, { model: app.modelFor(p, 'cast'), onProgress: publish, ...app.config.run });
-        return { runId: r.outcome.runId, status: r.outcome.status, acknowledged: r.acknowledged };
+        return { runId: r.outcome.runId, status: r.outcome.status };
       }),
     );
   }
