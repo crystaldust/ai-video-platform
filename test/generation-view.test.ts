@@ -77,9 +77,10 @@ test('勾选的一句话', async () => {
 test('生成失败的出路：角色卡缺出图提示词 → 重跑角色阶段（only: cast，要先确认）；别的原因没有直达操作', async () => {
   const { remedyFor } = await import('../web/src/generation.ts');
   const r = remedyFor('角色卡「卡特」（C01）没有出图提示词：先重跑角色阶段（角色图提示词由 character-refs 生成）');
-  assert.deepEqual(r && { label: r.label, body: r.body }, { label: '重跑角色阶段', body: { only: 'cast' } });
-  assert.match(r!.confirm, /DeepSeek|花钱|费用/);
-  assert.equal(remedyFor('角色卡「卡特」（C01）的出图提示词缺视图 face-45：先重跑角色阶段')?.body.only, 'cast');
+  assert.deepEqual(r && { label: r.label, path: r.path, body: r.body }, { label: '补提示词', path: '/refs', body: {} }, '只补出图提示词，不重写角色卡');
+  assert.match(r!.confirm, /花一点钱|费用/);
+  assert.equal(remedyFor('角色卡「卡特」（C01）的出图提示词缺视图 face-45：先重跑角色阶段')?.path, '/refs');
+  assert.match(r!.confirm, /不改角色卡/);
   assert.equal(remedyFor('没有 dashscope 的凭据：设置环境变量 DASHSCOPE_API_KEY，或运行 cred set dashscope'), null);
   assert.equal(remedyFor(null), null);
 });
@@ -101,4 +102,13 @@ test('「确认付费生成」按钮：有等待确认的就打开它；没有�
   assert.deepEqual(paidButton({ gateId: null, busy: false, hasEstimate: true }), { action: 'create', gateId: null, disabledReason: null });
   assert.match(paidButton({ gateId: 4, busy: true, hasEstimate: true }).disabledReason!, /有任务在跑/);
   assert.match(paidButton({ gateId: null, busy: false, hasEstimate: false }).disabledReason!, /估算/);
+});
+
+test('一次打回多集的汇总：通过的、失败的分开说；单集不汇总', async () => {
+  const { rejectSummary } = await import('../web/src/generation.ts');
+  const r = rejectSummary({ stage: 'storyboard', episodes: [{ ep: 2, status: 'passed', error: null }, { ep: 4, status: 'passed', error: null }, { ep: 5, status: 'failed', error: 'deepseek 拒绝了请求（HTTP 402）' }] });
+  assert.equal(r!.text, '打回分镜：第 02、04 集通过，第 05 集失败（deepseek 拒绝了请求（HTTP 402））');
+  assert.equal(r!.failed, true);
+  assert.equal(rejectSummary({ stage: 'script', episodes: [{ ep: 1, status: 'passed', error: null }] }), null);
+  assert.equal(rejectSummary({ runId: 3 }), null);
 });

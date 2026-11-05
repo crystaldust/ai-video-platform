@@ -75,6 +75,12 @@ const novelCharacters: Recipe = {
   needsInput: true,
   perEpisode: false,
   async run(ctx) {
+    // 只补出图提示词：现有角色卡原样留着，只按它跑 character-refs、补回 characterRefs（旧 intake 当底稿）
+    if (ctx.refsOnly && ctx.base) {
+      const existing = listOf(ctx.base, 'characters');
+      const attach = await withCharacterRefs(ctx, existing, new Map(existing.map((c) => [c['name'], c])));
+      return attach(ctx.base);
+    }
     const seed = await seedOf(ctx, ['seed', ctx.inPath('outline')]);
     const schema = ctx.readFile('references/schema.md');
     const task = readAll(ctx, ['references/profile-pass.md', 'references/sheet.md']);

@@ -43,8 +43,9 @@ node src/cli.ts serve --skills ~/Development/ai-video/shuohao-skills/skills
 | GET | `/api/p/:id/tasks[?gate=<id>]` | 生成任务页：已确认的确认单摘要，选中那张的任务（角色 × 5 视图、关键帧、视频按集；没建任务的视图带沿用的那张 `reuseOf`） |
 | GET | `/api/p/:id/tasks/:tid` | 任务详情：提示词、参考图、状态经过 |
 | GET | `/api/p/:id/media/:mid` | 素材文件（图片、视频），支持单段 Range，长缓存 |
-| POST | `/api/p/:id/go` | 开编排（`mode: all / only-stale`，或 `only: <阶段>`），后台运行 |
-| POST | `/api/p/:id/reject` | 打回（`stage`、`episode?`、`note`），先同步校验再开后台任务 |
+| POST | `/api/p/:id/go` | 开编排（`mode: all / only-stale`，或 `only: <阶段>`），后台运行；全貌阶段卡上的「重跑」就是 `only`（从头重写这一阶段，先确认、写明估算） |
+| POST | `/api/p/:id/reject` | 打回（`stage`、`note`，加 `episode` 单集或 `episodes` 多集），先同步校验再开后台任务；多集在一个任务里依次跑，一集失败不影响别的，`job-end.result.episodes` 带逐集结果 |
+| POST | `/api/p/:id/refs` | 只补出图提示词：拿现有角色卡跑 character-refs，只写 `characterRefs`，不重写角色卡；补完把因此新冒出来的需复核确认掉（外形没变） |
 | POST | `/api/p/:id/review` | 复核确认（保持现状） |
 | POST | `/api/p/:id/gates/:gid` | 确认（勾选节点 × 集、单次上限）并在后台开跑付费生成，或取消付费确认单；返回 `{ gate, started, reason? }` |
 | POST | `/api/p/:id/generate` | `{action:'continue', gateId}` 继续生成，`{action:'stop'}` 停止（只在两次提交之间停） |

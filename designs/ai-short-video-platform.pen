@@ -67781,6 +67781,4730 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "R26NLw",
+      "x": 6120,
+      "y": 0,
+      "name": "全貌视图 · 阶段重跑与多集打回 · Web 1440",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$bg",
+      "children": [
+        {
+          "type": "frame",
+          "id": "NP2Rq",
+          "name": "Sidebar",
+          "width": 216,
+          "height": "fill_container",
+          "fill": "$surface",
+          "stroke": "$border",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "gap": 4,
+          "padding": [
+            20,
+            12
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "ERXlH",
+              "name": "Brand",
+              "gap": 8,
+              "padding": [
+                0,
+                8,
+                20,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Gcrph",
+                  "name": "Mark",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$accent",
+                  "cornerRadius": 5
+                },
+                {
+                  "type": "text",
+                  "id": "Bf1Gx",
+                  "name": "短剧工坊",
+                  "fill": "$text-1",
+                  "content": "短剧工坊",
+                  "fontFamily": "$font",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "hseDm",
+              "name": "Project",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                8,
+                8,
+                16,
+                8
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "aa8oh",
+                  "name": "当前项目",
+                  "fill": "$text-3",
+                  "content": "当前项目",
+                  "fontFamily": "$font",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "rnuph",
+                  "name": "《渡口》",
+                  "fill": "$text-1",
+                  "content": "《渡口》",
+                  "fontFamily": "$font",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "GP2EQ",
+                  "name": "6 集 · 竖屏 9:1",
+                  "fill": "$text-2",
+                  "content": "6 集 · 竖屏 9:16 · 每集 45–60 秒",
+                  "fontFamily": "$font",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kouoz",
+              "name": "Nav 全貌",
+              "width": "fill_container",
+              "fill": "$accent-soft",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "nUlVL",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "layout-dashboard",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "O0Ihc",
+                  "name": "全貌",
+                  "fill": "$accent",
+                  "content": "全貌",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "X2UqF",
+              "name": "Nav 剧集与分镜",
+              "width": "fill_container",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "F6igCI",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "film",
+                  "library": "lucide",
+                  "fill": "$text-2"
+                },
+                {
+                  "type": "text",
+                  "id": "qdYqQ",
+                  "name": "剧集与分镜",
+                  "fill": "$text-2",
+                  "content": "剧集与分镜",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ADwr5",
+              "name": "Nav 角色与美术",
+              "width": "fill_container",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "h4mmk",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "users",
+                  "library": "lucide",
+                  "fill": "$text-2"
+                },
+                {
+                  "type": "text",
+                  "id": "lHfZf",
+                  "name": "角色与美术",
+                  "fill": "$text-2",
+                  "content": "角色与美术",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "f4kid",
+              "name": "Nav 素材与候选",
+              "width": "fill_container",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "t5V8w",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "image",
+                  "library": "lucide",
+                  "fill": "$text-2"
+                },
+                {
+                  "type": "text",
+                  "id": "v0dnLr",
+                  "name": "素材与候选",
+                  "fill": "$text-2",
+                  "content": "素材与候选",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "sqk3B",
+              "name": "Nav 生成任务",
+              "width": "fill_container",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "WEPX3",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "list-checks",
+                  "library": "lucide",
+                  "fill": "$text-2"
+                },
+                {
+                  "type": "text",
+                  "id": "zmQHb",
+                  "name": "生成任务",
+                  "fill": "$text-2",
+                  "content": "生成任务",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bqoaW",
+              "name": "Nav 剪辑",
+              "width": "fill_container",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "zJQyu",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "scissors",
+                  "library": "lucide",
+                  "fill": "$text-2"
+                },
+                {
+                  "type": "text",
+                  "id": "e8E2cj",
+                  "name": "剪辑",
+                  "fill": "$text-2",
+                  "content": "剪辑",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Ma79i",
+              "name": "Nav 模型与预设",
+              "width": "fill_container",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "D1XaIK",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "sliders-horizontal",
+                  "library": "lucide",
+                  "fill": "$text-2"
+                },
+                {
+                  "type": "text",
+                  "id": "icT1l",
+                  "name": "模型与预设",
+                  "fill": "$text-2",
+                  "content": "模型与预设",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AS7d3",
+              "name": "Nav Skill 包",
+              "width": "fill_container",
+              "cornerRadius": 6,
+              "gap": 10,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "EdDaW",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "package",
+                  "library": "lucide",
+                  "fill": "$text-2"
+                },
+                {
+                  "type": "text",
+                  "id": "QRfp3",
+                  "name": "Skill 包",
+                  "fill": "$text-2",
+                  "content": "Skill 包",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "mOuzw",
+          "name": "Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            0,
+            28,
+            28,
+            28
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "BpXAl",
+              "name": "Topbar",
+              "width": "fill_container",
+              "height": 64,
+              "stroke": "$border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AgjbA",
+                  "name": "Title",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "q4buDj",
+                      "name": "全貌",
+                      "fill": "$text-1",
+                      "content": "全貌",
+                      "fontFamily": "$font",
+                      "fontSize": 20,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Pjwzm",
+                      "name": "从梗概一键跑完文本阶段；",
+                      "fill": "$text-2",
+                      "content": "从梗概一键跑完文本阶段；付费生成需要你确认",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Ji61Q",
+                  "name": "Actions",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SCJZW",
+                      "name": "Preset Switch",
+                      "fill": "$lock-soft",
+                      "cornerRadius": 7,
+                      "gap": 2,
+                      "padding": 3,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "yNxeg",
+                          "name": "Seg 小成本验证",
+                          "fill": "$surface",
+                          "cornerRadius": 5,
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "#0000001A",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          },
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "PjRO9",
+                              "name": "小成本验证",
+                              "fill": "$text-1",
+                              "content": "小成本验证",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Mowz3",
+                          "name": "Seg 生产级",
+                          "cornerRadius": 5,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "J4pFDi",
+                              "name": "生产级",
+                              "fill": "$text-2",
+                              "content": "生产级",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YwcDk",
+                      "name": "Btn Rerun",
+                      "fill": "$surface",
+                      "cornerRadius": 7,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "LJRSz",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "rotate-ccw",
+                          "library": "lucide",
+                          "fill": "$text-2"
+                        },
+                        {
+                          "type": "text",
+                          "id": "GvoCE",
+                          "name": "重跑文本阶段",
+                          "fill": "$text-1",
+                          "content": "重跑文本阶段",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hx26r",
+                      "name": "Btn Confirm Paid",
+                      "fill": "$accent",
+                      "cornerRadius": 7,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "z4M9c",
+                          "name": "确认付费生成",
+                          "fill": "#FFFFFF",
+                          "content": "确认付费生成",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "t1fpnv",
+                          "name": "约 ¥41–58",
+                          "fill": "#CFE4DF",
+                          "content": "约 ¥41–58",
+                          "fontFamily": "$mono",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Z36lB",
+              "name": "Run Summary",
+              "width": "fill_container",
+              "gap": 28,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "kAKPv",
+                  "name": "Metric 文本阶段",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ZrLeB",
+                      "name": "文本阶段",
+                      "fill": "$text-3",
+                      "content": "文本阶段",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "oVpxE",
+                      "name": "Value",
+                      "gap": 5,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "m9NnM",
+                          "name": "6 / 6",
+                          "fill": "$text-1",
+                          "content": "6/6",
+                          "fontFamily": "$mono",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Uy8Yc",
+                          "name": "已跑完",
+                          "fill": "$text-2",
+                          "content": "已跑完",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "h0AKK",
+                  "name": "Metric 对话推进",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "dPdB2",
+                      "name": "对话推进",
+                      "fill": "$text-3",
+                      "content": "对话推进",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "c32WxU",
+                      "name": "Value",
+                      "gap": 5,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "GjTnX",
+                          "name": "0",
+                          "fill": "$text-1",
+                          "content": "0",
+                          "fontFamily": "$mono",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "FtFgS",
+                          "name": "次",
+                          "fill": "$text-2",
+                          "content": "次",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Yrq9Y",
+                  "name": "Metric 用时",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zQCHu",
+                      "name": "用时",
+                      "fill": "$text-3",
+                      "content": "用时",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "X6eLCH",
+                      "name": "Value",
+                      "gap": 5,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "k0HoB",
+                          "name": "14:08",
+                          "fill": "$text-1",
+                          "content": "14:08",
+                          "fontFamily": "$mono",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "sjxOa",
+                  "name": "Metric 文本花费",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "sl6Q0",
+                      "name": "文本花费",
+                      "fill": "$text-3",
+                      "content": "文本花费",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "swXYb",
+                      "name": "Value",
+                      "gap": 5,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "DQFys",
+                          "name": "¥2.31",
+                          "fill": "$text-1",
+                          "content": "¥2.31",
+                          "fontFamily": "$mono",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "BCXns",
+                          "name": "DeepSeek",
+                          "fill": "$text-2",
+                          "content": "DeepSeek",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "RGcfj",
+                  "name": "Metric 待你处理",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yywnI",
+                      "name": "待你处理",
+                      "fill": "$text-3",
+                      "content": "待你处理",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fN81C",
+                      "name": "Value",
+                      "gap": 5,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CzQxg",
+                          "name": "2",
+                          "fill": "$warn",
+                          "content": "2",
+                          "fontFamily": "$mono",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "HmtuV",
+                          "name": "项",
+                          "fill": "$text-2",
+                          "content": "项",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vBqhA",
+              "name": "Pipeline",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n9acq",
+                  "name": "Text Stages",
+                  "width": "fill_container",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "oPOmX",
+                      "name": "Stage 大纲",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 8,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Bvb6n",
+                          "name": "Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Q8fzCO",
+                              "name": "Name",
+                              "fill": "$text-1",
+                              "content": "01  大纲",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "kcU3a",
+                              "name": "Status ok",
+                              "fill": "$ok-soft",
+                              "cornerRadius": 4,
+                              "gap": 4,
+                              "padding": [
+                                2,
+                                7
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "qZXQr",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "rvb5q",
+                                  "name": "通过",
+                                  "fill": "$ok",
+                                  "content": "通过",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Xpvvt",
+                          "name": "Skill",
+                          "fill": "$text-3",
+                          "content": "novel-outline",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "c8Fk9F",
+                          "name": "Gate",
+                          "fill": "$text-2",
+                          "content": "质量门 15/15",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "b1NZt",
+                          "name": "Card Actions",
+                          "width": "fill_container",
+                          "stroke": "$border",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0,
+                            0,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "zJ6fO",
+                              "name": "Rerun",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "Huy0w",
+                                  "name": "I",
+                                  "width": 11,
+                                  "height": 11,
+                                  "icon": "rotate-ccw",
+                                  "library": "lucide",
+                                  "fill": "$accent"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "tObAA",
+                                  "name": "T",
+                                  "fill": "$accent",
+                                  "content": "重跑",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "SCMcN",
+                              "name": "Cost",
+                              "fill": "$text-3",
+                              "content": "约 ¥0.4–0.8",
+                              "fontFamily": "$mono",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "n7uMUh",
+                      "name": "Arrow",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-3"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ttxvn",
+                      "name": "Stage 角色",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 8,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "KK1NM",
+                          "name": "Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "UYOn8",
+                              "name": "Name",
+                              "fill": "$text-1",
+                              "content": "02  角色",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qKM8j",
+                              "name": "Status ok",
+                              "fill": "$ok-soft",
+                              "cornerRadius": 4,
+                              "gap": 4,
+                              "padding": [
+                                2,
+                                7
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "w0s5u",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "AIXxz",
+                                  "name": "通过",
+                                  "fill": "$ok",
+                                  "content": "通过",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "qA3uZ",
+                          "name": "Skill",
+                          "fill": "$text-3",
+                          "content": "novel-characters",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Ucq28",
+                          "name": "Gate",
+                          "fill": "$text-2",
+                          "content": "质量门 12/12",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "W4eQi",
+                          "name": "Card Actions",
+                          "width": "fill_container",
+                          "stroke": "$border",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0,
+                            0,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "cv13L",
+                              "name": "Rerun",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "nfQkw",
+                                  "name": "I",
+                                  "width": 11,
+                                  "height": 11,
+                                  "icon": "rotate-ccw",
+                                  "library": "lucide",
+                                  "fill": "$accent"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "r1PC9",
+                                  "name": "T",
+                                  "fill": "$accent",
+                                  "content": "重跑",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "aNYoD",
+                              "x": 47,
+                              "y": 7.5,
+                              "name": "Cost",
+                              "enabled": false,
+                              "fill": "$text-3",
+                              "content": "约 ¥0.6–1.2",
+                              "fontFamily": "$mono",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "EZumZ",
+                              "name": "Refs",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "PrNPm",
+                                  "name": "I",
+                                  "width": 11,
+                                  "height": 11,
+                                  "icon": "image",
+                                  "library": "lucide",
+                                  "fill": "$accent"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "r3iQ6J",
+                                  "name": "T",
+                                  "fill": "$accent",
+                                  "content": "补提示词",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "Azied",
+                      "name": "Arrow",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-3"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Nwbjs",
+                      "name": "Stage 美术",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 8,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "lQy4T",
+                          "name": "Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "oRTc2",
+                              "name": "Name",
+                              "fill": "$text-1",
+                              "content": "03  美术",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ePmIX",
+                              "name": "Status ok",
+                              "fill": "$ok-soft",
+                              "cornerRadius": 4,
+                              "gap": 4,
+                              "padding": [
+                                2,
+                                7
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "hPCV7",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "KQF2i",
+                                  "name": "通过",
+                                  "fill": "$ok",
+                                  "content": "通过",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "hFRT4",
+                          "name": "Skill",
+                          "fill": "$text-3",
+                          "content": "novel-art",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "vKTDa",
+                          "name": "Gate",
+                          "fill": "$text-2",
+                          "content": "质量门 10/10",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "y38kc",
+                          "name": "Card Actions",
+                          "width": "fill_container",
+                          "stroke": "$border",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0,
+                            0,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "mxtDb",
+                              "name": "Rerun",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "Fw0Pa",
+                                  "name": "I",
+                                  "width": 11,
+                                  "height": 11,
+                                  "icon": "rotate-ccw",
+                                  "library": "lucide",
+                                  "fill": "$accent"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "t0eHT",
+                                  "name": "T",
+                                  "fill": "$accent",
+                                  "content": "重跑",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "tEhXb",
+                              "name": "Cost",
+                              "fill": "$text-3",
+                              "content": "约 ¥0.3–0.6",
+                              "fontFamily": "$mono",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "Wdrxw",
+                      "name": "Arrow",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-3"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zZT4g",
+                      "name": "Stage 剧本",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 8,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "WbggF",
+                          "name": "Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ny1Sr",
+                              "name": "Name",
+                              "fill": "$text-1",
+                              "content": "04  剧本",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "nsJds",
+                              "name": "Status ok",
+                              "fill": "$ok-soft",
+                              "cornerRadius": 4,
+                              "gap": 4,
+                              "padding": [
+                                2,
+                                7
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "BuCwA",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "iZE5D",
+                                  "name": "通过",
+                                  "fill": "$ok",
+                                  "content": "通过",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Eh9z6",
+                          "name": "Skill",
+                          "fill": "$text-3",
+                          "content": "novel-script",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "K7aKCu",
+                          "name": "Gate",
+                          "fill": "$text-2",
+                          "content": "质量门 11/11",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "J5bazc",
+                          "name": "Card Actions",
+                          "width": "fill_container",
+                          "stroke": "$border",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0,
+                            0,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "uWjMP",
+                              "name": "Rerun",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "ihDpx",
+                                  "name": "I",
+                                  "width": 11,
+                                  "height": 11,
+                                  "icon": "rotate-ccw",
+                                  "library": "lucide",
+                                  "fill": "$accent"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "t8RKh",
+                                  "name": "T",
+                                  "fill": "$accent",
+                                  "content": "重跑",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "Y92rhy",
+                              "name": "Cost",
+                              "fill": "$text-3",
+                              "content": "约 ¥1.2–2.4",
+                              "fontFamily": "$mono",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "Zgz6l",
+                      "name": "Arrow",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-3"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "e5XQR",
+                      "name": "Stage 站位",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 8,
+                      "stroke": "$warn",
+                      "strokeWidth": 1.5,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "M4TnKt",
+                          "name": "Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "g8GoBX",
+                              "name": "Name",
+                              "fill": "$text-1",
+                              "content": "05  站位",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "oXmbb",
+                              "name": "Status warn",
+                              "fill": "$warn-soft",
+                              "cornerRadius": 4,
+                              "gap": 4,
+                              "padding": [
+                                2,
+                                7
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "vDY5Y",
+                                  "name": "Dot",
+                                  "fill": "$warn",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "CRqPu",
+                                  "name": "需复核",
+                                  "fill": "$warn",
+                                  "content": "需复核",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "jcLW3",
+                          "name": "Skill",
+                          "fill": "$text-3",
+                          "content": "novel-staging",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "M6y9i",
+                          "name": "Gate",
+                          "fill": "$text-2",
+                          "content": "质量门 9/9",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "I4MRXW",
+                          "name": "Card Actions",
+                          "width": "fill_container",
+                          "stroke": "$border",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0,
+                            0,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "sLudg",
+                              "name": "Rerun",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "t5GEIA",
+                                  "name": "I",
+                                  "width": 11,
+                                  "height": 11,
+                                  "icon": "rotate-ccw",
+                                  "library": "lucide",
+                                  "fill": "$accent"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ZEZwe",
+                                  "name": "T",
+                                  "fill": "$accent",
+                                  "content": "重跑",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "gXtWG",
+                              "name": "Cost",
+                              "fill": "$text-3",
+                              "content": "约 ¥0.3–0.6",
+                              "fontFamily": "$mono",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "PC8U5",
+                      "name": "Arrow",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-3"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hudwH",
+                      "name": "Stage 分镜",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 8,
+                      "stroke": "$err",
+                      "strokeWidth": 1.5,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "dJ5GR",
+                          "name": "Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Ya1Os",
+                              "name": "Name",
+                              "fill": "$text-1",
+                              "content": "06  分镜",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Oo5CP",
+                              "name": "Status err",
+                              "fill": "$err-soft",
+                              "cornerRadius": 4,
+                              "gap": 4,
+                              "padding": [
+                                2,
+                                7
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "ih4bx",
+                                  "name": "Dot",
+                                  "fill": "$err",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "X5Lxu",
+                                  "name": "未通过",
+                                  "fill": "$err",
+                                  "content": "未通过",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "q73wQ1",
+                          "name": "Skill",
+                          "fill": "$text-3",
+                          "content": "novel-storyboard",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "iIv2e",
+                          "name": "Gate",
+                          "fill": "$text-2",
+                          "content": "质量门 17/18",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "XqBoI",
+                          "name": "Card Actions",
+                          "width": "fill_container",
+                          "stroke": "$border",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0,
+                            0,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "l2T47M",
+                              "name": "Rerun",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "RwwJi",
+                                  "name": "I",
+                                  "width": 11,
+                                  "height": 11,
+                                  "icon": "rotate-ccw",
+                                  "library": "lucide",
+                                  "fill": "$accent"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "hP2ED",
+                                  "name": "T",
+                                  "fill": "$accent",
+                                  "content": "重跑",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "okzyS",
+                              "name": "Cost",
+                              "fill": "$text-3",
+                              "content": "约 ¥2.5–5.0",
+                              "fontFamily": "$mono",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "D4Irz",
+                  "name": "Paid Stages",
+                  "width": "fill_container",
+                  "cornerRadius": 10,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Cvle2",
+                      "name": "Paid Head",
+                      "width": 180,
+                      "layout": "vertical",
+                      "gap": 2,
+                      "padding": [
+                        0,
+                        4
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "F36bpt",
+                          "name": "L",
+                          "gap": 6,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "p6gvK",
+                              "name": "Lock",
+                              "width": 12,
+                              "height": 12,
+                              "icon": "lock",
+                              "library": "lucide",
+                              "fill": "$text-2"
+                            },
+                            {
+                              "type": "text",
+                              "id": "bjjnB",
+                              "name": "付费阶段 · 先确认再生",
+                              "fill": "$text-2",
+                              "content": "付费阶段 · 先确认再生成",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "skIAq",
+                          "name": "价格 10-27 拉取，",
+                          "fill": "$text-3",
+                          "content": "价格 10-27 拉取，仅供参考",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vb4Z5",
+                      "name": "Paid Row",
+                      "width": "fill_container",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "m7dVG1",
+                          "name": "Stage 角色参考图",
+                          "width": "fill_container",
+                          "fill": "$bg",
+                          "cornerRadius": 8,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "I1UO0H",
+                              "name": "Head",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "HAQQb",
+                                  "name": "Name",
+                                  "fill": "$text-2",
+                                  "content": "07  角色参考图",
+                                  "fontFamily": "$font",
+                                  "fontSize": 14,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "ili5b",
+                              "name": "Skill",
+                              "fill": "$text-3",
+                              "content": "character-refs",
+                              "fontFamily": "$mono",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "yqczJ",
+                              "name": "Gate",
+                              "fill": "$text-2",
+                              "content": "¥6–9 · 20 张",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon",
+                          "id": "Y4K7Ee",
+                          "name": "Arrow",
+                          "width": 12,
+                          "height": 12,
+                          "icon": "chevron-right",
+                          "library": "lucide",
+                          "fill": "$text-3"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "e0g5a",
+                          "name": "Stage 关键帧",
+                          "width": "fill_container",
+                          "fill": "$bg",
+                          "cornerRadius": 8,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "l9JV9e",
+                              "name": "Head",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "hakEb",
+                                  "name": "Name",
+                                  "fill": "$text-2",
+                                  "content": "08  关键帧",
+                                  "fontFamily": "$font",
+                                  "fontSize": 14,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "WswhW",
+                              "name": "Skill",
+                              "fill": "$text-3",
+                              "content": "Qwen Image",
+                              "fontFamily": "$mono",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "aOM7t",
+                              "name": "Gate",
+                              "fill": "$text-2",
+                              "content": "¥8–12 · 74 张",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon",
+                          "id": "V18dmZ",
+                          "name": "Arrow",
+                          "width": 12,
+                          "height": 12,
+                          "icon": "chevron-right",
+                          "library": "lucide",
+                          "fill": "$text-3"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "TqL8X",
+                          "name": "Stage 视频",
+                          "width": "fill_container",
+                          "fill": "$bg",
+                          "cornerRadius": 8,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            12
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "byMVY",
+                              "name": "Head",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "GwMl8",
+                                  "name": "Name",
+                                  "fill": "$text-2",
+                                  "content": "09  视频",
+                                  "fontFamily": "$font",
+                                  "fontSize": 14,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "j62Fu",
+                              "name": "Skill",
+                              "fill": "$text-3",
+                              "content": "MiniMax H3",
+                              "fontFamily": "$mono",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Q3a6Mi",
+                              "name": "Gate",
+                              "fill": "$text-2",
+                              "content": "¥27–37 · 24 段",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "s1Jw5w",
+              "name": "Body",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "R5grly",
+                  "name": "Episode Table",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 10,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "b3sY9v",
+                      "name": "Table Title",
+                      "width": "fill_container",
+                      "padding": [
+                        14,
+                        16
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "TECp4",
+                          "name": "L",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "koFPQ",
+                              "name": "分集全貌",
+                              "fill": "$text-1",
+                              "content": "分集全貌",
+                              "fontFamily": "$font",
+                              "fontSize": 15,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "na4wL",
+                              "name": "6 集 · 15 场 ·",
+                              "fill": "$text-2",
+                              "content": "6 集 · 15 场 · 24 段 · 79 切 · 合计 5 分 14 秒",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "C06tHn",
+                          "name": "Filter",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "A3AFS",
+                              "name": "Chip 全部",
+                              "fill": "$text-1",
+                              "cornerRadius": 12,
+                              "padding": [
+                                4,
+                                10
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "OzD1r",
+                                  "name": "全部",
+                                  "fill": "#FFFFFF",
+                                  "content": "全部",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Wnv9O",
+                              "name": "Chip 待处理 2",
+                              "fill": "$lock-soft",
+                              "cornerRadius": 12,
+                              "padding": [
+                                4,
+                                10
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "BN27t",
+                                  "name": "待处理 2",
+                                  "fill": "$text-2",
+                                  "content": "待处理 2",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "RfyjA",
+                      "name": "Header",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "$bg",
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "A8eJm7",
+                          "name": "Cell 集",
+                          "width": 56,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "UIMsf",
+                              "name": "集",
+                              "fill": "$text-3",
+                              "content": "集",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "gtjPG",
+                          "name": "Cell 钩子",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "EEKpQ",
+                              "name": "钩子",
+                              "fill": "$text-3",
+                              "content": "钩子",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "qGNsg",
+                          "name": "Cell 剧本",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "bjIzv",
+                              "name": "剧本",
+                              "fill": "$text-3",
+                              "content": "剧本",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "vWEDz",
+                          "name": "Cell 站位",
+                          "width": 104,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "IPbVG",
+                              "name": "站位",
+                              "fill": "$text-3",
+                              "content": "站位",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "m3hVLj",
+                          "name": "Cell 分镜",
+                          "width": 132,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "cG8rC",
+                              "name": "分镜",
+                              "fill": "$text-3",
+                              "content": "分镜",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "FT90r",
+                          "name": "Cell 生成预估",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Jyf1h",
+                              "name": "生成预估",
+                              "fill": "$text-3",
+                              "content": "生成预估",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "XX0JA",
+                      "name": "Row EP1",
+                      "width": "fill_container",
+                      "height": 62,
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sbvzh",
+                          "name": "Cell 集",
+                          "width": 56,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "QtjW6",
+                              "name": "01",
+                              "fill": "$text-2",
+                              "content": "01",
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BUhzK",
+                          "name": "Cell 钩子",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "HEe7e",
+                              "name": "皮箱里到底装了什么",
+                              "fill": "$text-1",
+                              "content": "皮箱里到底装了什么",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "IpgQl",
+                              "name": "浓雾清晨，沈知微抱箱上船",
+                              "fill": "$text-3",
+                              "content": "浓雾清晨，沈知微抱箱上船",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LZDBV",
+                          "name": "Cell 剧本",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "GXmsP",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "v7YTLG",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "PdIkr",
+                                  "name": "52 秒",
+                                  "fill": "$text-1",
+                                  "content": "52 秒",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "cJkJG",
+                          "name": "Cell 站位",
+                          "width": 104,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "gPRVr",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "ZhUT4",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "B3AjW",
+                                  "name": "3 场",
+                                  "fill": "$text-1",
+                                  "content": "3 场",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "bEmmT",
+                          "name": "Cell 分镜",
+                          "width": 132,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "xvKNs",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "Y9elC8",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "UJTrv",
+                                  "name": "4 段 · 13 切",
+                                  "fill": "$text-1",
+                                  "content": "4 段 · 13 切",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jMTbq",
+                          "name": "Cell 生成预估",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "tpAjB",
+                              "name": "¥6.4–9.0",
+                              "fill": "$text-2",
+                              "content": "¥6.4–9.0",
+                              "fontFamily": "$mono",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "U5JS0",
+                      "name": "Row EP2",
+                      "width": "fill_container",
+                      "height": 62,
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "X2DMU",
+                          "name": "Cell 集",
+                          "width": 56,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SRuu7",
+                              "name": "02",
+                              "fill": "$text-2",
+                              "content": "02",
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "v5Qmn9",
+                          "name": "Cell 钩子",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "fro5J",
+                              "name": "陆行远为什么替旧案说话",
+                              "fill": "$text-1",
+                              "content": "陆行远为什么替旧案说话",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "pz0KD",
+                              "name": "胡二爷探口风，提到县衙旧",
+                              "fill": "$text-3",
+                              "content": "胡二爷探口风，提到县衙旧案",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "eCrf6",
+                          "name": "Cell 剧本",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "sHVIW",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "TXcH7",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "d1waWR",
+                                  "name": "49 秒",
+                                  "fill": "$text-1",
+                                  "content": "49 秒",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "b8FMNX",
+                          "name": "Cell 站位",
+                          "width": 104,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "D0nJG",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "S4XTH",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "AR0Xr",
+                                  "name": "2 场",
+                                  "fill": "$text-1",
+                                  "content": "2 场",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "lHUx7",
+                          "name": "Cell 分镜",
+                          "width": 132,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "VcdQa",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "b8XxG",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "H54Jtq",
+                                  "name": "4 段 · 12 切",
+                                  "fill": "$text-1",
+                                  "content": "4 段 · 12 切",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "aHUXt",
+                          "name": "Cell 生成预估",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Y0OTc",
+                              "name": "¥6.1–8.6",
+                              "fill": "$text-2",
+                              "content": "¥6.1–8.6",
+                              "fontFamily": "$mono",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "l6rsS",
+                      "name": "Row EP3",
+                      "width": "fill_container",
+                      "height": 62,
+                      "fill": "#FBF7EE",
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "MpNTe",
+                          "name": "Cell 集",
+                          "width": 56,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "GZCWM",
+                              "name": "03",
+                              "fill": "$text-2",
+                              "content": "03",
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "aSKeK",
+                          "name": "Cell 钩子",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "djBeH",
+                              "name": "县衙的砚台为什么在他身上",
+                              "fill": "$text-1",
+                              "content": "县衙的砚台为什么在他身上",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "vm8Zy",
+                              "name": "巡查船逼近，陆行远当众掏",
+                              "fill": "$text-3",
+                              "content": "巡查船逼近，陆行远当众掏出旧砚",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "baBNy",
+                          "name": "Cell 剧本",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "x0dys",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "ECnST",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "HDb6j",
+                                  "name": "57 秒",
+                                  "fill": "$text-1",
+                                  "content": "57 秒",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "ZzXd3",
+                              "name": "10:42 按意见重写",
+                              "fill": "$text-3",
+                              "content": "10:42 按意见重写",
+                              "fontFamily": "$font",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "stDtx",
+                          "name": "Cell 站位",
+                          "width": 104,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "QGlza",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "LSXni",
+                                  "name": "Dot",
+                                  "fill": "$warn",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "M9FYn5",
+                                  "name": "3 场",
+                                  "fill": "$warn",
+                                  "content": "3 场",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "qOZvA",
+                              "name": "剧本已变",
+                              "fill": "$warn",
+                              "content": "剧本已变",
+                              "fontFamily": "$font",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "FVwzI",
+                          "name": "Cell 分镜",
+                          "width": 132,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "H8upi",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "egQbE",
+                                  "name": "Dot",
+                                  "fill": "$warn",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "g6pu8",
+                                  "name": "5 段 · 16 切",
+                                  "fill": "$warn",
+                                  "content": "5 段 · 16 切",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "nACUg",
+                              "name": "剧本已变",
+                              "fill": "$warn",
+                              "content": "剧本已变",
+                              "fontFamily": "$font",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "C1Ytzl",
+                          "name": "Cell 生成预估",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "BC7RI",
+                              "name": "¥7.9–11.0",
+                              "fill": "$text-2",
+                              "content": "¥7.9–11.0",
+                              "fontFamily": "$mono",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "IHTHA",
+                          "layoutPosition": "absolute",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Selected Bar",
+                          "fill": "$warn",
+                          "width": 3,
+                          "height": 62
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gYbXR",
+                      "name": "Row EP4",
+                      "width": "fill_container",
+                      "height": 62,
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "pDEN6",
+                          "name": "Cell 集",
+                          "width": 56,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Pz8a7",
+                              "name": "04",
+                              "fill": "$text-2",
+                              "content": "04",
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "k5TDR",
+                          "name": "Cell 钩子",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "UWnNf",
+                              "name": "冤案两个字为什么让她失态",
+                              "fill": "$text-1",
+                              "content": "冤案两个字为什么让她失态",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "nwsmE",
+                              "name": "陆行远说明来意：物归原主",
+                              "fill": "$text-3",
+                              "content": "陆行远说明来意：物归原主",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "XWkmv",
+                          "name": "Cell 剧本",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "B1wM2N",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "yr0LR",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "gecDW",
+                                  "name": "46 秒",
+                                  "fill": "$text-1",
+                                  "content": "46 秒",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "x10Tp",
+                          "name": "Cell 站位",
+                          "width": 104,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "i5Sej",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "lPPlu",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "M6OH2",
+                                  "name": "2 场",
+                                  "fill": "$text-1",
+                                  "content": "2 场",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BslYI",
+                          "name": "Cell 分镜",
+                          "width": 132,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Tu5sX",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "q2Yir6",
+                                  "name": "Dot",
+                                  "fill": "$err",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "M8Yc8",
+                                  "name": "4 段 · 12 切",
+                                  "fill": "$err",
+                                  "content": "4 段 · 12 切",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "FgOAT",
+                              "name": "1 门未过 · 已重试 ",
+                              "fill": "$err",
+                              "content": "1 门未过 · 已重试 3 次",
+                              "fontFamily": "$font",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "kXIvV",
+                          "name": "Cell 生成预估",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ycmSa",
+                              "name": "¥6.1–8.6",
+                              "fill": "$text-2",
+                              "content": "¥6.1–8.6",
+                              "fontFamily": "$mono",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jrHAD",
+                      "name": "Row EP5",
+                      "width": "fill_container",
+                      "height": 62,
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gFojp",
+                          "name": "Cell 集",
+                          "width": 56,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "vi58K",
+                              "name": "05",
+                              "fill": "$text-2",
+                              "content": "05",
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "mrEzq",
+                          "name": "Cell 钩子",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "py434",
+                              "name": "老周怎么会知道她要投奔谁",
+                              "fill": "$text-1",
+                              "content": "老周怎么会知道她要投奔谁",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "exOfC",
+                              "name": "老周开口：北门外没有沈家",
+                              "fill": "$text-3",
+                              "content": "老周开口：北门外没有沈家接应",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "OO0RI",
+                          "name": "Cell 剧本",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "K9Bz8p",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "hg0AS",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "GWhYg",
+                                  "name": "51 秒",
+                                  "fill": "$text-1",
+                                  "content": "51 秒",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h3XXI",
+                          "name": "Cell 站位",
+                          "width": 104,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Q97wN",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "rkpcm",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "mIHYz",
+                                  "name": "2 场",
+                                  "fill": "$text-1",
+                                  "content": "2 场",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "s6kRJ",
+                          "name": "Cell 分镜",
+                          "width": 132,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "f5L5mZ",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "JlL2u",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "VM7fD",
+                                  "name": "3 段 · 11 切",
+                                  "fill": "$text-1",
+                                  "content": "3 段 · 11 切",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "s0j8a",
+                          "name": "Cell 生成预估",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Ceqag",
+                              "name": "¥5.6–7.8",
+                              "fill": "$text-2",
+                              "content": "¥5.6–7.8",
+                              "fontFamily": "$mono",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JAwJw",
+                      "name": "Row EP6",
+                      "width": "fill_container",
+                      "height": 62,
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ggnPw",
+                          "name": "Cell 集",
+                          "width": 56,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Y76Ksi",
+                              "name": "06",
+                              "fill": "$text-2",
+                              "content": "06",
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jQfRi",
+                          "name": "Cell 钩子",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "W8OpU6",
+                              "name": "翻案",
+                              "fill": "$text-1",
+                              "content": "翻案",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "XpC0q",
+                              "name": "皮箱打开：状纸与灵位",
+                              "fill": "$text-3",
+                              "content": "皮箱打开：状纸与灵位",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "no64d",
+                          "name": "Cell 剧本",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "AkDIM",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "u7GJX",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "IIHxQ",
+                                  "name": "59 秒",
+                                  "fill": "$text-1",
+                                  "content": "59 秒",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "u6oBhv",
+                          "name": "Cell 站位",
+                          "width": 104,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "lxtVL",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "h11dOs",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "aLk6h",
+                                  "name": "3 场",
+                                  "fill": "$text-1",
+                                  "content": "3 场",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "wLdtc",
+                          "name": "Cell 分镜",
+                          "width": 132,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "WJyKP",
+                              "name": "Line",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "FFWzz",
+                                  "name": "Dot",
+                                  "fill": "$ok",
+                                  "width": 7,
+                                  "height": 7
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "MkRMr",
+                                  "name": "4 段 · 15 切",
+                                  "fill": "$text-1",
+                                  "content": "4 段 · 15 切",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "fCAZi",
+                          "name": "Cell 生成预估",
+                          "width": 112,
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            8,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Njagg",
+                              "name": "¥7.4–10.2",
+                              "fill": "$text-2",
+                              "content": "¥7.4–10.2",
+                              "fontFamily": "$mono",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ey9KZ",
+                      "name": "Spacer",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P0T4UW",
+                      "name": "Table Foot",
+                      "width": "fill_container",
+                      "fill": "$bg",
+                      "stroke": "$border",
+                      "strokeWidth": {
+                        "top": 1
+                      },
+                      "padding": [
+                        12,
+                        16
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "cTgFD",
+                          "name": "预估按「小成本验证」预设",
+                          "fill": "$text-3",
+                          "content": "预估按「小成本验证」预设：角色参考图 GPT Image 2 · 关键帧 Qwen Image（DashScope）· 视频 MiniMax H3 768P",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "YJEWa",
+                          "name": "合计 ¥41–58",
+                          "fill": "$text-1",
+                          "content": "合计 ¥41–58",
+                          "fontFamily": "$mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "zpeMl",
+                  "name": "Detail Panel",
+                  "width": 360,
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 10,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "W98UtU",
+                      "name": "Panel Head",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "j4KemO",
+                          "name": "L",
+                          "layout": "vertical",
+                          "gap": 3,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "msVuL",
+                              "name": "第 03 集 · 需复核",
+                              "fill": "$warn",
+                              "content": "第 03 集 · 需复核",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "m6wMSK",
+                              "name": "县衙的砚台为什么在他身上",
+                              "fill": "$text-1",
+                              "content": "县衙的砚台为什么在他身上",
+                              "fontFamily": "$font",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon",
+                          "id": "m4hVN",
+                          "name": "Close",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "$text-3"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "wmSsV",
+                      "name": "Why",
+                      "width": "fill_container",
+                      "fill": "$warn-soft",
+                      "cornerRadius": 8,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "EimmA",
+                          "name": "为什么要复核",
+                          "fill": "$warn",
+                          "content": "为什么要复核",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Hr7sF",
+                          "name": "剧本第 2 场在 10:",
+                          "fill": "$text-1",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "剧本第 2 场在 10:42 按你的意见重写，加入了巡查船汽笛。站位和分镜还是按旧剧本排的。",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "rNpts",
+                          "name": "sc_7Q2MK4XA ",
+                          "fill": "$text-2",
+                          "content": "sc_7Q2MK4XA · 剧本 v2 → v3",
+                          "fontFamily": "$mono",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "E2j9O",
+                      "name": "Impact",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "RnijE",
+                          "name": "影响范围",
+                          "fill": "$text-1",
+                          "content": "影响范围",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "D7NPcR",
+                          "name": "Impact 站位",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "MvOSL",
+                              "name": "Icon",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "map-pin",
+                              "library": "lucide",
+                              "fill": "$text-2"
+                            },
+                            {
+                              "type": "text",
+                              "id": "gcuiw",
+                              "name": "站位",
+                              "fill": "$text-2",
+                              "content": "站位",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "e2Q6KO",
+                              "name": "Spacer",
+                              "width": "fill_container",
+                              "height": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "IDr9q",
+                              "name": "第 2 场 · 4 人开",
+                              "fill": "$text-1",
+                              "content": "第 2 场 · 4 人开场走位",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Rtgdc",
+                          "name": "Impact 分镜",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Mgmb0",
+                              "name": "Icon",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "clapperboard",
+                              "library": "lucide",
+                              "fill": "$text-2"
+                            },
+                            {
+                              "type": "text",
+                              "id": "BXIyz",
+                              "name": "分镜",
+                              "fill": "$text-2",
+                              "content": "分镜",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Kgl8t",
+                              "name": "Spacer",
+                              "width": "fill_container",
+                              "height": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "mwd4d",
+                              "name": "3 段 · 9 切（sg",
+                              "fill": "$text-1",
+                              "content": "3 段 · 9 切（sg_4HN2…  起）",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Fbbdb",
+                          "name": "Impact 已生成素材",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "padding": [
+                            6,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "o5F75",
+                              "name": "Icon",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "shield-check",
+                              "library": "lucide",
+                              "fill": "$text-2"
+                            },
+                            {
+                              "type": "text",
+                              "id": "WmN9O",
+                              "name": "已生成素材",
+                              "fill": "$text-2",
+                              "content": "已生成素材",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "on4Is",
+                              "name": "Spacer",
+                              "width": "fill_container",
+                              "height": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "OMlBP",
+                              "name": "无，不会重复付费",
+                              "fill": "$text-1",
+                              "content": "无，不会重复付费",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Z4ZFJ",
+                      "name": "Actions",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Lku8d",
+                          "name": "Btn Primary",
+                          "width": "fill_container",
+                          "fill": "$accent",
+                          "cornerRadius": 7,
+                          "gap": 8,
+                          "padding": [
+                            10,
+                            14
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "oL4Ec",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "refresh-cw",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            },
+                            {
+                              "type": "text",
+                              "id": "mRBzX",
+                              "name": "按新剧本重跑本集站位和分",
+                              "fill": "#FFFFFF",
+                              "content": "按新剧本重跑本集站位和分镜",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Mbe2o",
+                          "name": "Secondary",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "f3IUkb",
+                              "name": "Btn 查看剧本改动",
+                              "width": "fill_container",
+                              "cornerRadius": 7,
+                              "stroke": "$border",
+                              "strokeWidth": 1,
+                              "padding": [
+                                8,
+                                10
+                              ],
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "n4DvJv",
+                                  "name": "查看剧本改动",
+                                  "fill": "$text-1",
+                                  "content": "查看剧本改动",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "DA3lJ",
+                              "name": "Btn 保持现状，标记已复核",
+                              "width": "fill_container",
+                              "cornerRadius": 7,
+                              "stroke": "$border",
+                              "strokeWidth": 1,
+                              "padding": [
+                                8,
+                                10
+                              ],
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "kPm81",
+                                  "name": "保持现状，标记已复核",
+                                  "fill": "$text-1",
+                                  "content": "保持现状，标记已复核",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "K3yBD",
+                      "name": "Divider",
+                      "fill": "$border",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "C6BvDl",
+                      "name": "Reject",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "iuP4b",
+                          "name": "Reject Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zdpnx",
+                              "name": "附意见打回",
+                              "fill": "$text-1",
+                              "content": "附意见打回",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "X7319v",
+                              "name": "Stage Chips",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "O4NGX",
+                                  "name": "Chip 剧本",
+                                  "fill": "$lock-soft",
+                                  "cornerRadius": 4,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "GvBf3",
+                                      "name": "剧本",
+                                      "fill": "$text-2",
+                                      "content": "剧本",
+                                      "fontFamily": "$font",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "J2a5U",
+                                  "name": "Chip 站位",
+                                  "fill": "$lock-soft",
+                                  "cornerRadius": 4,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "HiOx2",
+                                      "name": "站位",
+                                      "fill": "$text-2",
+                                      "content": "站位",
+                                      "fontFamily": "$font",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "EkUpw",
+                                  "name": "Chip 分镜",
+                                  "fill": "$accent-soft",
+                                  "cornerRadius": 4,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "gNfdB",
+                                      "name": "分镜",
+                                      "fill": "$accent",
+                                      "content": "分镜",
+                                      "fontFamily": "$font",
+                                      "fontSize": 11,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "vxA6D",
+                          "name": "Episode Picker",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "epx9s",
+                              "name": "L",
+                              "fill": "$text-2",
+                              "content": "打回哪几集（可多选，同一条意见）",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qWIUT",
+                              "name": "Ep Chips",
+                              "width": "fill_container",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "l161Q",
+                                  "name": "Ep 01",
+                                  "fill": "$surface",
+                                  "cornerRadius": 5,
+                                  "stroke": "$border",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "YbaFQ",
+                                      "name": "T",
+                                      "fill": "$text-2",
+                                      "content": "01",
+                                      "fontFamily": "$mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "gvMJT",
+                                  "name": "Ep 02",
+                                  "fill": "$accent",
+                                  "cornerRadius": 5,
+                                  "stroke": "$accent",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "rq5Sf",
+                                      "name": "T",
+                                      "fill": "#FFFFFF",
+                                      "content": "02",
+                                      "fontFamily": "$mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "m2LWS",
+                                  "name": "Ep 03",
+                                  "fill": "$surface",
+                                  "cornerRadius": 5,
+                                  "stroke": "$border",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "t3x9dq",
+                                      "name": "T",
+                                      "fill": "$text-2",
+                                      "content": "03",
+                                      "fontFamily": "$mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "xS6oK",
+                                  "name": "Ep 04",
+                                  "fill": "$accent",
+                                  "cornerRadius": 5,
+                                  "stroke": "$accent",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "hDMZ3",
+                                      "name": "T",
+                                      "fill": "#FFFFFF",
+                                      "content": "04",
+                                      "fontFamily": "$mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "B5mQ20",
+                                  "name": "Ep 05",
+                                  "fill": "$accent",
+                                  "cornerRadius": 5,
+                                  "stroke": "$accent",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "qlftM",
+                                      "name": "T",
+                                      "fill": "#FFFFFF",
+                                      "content": "05",
+                                      "fontFamily": "$mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "OSMr3",
+                                  "name": "Ep 06",
+                                  "fill": "$surface",
+                                  "cornerRadius": 5,
+                                  "stroke": "$border",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "tuL73",
+                                      "name": "T",
+                                      "fill": "$text-2",
+                                      "content": "06",
+                                      "fontFamily": "$mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "p6jKI",
+                          "name": "Textarea",
+                          "width": "fill_container",
+                          "height": 56,
+                          "fill": "$bg",
+                          "cornerRadius": 7,
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "padding": 10,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "JMzty",
+                              "name": "例如：汽笛要压在陆行远掏",
+                              "fill": "$text-3",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "例如：汽笛要压在陆行远掏砚之前，给胡二爷一个特写",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "x6o65w",
+                          "name": "Reject Foot",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "nhC02",
+                              "name": "只重跑分镜，下游自动标为",
+                              "fill": "$text-3",
+                              "content": "依次重跑第 02、04、05 集",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "S6h9Sx",
+                              "name": "Btn Reject",
+                              "fill": "$text-1",
+                              "cornerRadius": 6,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "wvTTE",
+                                  "name": "打回重跑",
+                                  "fill": "#FFFFFF",
+                                  "content": "打回重跑",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kR6fi",
+                      "name": "Next Pending",
+                      "width": "fill_container",
+                      "fill": "$err-soft",
+                      "cornerRadius": 8,
+                      "stroke": "$err",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "mrW6I",
+                          "name": "Head",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "QznlZ",
+                              "name": "下一项 · 第 04 集",
+                              "fill": "$err",
+                              "content": "下一项 · 第 04 集分镜",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "ZClds",
+                              "name": "Go",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "arrow-right",
+                              "library": "lucide",
+                              "fill": "$err"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Uvup0",
+                          "name": "覆盖门未过：剧本节拍 b",
+                          "fill": "$text-1",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "覆盖门未过：剧本节拍 bt_9KD3W2QF 没有被任何分镜认领。已自动重试 3 次，需要你处理。",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

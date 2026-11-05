@@ -160,6 +160,8 @@ export interface RecipeContext {
   readonly base: Doc | null;
   /** 上一次同阶段运行故障中断前已写好的那份（输入没变才有，见 run-node 的 resumable）；配方只写剩下的集 */
   readonly resumed: Doc | null;
+  /** 只补出图提示词（角色阶段）：base 是现有角色卡，只补 characterRefs，不问整卡 */
+  readonly refsOnly: boolean;
   /** 跑另一个阶段挂载的 skill 的脚本（如分镜要站位的 blocking），返回 stdout；非零退出抛错 */
   runMounted(stage: Stage, args: readonly string[]): Promise<string>;
   /** 同一个包里叫这个名字的 skill；没注册返回 null */

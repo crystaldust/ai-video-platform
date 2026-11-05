@@ -60,9 +60,16 @@ function episodeCount(db: DatabaseSync): { n: number; why: string } {
   return { n: DEFAULT_EPISODES, why: `还没有大纲和输入，按 ${DEFAULT_EPISODES} 集估` };
 }
 
-/** 最近一次通过的运行的实际用量（含它的全部尝试）；没有或用量缺失就是 null。 */
+/** 最近一次通过的整阶段运行的实际用量（含它的全部尝试）；没有或用量缺失就是 null。 */
 function measuredText(db: DatabaseSync, stage: Stage): { in: number; out: number } | null {
-  const run = db.prepare(`SELECT id FROM node_run WHERE stage = ? AND status IN ('passed','resolved') ORDER BY id DESC LIMIT 1`).get(stage) as { id: number } | undefined;
+  // 只补出图提示词的运行（尝试全是 refs: 步骤）用量很小，不代表整阶段重跑，跳过
+  const run = db
+    .prepare(
+      `SELECT r.id FROM node_run r WHERE r.stage = ? AND r.status IN ('passed','resolved')
+         AND EXISTS (SELECT 1 FROM node_attempt a WHERE a.run_id = r.id AND a.step NOT LIKE 'refs:%')
+       ORDER BY r.id DESC LIMIT 1`,
+    )
+    .get(stage) as { id: number } | undefined;
   if (!run) return null;
   const rows = db.prepare('SELECT usage FROM node_attempt WHERE run_id = ?').all(run.id) as { usage: string | null }[];
   const usages = rows.map((r) => (r.usage ? (JSON.parse(r.usage) as { inputTokens: number | null; outputTokens: number | null }) : null));

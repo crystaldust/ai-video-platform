@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api, ApiError, projectPath } from '../api.ts';
 import { epLabel } from '../format.ts';
-import { rejectChoices, rejectScope, STAGE_TITLE } from '../reject.ts';
+import { PER_EPISODE, rejectChoices, rejectScope, STAGE_TITLE } from '../reject.ts';
 import { rerunRequest } from '../rerun.ts';
 import { dismissPath, repeatRejectBody, revisionLabel } from '../revision.ts';
 import type { EpisodeRow, PendingItem, Stage, StageCard } from '../types.ts';
@@ -21,6 +21,8 @@ export interface PanelProps {
   /** 阶段卡：哪些阶段有产物（没有的打回不了） */
   readonly stages: readonly StageCard[];
   readonly totalEpisodes: number;
+  /** 全部集（打回框多选集用） */
+  readonly allEpisodes: readonly EpisodeRow[];
   onNext(item: PendingItem): void;
   onClose(): void;
   /** 操作完成后：刷新全貌并提示 */
@@ -28,22 +30,34 @@ export interface PanelProps {
   onError(e: ApiError): void;
 }
 
-type RejectProps = { projectId: string; episode: EpisodeRow | null; preferred: readonly Stage[] } & Pick<PanelProps, 'busy' | 'stages' | 'totalEpisodes' | 'onDone' | 'onError'>;
+type RejectProps = { projectId: string; episode: EpisodeRow | null; preferred: readonly Stage[] } & Pick<PanelProps, 'busy' | 'stages' | 'totalEpisodes' | 'allEpisodes' | 'onDone' | 'onError'>;
 
-function RejectForm({ projectId, episode, preferred, busy, stages: cards, totalEpisodes, onDone, onError }: RejectProps) {
+function RejectForm({ projectId, episode, preferred, busy, stages: cards, totalEpisodes, allEpisodes, onDone, onError }: RejectProps) {
   const choices = rejectChoices({ cards, perEpisode: Boolean(episode), preferred });
   const [picked, setStage] = useState<Stage | null>(choices.initial);
   const [note, setNote] = useState('');
   // 选中的阶段后来没了产物（极少见）就退回默认
   const stage = picked && choices.stages.some((x) => x.stage === picked && x.enabled) ? picked : choices.initial;
-  const scope = stage ? rejectScope({ stage, episode: episode?.ep ?? null, totalEpisodes }) : null;
+  // 一次打回多集：选中了某一集、阶段按集算时可以再勾别的集，默认只有当前这一集
+  const [picked2, setPicked2] = useState<ReadonlySet<string>>(() => new Set(episode ? [episode.id] : []));
+  const perEpisode = Boolean(episode) && stage !== null && PER_EPISODE.includes(stage);
+  const chosen = perEpisode ? allEpisodes.filter((e) => picked2.has(e.id)) : [];
+  const scope = stage ? rejectScope({ stage, episode: episode?.ep ?? null, ...(chosen.length ? { episodes: chosen.map((e) => e.ep) } : {}), totalEpisodes }) : null;
+  const toggleEp = (id: string) => {
+    const next = new Set(picked2);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    if (next.size) setPicked2(next);
+  };
   const submit = async () => {
     if (!stage) return;
     if (scope?.confirm && !window.confirm(scope.confirm)) return;
     try {
-      await api.post(projectPath(projectId, '/reject'), { stage, note, ...(episode ? { episode: episode.id } : {}) });
+      const body = chosen.length > 1 ? { stage, note, episodes: chosen.map((e) => e.id) } : { stage, note, ...(episode ? { episode: chosen[0]?.id ?? episode.id } : {}) };
+      await api.post(projectPath(projectId, '/reject'), body);
       setNote('');
-      onDone(`已打回${episode ? `第 ${epLabel(episode.ep)} 集的` : ''}${STAGE_TITLE[stage]}，正在重跑`);
+      const which = chosen.length > 1 ? `第 ${chosen.map((e) => epLabel(e.ep)).join('、')} 集的` : episode ? `第 ${epLabel(chosen[0]?.ep ?? episode.ep)} 集的` : '';
+      onDone(`已打回${which}${STAGE_TITLE[stage]}，正在重跑`);
     } catch (e) {
       onError(e as ApiError);
     }
@@ -61,6 +75,18 @@ function RejectForm({ projectId, episode, preferred, busy, stages: cards, totalE
           ))}
         </span>
       </div>
+      {perEpisode && allEpisodes.length > 1 ? (
+        <div className={s.epPicker} role="group" aria-label="打回哪几集">
+          <small>打回哪几集（可多选，同一条意见）</small>
+          <span className={s.epChips}>
+            {allEpisodes.map((e) => (
+              <button key={e.id} type="button" className={s.epChip} aria-pressed={picked2.has(e.id)} disabled={Boolean(busy)} onClick={() => toggleEp(e.id)}>
+                {epLabel(e.ep)}
+              </button>
+            ))}
+          </span>
+        </div>
+      ) : null}
       <textarea className={s.note} aria-label="打回意见" placeholder="例如：汽笛要压在陆行远掏砚之前，给胡二爷一个特写" value={note} onChange={(e) => setNote(e.target.value)} />
       <div className={s.rejectFoot}>
         <span style={scope?.warn ? { color: 'var(--warn)', fontWeight: 600 } : undefined}>
@@ -287,6 +313,7 @@ export function DetailPanel(p: PanelProps) {
         busy={p.busy}
         stages={p.stages}
         totalEpisodes={p.totalEpisodes}
+        allEpisodes={p.allEpisodes}
         onDone={p.onDone}
         onError={p.onError}
       />

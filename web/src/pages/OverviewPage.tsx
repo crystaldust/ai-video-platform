@@ -14,7 +14,9 @@ import s from '../components/overview.module.css';
 import { clock, yuan, yuanRange } from '../format.ts';
 import { overviewTab, sidePanel, type OverviewTab } from '../overview-tabs.ts';
 import type { Overview, PendingItem } from '../types.ts';
-import { busyReason, paidButton, type Remedy } from '../generation.ts';
+import { busyReason, paidButton, rejectSummary, type Remedy } from '../generation.ts';
+import { refsConfirm, stageRerunConfirm } from '../rerun.ts';
+import { STAGE_TITLE } from '../reject.ts';
 import { runRemedy } from '../remedy-action.ts';
 
 const RELOAD_MS = 700;
@@ -52,6 +54,9 @@ export function OverviewPage() {
 
   useProjectEvents(id, (e) => {
     if (e.type === 'job-end' && e['ok'] === false) notify(`任务失败：${String(e['message'])}`, 'err');
+    // 一次打回多集：逐集结果汇总一句
+    const summary = e.type === 'job-end' && e['ok'] === true ? rejectSummary(e['result']) : null;
+    if (summary) notify(summary.text, summary.failed ? 'err' : 'ok');
     if (timer.current) return;
     timer.current = setTimeout(() => {
       timer.current = null;
@@ -178,7 +183,17 @@ export function OverviewPage() {
         <Metric label="文本花费" value={yuan(data.summary.textCost.cny)} unit={data.log[0]?.model.split(':')[0] ?? ''} />
         <Metric label="待你处理" value={String(data.summary.pending)} unit="项" />
       </div>
-      <StagePipeline stages={data.stages} log={data.log} estimate={data.estimate} estimateError={data.estimateError} generation={gen} onRemedy={(r) => void remedy(r)} startDisabled={busyText} onStart={(gateId) => void action('/generate', { action: 'continue', gateId }, `开始生成确认单 #${gateId}：进度在付费条和生成任务页`)} />
+      <StagePipeline stages={data.stages} log={data.log} estimate={data.estimate} estimateError={data.estimateError} generation={gen}
+        onRerun={(stage, cost) => {
+          if (!window.confirm(stageRerunConfirm(stage, cost))) return;
+          // 带 fresh：阶段卡的重跑说的是「从头重写」，上一次失败留下的集也不沿用
+          void action('/go', { only: stage, fresh: true }, `开始重跑${STAGE_TITLE[stage]}阶段`);
+        }}
+        onRefs={() => {
+          if (!window.confirm(refsConfirm())) return;
+          void action('/refs', {}, '开始补出图提示词：角色卡正文不变');
+        }}
+        onRemedy={(r) => void remedy(r)} startDisabled={busyText} onStart={(gateId) => void action('/generate', { action: 'continue', gateId }, `开始生成确认单 #${gateId}：进度在付费条和生成任务页`)} />
       {/* 分集全貌与运行记录并列成两个 tab：运行中也能切去分集表选好集（打回、重跑按钮在跑时是禁用的） */}
       <div className={s.tabs} role="tablist" aria-label="全貌内容">
         {(
@@ -218,6 +233,7 @@ export function OverviewPage() {
             busy={busyText}
             stages={data.stages}
             totalEpisodes={data.episodes.length}
+            allEpisodes={data.episodes}
             onNext={(n) => {
               setSelectedItem(n);
               setSelectedEp(n.episode);

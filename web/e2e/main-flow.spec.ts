@@ -1,5 +1,5 @@
 // 主流程：新建项目（假模型）→ 运行中 → 全貌 6 阶段通过 → 付费确认并开始生成（假供应商）→ 付费条进度 → 生成任务页看缩略图、详情、全屏预览
-// → 打回剧本第 1 集 → 需复核 → 保持现状后消失。全程只在页面里操作。
+// → 打回剧本第 1 集 → 需复核 → 保持现状后消失 → 阶段卡上单独重跑大纲。全程只在页面里操作。
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -87,6 +87,15 @@ test('新建 → 一键跑 → 付费确认并生成 → 看任务 → 打回单
   }
   await expect(page.getByTestId('stage-staging')).toContainText('通过');
   await expect(page.getByTestId('stage-storyboard')).toContainText('通过');
+
+  // 阶段卡上单独重跑：先确认（从头重写、费用），后台跑，头部显示正在跑什么
+  page.once('dialog', (d) => {
+    expect(d.message()).toMatch(/从头重写大纲/);
+    void d.accept();
+  });
+  await page.getByTestId('stage-outline').getByRole('button', { name: /重跑/ }).click();
+  await expect(page.getByText('重跑大纲阶段').first()).toBeVisible();
+  await expect(page.getByTestId('stage-outline')).toContainText('通过', { timeout: 60_000 });
 });
 
 test('大纲与剧本、单集详情、角色与美术、Skill 包、模型与预设都能打开', async ({ page }) => {

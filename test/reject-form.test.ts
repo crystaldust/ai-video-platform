@@ -47,3 +47,27 @@ test('整份负责的阶段（大纲）：重跑整个阶段，不用另行确�
   assert.match(s.text, /重跑整个大纲/);
   assert.equal(s.confirm, null);
 });
+
+test('多选集：依次重跑第 02、04、05 集，先确认集数和花费', () => {
+  const s = rejectScope({ stage: 'storyboard', episode: 2, episodes: [5, 2, 4], totalEpisodes: 20 });
+  assert.equal(s.text, '依次重跑第 02、04、05 集的分镜');
+  assert.match(s.confirm ?? '', /3 集/);
+  assert.match(s.confirm ?? '', /每集调一次文本模型/);
+  assert.equal(rejectScope({ stage: 'storyboard', episode: 2, episodes: [2], totalEpisodes: 20 }).text, '只重跑第 02 集的分镜', '只选一集照旧');
+});
+
+test('在第 02 集打开、改勾成只剩第 04 集：文案写第 04 集（和实际提交的一致）', () => {
+  const s = rejectScope({ stage: 'storyboard', episode: 2, episodes: [4], totalEpisodes: 20 });
+  assert.equal(s.text, '只重跑第 04 集的分镜');
+  assert.equal(s.confirm, null);
+});
+
+test('阶段卡重跑的确认语：从头重写、下游需复核、费用；补提示词的确认语：不改角色卡', async () => {
+  const { stageRerunConfirm, refsConfirm } = await import('../web/src/rerun.ts');
+  const c = stageRerunConfirm('cast', { low: 0.6, high: 1.2 });
+  assert.match(c, /从头重写角色/);
+  assert.match(c, /需复核/);
+  assert.match(c, /¥0\.6–1\.2/);
+  assert.match(stageRerunConfirm('outline', null), /费用算不出来/);
+  assert.match(refsConfirm(), /不改角色卡/);
+});
