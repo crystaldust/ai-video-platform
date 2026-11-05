@@ -14,7 +14,7 @@ import s from '../components/overview.module.css';
 import { clock, yuan, yuanRange } from '../format.ts';
 import { overviewTab, sidePanel, type OverviewTab } from '../overview-tabs.ts';
 import type { Overview, PendingItem } from '../types.ts';
-import { busyReason, paidButton, rejectSummary, type Remedy } from '../generation.ts';
+import { busyReason, jobEndNotice, paidButton, rejectSummary, type JobNotice, type Remedy } from '../generation.ts';
 import { refsConfirm, stageRerunConfirm } from '../rerun.ts';
 import { STAGE_TITLE } from '../reject.ts';
 import { runRemedy } from '../remedy-action.ts';
@@ -52,11 +52,39 @@ export function OverviewPage() {
   const [now, setNow] = useState(Date.now());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 最新的待处理项：提示条上的「在待处理里看」点击时才查（job-end 到达时全貌还没刷新）
+  const pendingRef = useRef<readonly PendingItem[]>([]);
+  useEffect(() => {
+    pendingRef.current = o.data?.pending ?? [];
+  }, [o.data]);
+  const findPending = (list: readonly PendingItem[], n: JobNotice): PendingItem | undefined => {
+    const sameStage = n.stage ? list.filter((p) => p.stage === n.stage) : [];
+    // 按运行号找；找不到按阶段找，优先转人工 / 失败的项（同阶段的需复核项不是这次没过的）
+    return (n.runId !== null ? list.find((p) => p.runId === n.runId) : undefined) ?? sameStage.find((p) => p.kind === 'needs_human' || p.kind === 'failed') ?? sameStage[0];
+  };
+  const jumpTo = async (n: JobNotice) => {
+    // 刚结束时全貌可能还没刷新：手上的待处理里没有，就现拉一次再找
+    let hit = findPending(pendingRef.current, n);
+    if (!hit) {
+      try {
+        hit = findPending((await api.get<Overview>(projectPath(id, '/overview'))).pending, n);
+        o.reload();
+      } catch {
+        // 拉不到就按没找到处理
+      }
+    }
+    if (!hit) return notify('待处理里没找到这一项（可能已经处理了），看阶段卡或运行记录', 'err');
+    setSelectedItem(hit);
+    setSelectedEp(hit.episode);
+    setPickedTab(null);
+  };
+
   useProjectEvents(id, (e) => {
-    if (e.type === 'job-end' && e['ok'] === false) notify(`任务失败：${String(e['message'])}`, 'err');
-    // 一次打回多集：逐集结果汇总一句
+    // 一次打回多集：逐集结果汇总一句；其余任务（单集打回、重跑、补提示词、一键跑）按结果提示，没过的带跳转
     const summary = e.type === 'job-end' && e['ok'] === true ? rejectSummary(e['result']) : null;
     if (summary) notify(summary.text, summary.failed ? 'err' : 'ok');
+    const n = e.type === 'job-end' && !summary ? jobEndNotice({ ok: e['ok'], detail: e['detail'], message: e['message'], result: e['result'] }) : null;
+    if (n) notify(n.message ?? '', n.failed ? 'err' : 'ok', { title: n.title, ...(n.failed && (n.runId !== null || n.stage) ? { action: { label: '在待处理里看这一项', onClick: () => void jumpTo(n) } } : {}) });
     if (timer.current) return;
     timer.current = setTimeout(() => {
       timer.current = null;

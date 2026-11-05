@@ -76,12 +76,12 @@ export class Jobs {
     const { bus, config } = this.app;
     bus.publish(projectId, { type: 'job-start', ...info });
     const promise = work()
-      .then((result) => bus.publish(projectId, { type: 'job-end', kind, ok: true, result }))
+      .then((result) => bus.publish(projectId, { type: 'job-end', kind, detail, ok: true, result }))
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         config.log(`后台任务失败（${projectId} ${detail}）：${message}`);
         if (kind === 'generate' && extra.gateId !== undefined) this.failures.set(projectId, { gateId: extra.gateId, message, at: new Date().toISOString() });
-        bus.publish(projectId, { type: 'job-end', kind, ok: false, message });
+        bus.publish(projectId, { type: 'job-end', kind, detail, ok: false, message });
       })
       .finally(() => {
         this.active.delete(projectId);
@@ -103,7 +103,11 @@ export class Jobs {
           ...(app.config.run || fresh ? { run: { ...app.config.run, ...(fresh ? { fresh } : {}) } } : {}),
           ...(app.config.estimate ? { estimate: app.config.estimate } : {}),
         });
-        return { orchestrationId: r.id, status: r.status, paidGateId: r.paidGate?.id ?? null };
+        // 没过的阶段（页面据此说哪一步停下了、为什么）
+        const stages = r.stages
+          .filter((s) => s.status !== 'passed' && s.status !== 'skipped')
+          .map((s) => ({ stage: s.stage, status: s.status, message: s.message ?? null, runId: s.runId ?? null, episodes: s.episodes ?? null }));
+        return { orchestrationId: r.id, status: r.status, paidGateId: r.paidGate?.id ?? null, stages };
       }),
     );
   }
@@ -128,7 +132,7 @@ export class Jobs {
     return this.start(projectId, 'go', '补出图提示词', () =>
       app.withProject(projectId, async (p) => {
         const r = await fillCharacterRefs(p, { model: app.modelFor(p, 'cast'), onProgress: publish, ...app.config.run });
-        return { runId: r.outcome.runId, status: r.outcome.status };
+        return { runId: r.outcome.runId, status: r.outcome.status, message: r.outcome.message ?? null };
       }),
     );
   }
@@ -141,7 +145,7 @@ export class Jobs {
     return this.start(projectId, 'reject', `打回${STAGE_TITLES[stage]}（${which}）`, () =>
       app.withProject(projectId, async (p) => {
         const r = await reject(p, stage, { model: app.modelFor(p, stage), note, onProgress: publish, ...(episode ? { episode } : {}), ...app.config.run });
-        return { runId: r.outcome.runId, status: r.outcome.status, pending: r.pending.length };
+        return { runId: r.outcome.runId, status: r.outcome.status, message: r.outcome.message ?? null, pending: r.pending.length };
       }),
     );
   }
