@@ -28,6 +28,7 @@ import {
   type RepairSplit,
   type UpstreamSlices,
 } from './recipe-kit.ts';
+import { storyboardCastCard, storyboardProp, storyboardScene } from '../domain/reads.ts';
 import type { Stage } from '../domain/types.ts';
 
 const STAGING_BATCH = 3;
@@ -249,8 +250,6 @@ const openingSection = (opening: ReadonlyMap<string, string>, sceneRefs: readonl
 });
 
 /** 分镜要的角色「形象要点」：认人与外貌，不要出图提示词、版面指令和音色。 */
-const PERSONA_KEYS = ['gender', 'ageRange', 'identity', 'appearance'];
-const only = (doc: Doc, keys: readonly string[]): Doc => Object.fromEntries(keys.flatMap((k) => (doc[k] === undefined ? [] : [[k, doc[k]]])));
 const idSet = (scenes: readonly Doc[], key: string): Set<string> => new Set(scenes.flatMap((s) => [s[key]].flat()).filter((x) => x !== undefined).map(String));
 
 /**
@@ -264,14 +263,22 @@ function storyboardUpstream(ctx: RecipeContext, seedScenes: readonly Doc[]): Rec
   const out: Record<string, Doc> = {};
   if (ctx.upstream.cast) {
     const cards = listOf(ctx.upstream.cast, 'characters').filter((c) => characters.has(String(c['id'])) || names.has(c['name']));
-    out['cast'] = { characters: cards.map((c) => ({ ...only(c, ['id', 'name', 'aliases', 'oneLiner']), persona: only(isDoc(c['persona']) ? c['persona'] : {}, PERSONA_KEYS) })) };
+    out['cast'] = { characters: cards.map(storyboardCastCard) };
   }
   if (ctx.upstream.art) {
     out['art'] = {
-      scenes: listOf(ctx.upstream.art, 'scenes').filter((x) => scenes.has(String(x['id']))).map((x) => omit(x, ['image', 'usage'])),
-      props: listOf(ctx.upstream.art, 'props').filter((x) => props.has(String(x['id']))).map((x) => omit(x, ['image', 'usage', 'relatedScenes', 'carriedBy'])),
+      scenes: listOf(ctx.upstream.art, 'scenes').filter((x) => scenes.has(String(x['id']))).map(storyboardScene),
+      props: listOf(ctx.upstream.art, 'props').filter((x) => props.has(String(x['id']))).map(storyboardProp),
     };
   }
+  return out;
+}
+
+/** 修复整份分镜时带的上游：全部角色卡、场景、道具，裁法和写分镜时一样（需复核按同样的字段判断，见 domain/reads.ts）。 */
+function storyboardRepairUpstream(ctx: RecipeContext): Record<string, Doc> {
+  const out: Record<string, Doc> = {};
+  if (ctx.upstream.cast) out['cast'] = { characters: listOf(ctx.upstream.cast, 'characters').map(storyboardCastCard) };
+  if (ctx.upstream.art) out['art'] = { scenes: listOf(ctx.upstream.art, 'scenes').map(storyboardScene), props: listOf(ctx.upstream.art, 'props').map(storyboardProp) };
   return out;
 }
 
@@ -434,7 +441,7 @@ const novelStoryboard: Recipe = {
       validateCheck(ctx, 'validate', 'storyboard.json', refs(ctx, [['--script', 'script'], ['--outline', 'outline'], ['--cast', 'cast'], ['--art', 'art']])),
       stagingCarryCheck(opening),
     ]);
-    const repair: AskParts = { task: base.task, schema: base.schema, upstream: pick(ctx, ['cast', 'art']), sections: [openingSection(opening, [...opening.keys()])], outputSpec: '输出修正后的整份 storyboard.json。' };
+    const repair: AskParts = { task: base.task, schema: base.schema, upstream: storyboardRepairUpstream(ctx), sections: [openingSection(opening, [...opening.keys()])], outputSpec: '输出修正后的整份 storyboard.json。' };
     return ctx.gate(check, doc, repair, post, storyboardSplit(base));
   },
 };

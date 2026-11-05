@@ -1,5 +1,7 @@
 // 追溯与过期。都是现算：引用钉住"当时用的版本"，和被引用方现在的版本一比就知道。
 import type { DatabaseSync } from 'node:sqlite';
+import { canonicalJson } from '../domain/hash.ts';
+import { readView } from '../domain/reads.ts';
 import type { EntityKind, Facet } from '../domain/types.ts';
 
 export const MAX_LINEAGE_DEPTH = 20;
@@ -86,10 +88,12 @@ export interface StaleRef {
 }
 
 // 只看引用方当前有效的版本（旧版本过期理所当然，不该报）、只看生效的引用。
-// 被引用方退役时，它的当前版本就是退役版本——引用方照样报出来：它依赖的东西没了
+// 被引用方退役时，它的当前版本就是退役版本——引用方照样报出来：它依赖的东西没了。
+// 版本不同还不够：下游读的那部分（domain/reads.ts）在钉住的版本和当前版本里一样，就不算过期
 const STALE_SQL = `
 SELECT fe.kind AS from_kind, fe.key AS from_key, fv.facet AS from_facet, fv.v AS from_v, fv.episode_key AS from_episode, r.role,
-  te.kind AS to_kind, te.key AS to_key, tv.facet AS to_facet, tv.v AS pinned_v, cur.v AS current_v
+  te.kind AS to_kind, te.key AS to_key, tv.facet AS to_facet, tv.v AS pinned_v, cur.v AS current_v,
+  tv.id AS pinned_id, tv.payload AS pinned_payload, cur.id AS current_id, cur.payload AS current_payload, cur.retired AS current_retired
 FROM live_ref r
 JOIN current_version fv ON fv.id = r.from_version_id AND fv.retired = 0
 JOIN entity fe ON fe.id = fv.entity_id
@@ -111,11 +115,28 @@ interface RawStale {
   to_facet: Facet;
   pinned_v: number;
   current_v: number;
+  pinned_id: number;
+  pinned_payload: string;
+  current_id: number;
+  current_payload: string;
+  current_retired: number;
+}
+
+/** 下游读的那部分在两版里是否一样。payload 按版本 id 缓存解析，同一版本常被上千处引用。 */
+function sameRead(r: RawStale, parsed: Map<number, unknown>): boolean {
+  if (r.current_retired === 1) return false;
+  const doc = (id: number, json: string): unknown => {
+    if (!parsed.has(id)) parsed.set(id, JSON.parse(json));
+    return parsed.get(id);
+  };
+  const view = (id: number, json: string) => canonicalJson(readView(r.from_facet, r.role, r.to_facet, doc(id, json)));
+  return view(r.pinned_id, r.pinned_payload) === view(r.current_id, r.current_payload);
 }
 
 export function findStaleRefs(db: DatabaseSync): StaleRef[] {
   const rows = db.prepare(STALE_SQL).all() as unknown as RawStale[];
-  return rows.map((r) => ({
+  const parsed = new Map<number, unknown>();
+  return rows.filter((r) => !sameRead(r, parsed)).map((r) => ({
     from: { kind: r.from_kind, key: r.from_key, facet: r.from_facet, v: r.from_v, episode: r.from_episode },
     role: r.role,
     to: { kind: r.to_kind, key: r.to_key, facet: r.to_facet },

@@ -109,8 +109,7 @@ async function cmdRefs(args: string[], flags: Record<string, string>): Promise<C
     const modelId = flags['model-cmd'] ? `cmd:${flags['model-cmd']}` : resolveNodeModel(p.db, 'text:cast').model;
     return fillCharacterRefs(p, { model: createTextModel(modelId), onProgress: (e) => process.stderr.write(`${progressLine(e)}\n`) });
   });
-  if (r.acknowledged) process.stderr.write(`  补提示词让角色换了版本：${r.acknowledged} 处因此需复核的已确认（外形没变）\n`);
-  return { output: { ...r.outcome, acknowledged: r.acknowledged }, exitCode: r.outcome.status === 'passed' ? 0 : r.outcome.status === 'needs_human' ? 2 : 1 };
+  return { output: r.outcome, exitCode: r.outcome.status === 'passed' ? 0 : r.outcome.status === 'needs_human' ? 2 : 1 };
 }
 
 const COMMANDS: Readonly<Record<string, (args: string[], flags: Record<string, string>) => Promise<CommandResult>>> = {

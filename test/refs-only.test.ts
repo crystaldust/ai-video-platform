@@ -1,5 +1,5 @@
 // 只补出图提示词（backlog #33）：拿现有角色卡只跑 character-refs，只写 characterRefs，不重写角色卡；
-// 补完只确认这次新冒出来的需复核（外形没变），原来就需复核的不动；估算不被补提示词的小用量拉低。
+// 分镜不读 characterRefs（需复核按内容判断，#34），补完不冒出需复核，也不写复核确认；原来就需复核的不动；估算不被补提示词的小用量拉低。
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { estimateUsage } from '../src/estimate/usage.ts';
@@ -55,13 +55,15 @@ test('refsOnly 只对角色阶段有效；还没有角色卡时报错', async ()
   t.cleanup();
 });
 
-test('fillCharacterRefs：没有待处理的项目，补完仍然没有（外形没变，新冒出来的需复核被确认）', async () => {
+test('fillCharacterRefs：没有待处理的项目，补完仍然没有，也不写复核确认（分镜不读出图提示词）', async () => {
   const { project, cleanup } = await oldProject();
   assert.equal(pendingCells(project.db).length, 0);
+  const acks = () => (project.db.prepare('SELECT COUNT(*) AS n FROM review_ack').get() as { n: number }).n;
+  const before = acks();
   const r = await fillCharacterRefs(project, { model: dukoModel(), prices: null });
   assert.equal(r.outcome.status, 'passed', r.outcome.message);
-  assert.ok(r.acknowledged > 0, '角色换了版本，分镜冒出来的格子被确认');
   assert.equal(pendingCells(project.db).length, 0);
+  assert.equal(acks(), before, '没有自动确认');
   cleanup();
 });
 
@@ -74,29 +76,6 @@ test('fillCharacterRefs：原来就需复核的格子不被顺手确认', async 
   assert.ok(stale.length > 0);
   await fillCharacterRefs(project, { model: dukoModel(), prices: null });
   for (const k of stale) assert.ok(pendingCells(project.db).some((c) => `${c.stage}|${c.episode}` === k), `${k} 还需复核`);
-  cleanup();
-});
-
-test('fillCharacterRefs：补的过程中别处改了剧本，那些需复核不被当成「外形没变」确认掉', async () => {
-  const { project, cleanup } = await oldProject();
-  const duko = dukoModel();
-  let changed = false;
-  const model = {
-    id: duko.id,
-    complete: async (req: Parameters<typeof duko.complete>[0]) => {
-      if (!changed) {
-        changed = true;
-        const script = loadFixture('script');
-        script.episodes[0].scenes[0].flow[0].action = '汽笛提前响了。';
-        importArtifact(project, 'script', script);
-      }
-      return duko.complete(req);
-    },
-  };
-  await fillCharacterRefs(project, { model, prices: null });
-  const left = pendingCells(project.db);
-  assert.ok(left.length > 0, '剧本改动引起的需复核还在');
-  assert.ok(left.every((c) => c.reasons.some((r) => r.to.kind !== 'character')), '留下的都和别的上游有关');
   cleanup();
 });
 
