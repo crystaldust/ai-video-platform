@@ -2,6 +2,7 @@
 // 进度写 stderr，结果 JSON 写 stdout（管道里仍可解析）。
 import { intFlag, need, readJson, readText, stageArg, withProject } from './cli-shared.ts';
 import { RECIPE_NAMES } from './executor/recipes.ts';
+import { fillCharacterRefs } from './orchestrate/refs-only.ts';
 import { runNode, type ProgressEvent } from './executor/run-node.ts';
 import { createTextModel } from './model/registry.ts';
 import { resolveNodeModel } from './repo/models.ts';
@@ -19,6 +20,8 @@ export const NODE_USAGE = `  pack register <dir> <manifest.json> --root <skills 
                                                 text:<stage> 的模型；--model-cmd 从 stdin 读提示词、stdout 输出
                                                 （按空白切分参数，不支持引号）；--fresh 不沿用之前写好的集，整份重写；
                                                 转人工时退出码 2
+  refs <dir> [--model-cmd "<命令>"]              只补出图提示词：拿现有角色卡跑 character-refs，只写 characterRefs，
+                                                不重写角色卡；补完把因此新冒出来的需复核确认掉（外形没变）
   runs <dir> [--id N]                           列出运行记录；--id 看某次运行的每次尝试
   runs unlock <dir> --id N                      把卡在 running 的运行标为失败（进程已不在但没被认出来时用）`;
 
@@ -99,6 +102,17 @@ async function cmdRuns(args: string[], flags: Record<string, string>): Promise<C
   return done(output);
 }
 
+/** 只补出图提示词：模型照角色阶段的 text:cast 取（intake 由它写）。 */
+async function cmdRefs(args: string[], flags: Record<string, string>): Promise<CommandResult> {
+  const dir = need(args[0], 'refs <dir> [--model-cmd "<命令>"]');
+  const r = await withProject(dir, (p) => {
+    const modelId = flags['model-cmd'] ? `cmd:${flags['model-cmd']}` : resolveNodeModel(p.db, 'text:cast').model;
+    return fillCharacterRefs(p, { model: createTextModel(modelId), onProgress: (e) => process.stderr.write(`${progressLine(e)}\n`) });
+  });
+  if (r.acknowledged) process.stderr.write(`  补提示词让角色换了版本：${r.acknowledged} 处因此需复核的已确认（外形没变）\n`);
+  return { output: { ...r.outcome, acknowledged: r.acknowledged }, exitCode: r.outcome.status === 'passed' ? 0 : r.outcome.status === 'needs_human' ? 2 : 1 };
+}
+
 const COMMANDS: Readonly<Record<string, (args: string[], flags: Record<string, string>) => Promise<CommandResult>>> = {
   pack: cmdPack,
   mount: async (args) => {
@@ -108,6 +122,7 @@ const COMMANDS: Readonly<Record<string, (args: string[], flags: Record<string, s
   },
   input: cmdInput,
   run: cmdRun,
+  refs: cmdRefs,
   runs: cmdRuns,
 };
 

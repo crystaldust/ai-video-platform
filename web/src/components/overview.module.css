@@ -799,3 +799,67 @@
   color: var(--accent);
   font-size: 11px;
 }
+
+/* 阶段卡底部的操作行（设计稿「全貌视图 · 阶段重跑与多集打回」） */
+.stageActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.stageAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.stageAction:disabled {
+  color: var(--text-3);
+  cursor: default;
+}
+.stageCost {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+/* 打回框多选集 */
+.epPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.epPicker small {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.epChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.epChip {
+  min-width: 30px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.epChip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}

@@ -121,23 +121,25 @@ export function selectionText(selection: unknown): string {
   return parts.length ? parts.join(' · ') : '—';
 }
 
-/** 生成失败时页面上的直达操作：要请求的 /go 参数、按钮文字、确认语。 */
+/** 生成失败时页面上的直达操作：要请求的接口（项目内路径）和参数、按钮文字、确认语。 */
 export interface Remedy {
   readonly label: string;
-  readonly body: { readonly only: 'cast' };
+  readonly path: string;
+  readonly body: Readonly<Record<string, unknown>>;
   readonly confirm: string;
 }
 
 /**
- * 从失败原因认出能一键补救的情况。目前只有一种：角色卡缺出图提示词（计划报「先重跑角色阶段」）→ 只重跑角色阶段。
+ * 从失败原因认出能一键补救的情况。目前只有一种：角色卡缺出图提示词（计划报「先重跑角色阶段」）→ 只补出图提示词（不重写角色卡）。
  * 别的原因（凭据、单价、分镜改过…）只显示原因，不给按钮。
  */
 export function remedyFor(error: string | null | undefined): Remedy | null {
   if (!error || !error.includes('先重跑角色阶段')) return null;
   return {
-    label: '重跑角色阶段',
-    body: { only: 'cast' },
-    confirm: '重跑角色阶段：每个出图角色再调一次 DeepSeek，补上出图提示词，会花一点钱。下游可能标「需复核」。跑完后回生成任务页点「继续生成」。确定？',
+    label: '补提示词',
+    path: '/refs',
+    body: {},
+    confirm: '补出图提示词：给出图角色补上出图提示词，不改角色卡正文，外形不变，分镜不会因此需复核。会调一次文本模型，花一点钱。跑完后回生成任务页点「继续生成」。确定？',
   };
 }
 
@@ -173,4 +175,26 @@ export function busyReason(job: { readonly kind: string; readonly detail: string
   if (!job) return null;
   const tail = job.kind === 'generate' || job.kind === 'resume' ? '（生成任务页可以停止）' : '';
   return `「${job.detail}」正在跑，等它跑完再操作${tail}`;
+}
+
+/**
+ * 一次打回多集结束时的一句汇总（job-end 的 result.episodes）；单集或不是打回的结果返回 null。
+ * 例：「打回分镜：第 02、04 集通过，第 05 集失败（…余额不足）」。
+ */
+export function rejectSummary(result: unknown): { text: string; failed: boolean } | null {
+  const r = result as { stage?: unknown; episodes?: unknown } | null;
+  if (!r || !Array.isArray(r.episodes) || r.episodes.length < 2) return null;
+  const eps = r.episodes as { ep: number | null; status: string; error: string | null }[];
+  const label = (e: { ep: number | null }) => (e.ep === null ? '?' : String(e.ep).padStart(2, '0'));
+  const ok = eps.filter((e) => e.status === 'passed');
+  const bad = eps.filter((e) => e.status !== 'passed');
+  const titles: Readonly<Record<string, string>> = { outline: '大纲', cast: '角色', art: '美术', script: '剧本', staging: '站位', storyboard: '分镜' };
+  const skipped = bad.filter((e) => e.status === 'skipped');
+  const failed = bad.filter((e) => e.status !== 'skipped');
+  const parts = [
+    ok.length ? `第 ${ok.map(label).join('、')} 集通过` : '',
+    ...failed.map((e) => `第 ${label(e)} 集${e.status === 'needs_human' ? '转人工' : '失败'}${e.error ? `（${e.error.slice(0, 40)}）` : ''}`),
+    skipped.length ? `第 ${skipped.map(label).join('、')} 集没再试（前面连着出同样的错）` : '',
+  ].filter(Boolean);
+  return { text: `打回${titles[String(r.stage)] ?? ''}：${parts.join('，')}`, failed: bad.length > 0 };
 }

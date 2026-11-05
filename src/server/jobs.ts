@@ -4,7 +4,8 @@
 import type { Stage } from '../domain/types.ts';
 import type { ProgressEvent } from '../executor/run-node.ts';
 import { orchestrate, type OrchestrateEvent } from '../orchestrate/orchestrator.ts';
-import { reject } from '../orchestrate/revisions.ts';
+import { fillCharacterRefs } from '../orchestrate/refs-only.ts';
+import { reject, rejectMany } from '../orchestrate/revisions.ts';
 import type { GenerateEvent } from '../generate/runner.ts';
 import { generateOnce, needsResume, resumeAll } from '../generate/session.ts';
 import type { OrchestrationMode } from '../repo/orchestrations.ts';
@@ -103,6 +104,31 @@ export class Jobs {
           ...(app.config.estimate ? { estimate: app.config.estimate } : {}),
         });
         return { orchestrationId: r.id, status: r.status, paidGateId: r.paidGate?.id ?? null };
+      }),
+    );
+  }
+
+  /** 同一条意见依次打回几集（一个任务里一集一集地跑，一集失败不影响别的）；结束时带逐集结果。 */
+  rejectMany(projectId: string, stage: Stage, note: string, episodes: readonly { id: string; ep: number | null }[]): JobInfo {
+    const { app } = this;
+    const publish = (e: ProgressEvent) => app.bus.publish(projectId, { ...e, type: `run-${e.type}` });
+    const which = `第 ${episodes.map((e) => (e.ep === null ? e.id : String(e.ep).padStart(2, '0'))).join('、')} 集`;
+    return this.start(projectId, 'reject', `打回${STAGE_TITLES[stage]}（${which}）`, () =>
+      app.withProject(projectId, async (p) => {
+        const r = await rejectMany(p, stage, { model: app.modelFor(p, stage), note, episodes: episodes.map((e) => e.id), onProgress: publish, ...app.config.run });
+        return { stage, episodes: r.episodes, pending: r.pending.length };
+      }),
+    );
+  }
+
+  /** 只补出图提示词：角色卡不重写，只补 characterRefs；因此新冒出来的需复核确认掉。 */
+  refs(projectId: string): JobInfo {
+    const { app } = this;
+    const publish = (e: ProgressEvent) => app.bus.publish(projectId, { ...e, type: `run-${e.type}` });
+    return this.start(projectId, 'go', '补出图提示词', () =>
+      app.withProject(projectId, async (p) => {
+        const r = await fillCharacterRefs(p, { model: app.modelFor(p, 'cast'), onProgress: publish, ...app.config.run });
+        return { runId: r.outcome.runId, status: r.outcome.status, acknowledged: r.acknowledged };
       }),
     );
   }

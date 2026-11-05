@@ -46,6 +46,8 @@ export interface RunNodeOptions {
   readonly orchestrationId?: number;
   /** 不沿用之前写好或过了门的集，整份从头写 */
   readonly fresh?: boolean;
+  /** 只补出图提示词（只对角色阶段）：拿现有角色卡跑 character-refs，只写 characterRefs，不重写角色卡；不能带 revise（意见会进每个提示词） */
+  readonly refsOnly?: boolean;
 }
 
 /** 一次调用的实际费用：输入、输出 token 都查得到单价才算，否则 null（不猜）。 */
@@ -156,7 +158,10 @@ function prepare(project: Project, stage: Stage, opts: RunNodeOptions): Prepared
   }
   if (opts.episodes && !recipe.perEpisode) throw new Error(`${stage} 是整份负责的（配方 ${recipe.name}），不能只重跑其中几集`);
   const episodes = opts.episodes ? orderEpisodes(stage, upstream, opts.episodes) : null;
-  const base = opts.revise || episodes ? ((latestArtifactDoc(db, stage)?.doc as Doc | undefined) ?? null) : null;
+  if (opts.refsOnly && stage !== 'cast') throw new Error(`只补出图提示词只对角色阶段有效（这次是 ${stage}）`);
+  if (opts.refsOnly && opts.revise) throw new Error('只补出图提示词不能带打回意见');
+  const base = opts.revise || episodes || opts.refsOnly ? ((latestArtifactDoc(db, stage)?.doc as Doc | undefined) ?? null) : null;
+  if (opts.refsOnly && !base) throw new Error('还没有角色卡：先跑角色阶段，再补出图提示词');
   if (episodes && !base) throw new Error(`${stage} 还没有产物，不能只重跑其中几集：先整阶段跑一次`);
   const md = readFileSync(join(skill.dir, 'SKILL.md'), 'utf8');
   return { skill, recipeName: recipe.name, upstream, inputId: input?.id ?? null, params: input?.params ?? null, source: input?.text ?? null, md, fm: parseFrontmatter(md), episodes, base };
@@ -333,6 +338,7 @@ class NodeRun {
       episodes: p.episodes,
       base: p.base,
       resumed: this.resumed,
+      refsOnly: this.opts.refsOnly === true,
       runMounted: async (stage, args) => {
         const mounted = currentMount(this.project.db, stage);
         if (!mounted?.script) throw new Error(`阶段 ${stage} 挂载的 skill 没有脚本，不能运行 ${args[0]}`);
@@ -373,6 +379,13 @@ class NodeRun {
         return [...(skillGate ? await skillGate.check.run(d) : []), ...problems];
       },
     };
+    // 只补出图提示词：不让模型改写整份角色卡（修复会动正文），导入不过就直接报错
+    if (this.opts.refsOnly) {
+      return check.run(doc).then((problems) => {
+        if (problems.length) throw new Error(`现有角色卡导入不过平台门，没法只补出图提示词（先重跑角色阶段）：${problems.slice(0, 3).join('；')}`);
+        return doc;
+      });
+    }
     const repair: AskParts = { task: '按违规修正 JSON，使它同时通过 skill 的质量门、能被平台导入；没被点到的内容不要改动。', schema: ctx.readFile('references/schema.md'), outputSpec: `输出修正后的整份 ${this.stage}.json。` };
     return this.gate(check, doc, repair, skillGate?.post, skillGate?.split && withTask(skillGate.split, repair.task));
   }
@@ -406,7 +419,7 @@ class NodeRun {
  */
 function resumeKey(p: Prepared, opts: RunNodeOptions): string {
   const skill = [p.skill.id, p.skill.version, p.skill.skillMdHash, p.skill.scriptHash];
-  return contentHash({ upstream: p.upstream, params: p.params, source: p.source, skill, model: opts.model.id, episodes: p.episodes, note: opts.revise?.note ?? null, base: p.base });
+  return contentHash({ upstream: p.upstream, params: p.params, source: p.source, skill, model: opts.model.id, episodes: p.episodes, note: opts.revise?.note ?? null, base: p.base, refsOnly: opts.refsOnly === true });
 }
 
 /** 读运行目录里的 JSON 文档；没有或坏了返回 null（续跑只是省钱，读不了就从头写）。 */

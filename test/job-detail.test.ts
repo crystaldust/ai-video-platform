@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { createProject } from '../src/project.ts';
+import { latestArtifactDoc } from '../src/repo/artifacts.ts';
 import { busyReason } from '../web/src/generation.ts';
 import { importAll } from './helpers.ts';
 import { setupNovel } from './support/novel-pack.ts';
@@ -47,4 +48,45 @@ test('置灰原因：有任务时说正在跑什么、等它跑完；没任务�
   assert.equal(busyReason({ kind: 'reject', detail: '打回分镜（第 02 集）' }), '「打回分镜（第 02 集）」正在跑，等它跑完再操作');
   assert.equal(busyReason({ kind: 'generate', detail: '付费生成 #2' }), '「付费生成 #2」正在跑，等它跑完再操作（生成任务页可以停止）');
   assert.equal(busyReason(null), null);
+});
+
+test('补出图提示词：POST /refs 开后台任务「补出图提示词」，跑完角色卡带 characterRefs，待处理不增加；没有角色卡时 400', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  await setup(h);
+  const before = (await h.call('GET', p('/overview'))).body.data.pending.length;
+  const r = await h.call('POST', p('/refs'));
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.body.data.detail, '补出图提示词');
+  await h.app.jobs.settled(ID);
+  const o = (await h.call('GET', p('/overview'))).body.data;
+  assert.equal(o.pending.length, before, '外形没变：不新增需复核');
+  const cast = await h.app.withProject(ID, (pr) => {
+    return latestArtifactDoc(pr.db, 'cast')!.doc as { characters: { characterRefs?: unknown }[] };
+  });
+  assert.ok(cast.characters.some((c) => c.characterRefs));
+
+  const h2 = await startHarness();
+  t.after(() => h2.close());
+  createProject(join(h2.app.config.projectsRoot, ID), ID).close();
+  assert.equal((await h2.call('POST', p('/refs'))).status, 400);
+});
+
+test('一次打回多集：POST /reject 带 episodes，任务说明列出集号，结束时带逐集结果；和 episode 同时给 400', async (t) => {
+  const h = await startHarness();
+  t.after(() => h.close());
+  await setup(h);
+  const bad = await h.call('POST', p('/reject'), { body: { stage: 'script', episode: '1', episodes: ['2'], note: 'x' } });
+  assert.equal(bad.status, 400);
+  assert.equal((await h.call('POST', p('/reject'), { body: { stage: 'outline', episodes: ['1'], note: 'x' } })).status, 400);
+  const { collectEvents } = await import('./support/server-harness.ts');
+  const events = collectEvents(h, p('/events'), (e) => e.type === 'job-end');
+  for (let i = 0; i < 200 && h.app.bus.subscribers(ID) === 0; i++) await new Promise((r) => setTimeout(r, 5));
+  const r = await h.call('POST', p('/reject'), { body: { stage: 'script', episodes: ['3', '1'], note: '汽笛提前' } });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.body.data.detail, '打回剧本（第 01、03 集）');
+  await h.app.jobs.settled(ID);
+  const end = (await events).find((e) => e.type === 'job-end')!;
+  const result = end['result'] as { episodes: { ep: number; status: string }[] };
+  assert.deepEqual(result.episodes.map((e) => [e.ep, e.status]), [[1, 'passed'], [3, 'passed']]);
 });

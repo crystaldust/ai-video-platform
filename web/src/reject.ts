@@ -4,7 +4,7 @@ import { epLabel } from './format.ts';
 import type { Stage } from './types.ts';
 
 const ALL: readonly Stage[] = ['outline', 'cast', 'art', 'script', 'staging', 'storyboard'];
-const PER_EPISODE: readonly Stage[] = ['script', 'staging', 'storyboard'];
+export const PER_EPISODE: readonly Stage[] = ['script', 'staging', 'storyboard'];
 export const STAGE_TITLE: Record<Stage, string> = { outline: '大纲', cast: '角色', art: '美术', script: '剧本', staging: '站位', storyboard: '分镜' };
 
 export interface RejectChoices {
@@ -36,9 +36,17 @@ export interface RejectScope {
   readonly warn: boolean;
 }
 
-export function rejectScope(opts: { stage: Stage; episode: number | null; totalEpisodes: number }): RejectScope {
+/** episodes：多选的集号（一次打回多集）；不给或只有一集时照单集说。 */
+export function rejectScope(opts: { stage: Stage; episode: number | null; episodes?: readonly number[]; totalEpisodes: number }): RejectScope {
   const title = STAGE_TITLE[opts.stage];
-  if (opts.episode !== null) return { text: `只重跑第 ${epLabel(opts.episode)} 集的${title}`, confirm: null, warn: false };
+  const many = [...new Set(opts.episodes ?? [])].sort((a, b) => a - b);
+  if (many.length > 1) {
+    const list = many.map(epLabel).join('、');
+    return { text: `依次重跑第 ${list} 集的${title}`, confirm: `按同一条意见依次重跑第 ${list} 集（共 ${many.length} 集）的${title}，每集调一次文本模型，会花钱；下游受影响的集会标需复核。\n\n确定？`, warn: false };
+  }
+  // 只勾了一集：以勾的那集为准（可能不是打开面板时的那集）
+  const one = many.length === 1 ? many[0]! : opts.episode;
+  if (one !== null) return { text: `只重跑第 ${epLabel(one)} 集的${title}`, confirm: null, warn: false };
   if (!PER_EPISODE.includes(opts.stage)) return { text: `重跑整个${title}`, confirm: null, warn: false };
   const all = `全部 ${opts.totalEpisodes} 集`;
   return {

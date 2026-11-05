@@ -6,10 +6,11 @@ import { isStage, type Stage } from '../../domain/types.ts';
 import { RECIPE_NAMES } from '../../executor/recipes.ts';
 import { isNode } from '../../model/capabilities.ts';
 import { acknowledge } from '../../orchestrate/review-matrix.ts';
-import { checkReject, resolveEpisode } from '../../orchestrate/revisions.ts';
+import { checkReject, checkRejectMany, resolveEpisode } from '../../orchestrate/revisions.ts';
 import { requeryTask } from '../../generate/manage.ts';
 import { refreshPriceCache } from '../../pricing/openrouter.ts';
 import { listOrchestrations } from '../../repo/orchestrations.ts';
+import { latestArtifact } from '../../repo/artifacts.ts';
 import { getPaidGate } from '../../repo/paid-gates.ts';
 import { getTask } from '../../repo/tasks.ts';
 import { clearNodeModel, setNodeModel, usePreset } from '../../repo/models.ts';
@@ -49,11 +50,27 @@ export const ACTION_ROUTES: readonly Route[] = [
     await app.withProject(id, () => null);
     return app.jobs.go(id, mode, only, fresh);
   }),
+  // 只补出图提示词（角色阶段）：不重写角色卡
+  route('POST', '/api/p/:id/refs', async ({ app, params }) => {
+    const id = params['id']!;
+    await app.withProject(id, (p) => {
+      if (!latestArtifact(p.db, 'cast')) throw new HttpError(400, '还没有角色卡：先跑角色阶段，再补出图提示词');
+    });
+    return app.jobs.refs(id);
+  }),
   route('POST', '/api/p/:id/reject', async ({ app, params, req }) => {
     const id = params['id']!;
     const body = await readBody(req);
     const stage = stageOf(body['stage']);
     const episode = optStr(body, 'episode');
+    const many = body['episodes'];
+    if (many !== undefined) {
+      // 一次打回多集：同一条意见，一个后台任务里依次跑
+      if (episode !== undefined) throw new HttpError(400, 'episode 和 episodes 只能给一个');
+      if (!Array.isArray(many) || !many.every((x) => typeof x === 'string')) throw new HttpError(400, 'episodes 应该是集 id 或集号的列表');
+      const checked = await app.withProject(id, (p) => checkRejectMany(p.db, stage, { episodes: many as string[], note: str(body, 'note') }));
+      return app.jobs.rejectMany(id, stage, checked.note, checked.episodes);
+    }
     const checked = await app.withProject(id, (p) => {
       const c = checkReject(p.db, stage, { note: str(body, 'note'), ...(episode ? { episode } : {}) });
       // 集号给任务说明用（「打回分镜（第 02 集）」），集 id 人看不懂

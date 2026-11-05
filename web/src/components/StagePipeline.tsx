@@ -1,6 +1,6 @@
 // 阶段流水线：6 个文本阶段卡 + 付费阶段条（加锁，先确认再生成；数字来自估算）。
 // 有已确认、有任务的确认单时，付费条换成生成进度（设计稿「全貌视图 · 生成中」），整条点进生成任务页。
-import { ChevronRight, CircleAlert, Hourglass, Loader, Lock, Play, RotateCcw } from 'lucide-react';
+import { ChevronRight, CircleAlert, Hourglass, Image as ImageIcon, Loader, Lock, Play, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router';
 import { attemptState, callNo, yuan, yuanRange } from '../format.ts';
 import type { GenerationProgress, LogRun, NodeEstimate, ProjectEstimate, StageCard, StageState } from '../types.ts';
@@ -41,8 +41,19 @@ const READABLE: Record<string, string> = { outline: 'story?tab=outline', script:
 
 const WAITING: Record<string, string> = { outline: '等梗概', cast: '等大纲', art: '等大纲', script: '等大纲', staging: '等剧本和美术', storyboard: '等剧本和站位' };
 
-function StageCardView({ card, index, run }: { card: CardData; index: number; run: LogRun | undefined }) {
+interface StageActions {
+  /** 这一阶段整跑一次的估算（人民币） */
+  readonly cost: { low: number; high: number } | null;
+  /** 有后台任务在跑时为什么不能点（busyReason） */
+  readonly busy: string | null;
+  readonly onRerun: ((stage: StageCard['stage'], cost: { low: number; high: number } | null) => void) | undefined;
+  readonly onRefs: (() => void) | undefined;
+}
+
+function StageCardView({ card, index, run, actions }: { card: CardData; index: number; run: LogRun | undefined; actions: StageActions }) {
   const st = STATE[card.state];
+  // 在跑的阶段不给操作；还没有产物、也没跑过的阶段只能从「重跑文本阶段」开始
+  const showActions = card.state !== 'running' && card.state !== 'waiting' && actions.onRerun;
   return (
     <div className={`${s.stage} ${s[`stage-${card.state}`] ?? ''}`} data-testid={`stage-${card.stage}`}>
       <div className={s.stageHead}>
@@ -60,6 +71,20 @@ function StageCardView({ card, index, run }: { card: CardData; index: number; ru
         ) : null}
       </span>
       <span className={`${s.stageFoot} ${card.state === 'running' ? s.stageFootRun : ''}`}>{footLine(card, run, WAITING[card.stage] ?? '')}</span>
+      {showActions ? (
+        <span className={s.stageActions}>
+          <button type="button" className={s.stageAction} disabled={Boolean(actions.busy)} title={actions.busy ?? `从头重写${card.title}阶段`} onClick={() => actions.onRerun!(card.stage, actions.cost)}>
+            <RotateCcw size={11} /> 重跑
+          </button>
+          {card.stage === 'cast' && actions.onRefs ? (
+            <button type="button" className={s.stageAction} disabled={Boolean(actions.busy)} title={actions.busy ?? '只补出图提示词，不改角色卡'} onClick={actions.onRefs}>
+              <ImageIcon size={11} /> 补提示词
+            </button>
+          ) : (
+            <em className={s.stageCost}>{actions.cost ? `约 ${yuanRange(actions.cost, 1)}` : ''}</em>
+          )}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -218,7 +243,7 @@ function PaidEstimate({ estimate, estimateError }: { estimate: ProjectEstimate |
   );
 }
 
-export function StagePipeline({ stages, log, estimate, estimateError, generation, onRemedy, onStart, startDisabled }: { stages: readonly CardData[]; log: readonly LogRun[]; estimate: ProjectEstimate | null; estimateError: string | null; generation?: GenerationProgress | null; onRemedy?: (r: Remedy) => void; onStart?: (gateId: number) => void; startDisabled?: string | null }) {
+export function StagePipeline({ stages, log, estimate, estimateError, generation, onRemedy, onStart, startDisabled, onRerun, onRefs }: { stages: readonly CardData[]; log: readonly LogRun[]; estimate: ProjectEstimate | null; estimateError: string | null; generation?: GenerationProgress | null; onRemedy?: (r: Remedy) => void; onStart?: (gateId: number) => void; startDisabled?: string | null; onRerun?: (stage: StageCard['stage'], cost: { low: number; high: number } | null) => void; onRefs?: () => void }) {
   const phase = generation ? gatePhase(generation) : null;
   return (
     <section className={s.pipeline} aria-label="阶段">
@@ -226,7 +251,12 @@ export function StagePipeline({ stages, log, estimate, estimateError, generation
         {stages.map((card, i) => (
           <span key={card.stage} style={{ display: 'contents' }}>
             {i > 0 ? <ChevronRight size={12} className={s.arrow} /> : null}
-            <StageCardView card={card} index={i} run={log.findLast((r) => r.stage === card.stage)} />
+            <StageCardView
+              card={card}
+              index={i}
+              run={log.findLast((r) => r.stage === card.stage)}
+              actions={{ cost: estimate ? cny(estimate.nodes.find((n) => n.node === `text:${card.stage}`)?.cost ?? null, estimate.fx.usdToCny) : null, busy: startDisabled ?? null, onRerun, onRefs }}
+            />
           </span>
         ))}
       </div>
