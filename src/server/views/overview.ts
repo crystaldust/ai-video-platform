@@ -16,7 +16,7 @@ import type { App } from '../app.ts';
 import type { JobInfo } from '../jobs.ts';
 import { generationProgress, type GenerationProgress } from './generation.ts';
 import { stageGates, type GateResult } from './checkup.ts';
-import { docOf, episodesIn, projectHead, STAGE_TITLES, stageCards, textCost, toCny, type ProjectHead, type StageCard } from './common.ts';
+import { docOf, episodesIn, projectHead, STAGE_TITLES, stageCards, staleReasonText, textCost, toCny, type ProjectHead, type StageCard } from './common.ts';
 
 export type CellState = 'ok' | 'stale' | 'missing';
 
@@ -49,6 +49,8 @@ export interface PendingItem {
   readonly detail: string;
   readonly runId: number | null;
   readonly reasons: MatrixCell['reasons'];
+  /** 写好、去重后的需复核原因行（只有 stale 项有，见 staleReasonText） */
+  readonly targets: readonly string[];
   /** 没过的运行：上游有门不过时指向它 */
   readonly upstream: UpstreamBlame | null;
   /** 这一项背后有没落实的打回意见（转人工 / 失败的运行就是为它跑的，或 kind 为 revision 时就是它自己） */
@@ -166,14 +168,14 @@ function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: rea
     const last = db.prepare('SELECT violations FROM node_attempt WHERE run_id = ? ORDER BY id DESC LIMIT 1').get(run.id) as { violations: string } | undefined;
     const violations: string[] = last ? JSON.parse(last.violations) : [];
     const attached = revisions.find((r) => r.stage === c.stage && r.latestRunId === run.id);
-    return [{ kind: run.status, stage: c.stage, episode: null, ep: null, title: `${c.title}${run.status === 'needs_human' ? '未通过' : '失败'}`, detail: violations[0] ?? run.error ?? '', runId: run.id, reasons: [], upstream: blameOf(c.stage), revision: attached ? revisionOf(attached) : null }];
+    return [{ kind: run.status, stage: c.stage, episode: null, ep: null, title: `${c.title}${run.status === 'needs_human' ? '未通过' : '失败'}`, detail: violations[0] ?? run.error ?? '', runId: run.id, reasons: [], targets: [], upstream: blameOf(c.stage), revision: attached ? revisionOf(attached) : null }];
   });
   // 打回的运行就是这一阶段最近那次没过的运行：意见附在它那一项上；否则（后来别的运行盖过了它）单独列
   const attachedIds = new Set(failed.flatMap((f) => (f.revision ? [f.revision.id] : [])));
   const revisionItems = revisions.filter((r) => !attachedIds.has(r.id)).map((r): PendingItem => {
     const rev = revisionOf(r);
     const title = STAGE_TITLES[r.stage];
-    return { kind: 'revision', stage: r.stage, episode: rev.episode, ep: rev.ep, title: `${epPrefix(rev.ep)}${title}的打回没落实`, detail: r.note, runId: r.latestRunId, reasons: [], upstream: null, revision: rev };
+    return { kind: 'revision', stage: r.stage, episode: rev.episode, ep: rev.ep, title: `${epPrefix(rev.ep)}${title}的打回没落实`, detail: r.note, runId: r.latestRunId, reasons: [], targets: [], upstream: null, revision: rev };
   });
   const listed = new Set(failed.map((f) => f.stage));
   const gateItems = cards.flatMap((c): PendingItem[] => {
@@ -181,11 +183,11 @@ function pendingItems(db: DatabaseSync, cells: readonly MatrixCell[], cards: rea
     if (!bad || listed.has(c.stage)) return [];
     const named = episodeNamed(bad, epId);
     const more = bad.length > 1 ? `（共 ${bad.length} 项）` : '';
-    return [{ kind: 'gate', stage: c.stage, episode: named?.episode ?? null, ep: named?.ep ?? null, title: `${epPrefix(named?.ep ?? null)}${c.title}按当前质量门不过`, detail: `${bad[0]}${more}`, runId: c.lastRun?.id ?? null, reasons: [], upstream: null, revision: null }];
+    return [{ kind: 'gate', stage: c.stage, episode: named?.episode ?? null, ep: named?.ep ?? null, title: `${epPrefix(named?.ep ?? null)}${c.title}按当前质量门不过`, detail: `${bad[0]}${more}`, runId: c.lastRun?.id ?? null, reasons: [], targets: [], upstream: null, revision: null }];
   });
   const stale = cells.map((c): PendingItem => {
     const ep = c.episode ? (epNo.get(c.episode) ?? null) : null;
-    return { kind: 'stale', stage: c.stage, episode: c.episode, ep, title: `${epPrefix(ep)}${STAGE_TITLES[c.stage]}需复核`, detail: `${reasonOf(c)}：${c.reasons.length} 处引用还钉着旧版本`, runId: c.lastRun?.id ?? null, reasons: c.reasons, upstream: null, revision: null };
+    return { kind: 'stale', stage: c.stage, episode: c.episode, ep, title: `${epPrefix(ep)}${STAGE_TITLES[c.stage]}需复核`, detail: `${reasonOf(c)}：${c.reasons.length} 处引用还钉着旧版本`, runId: c.lastRun?.id ?? null, reasons: c.reasons, targets: [...new Set(c.reasons.map(staleReasonText))], upstream: null, revision: null };
   });
   return [...failed, ...revisionItems, ...gateItems, ...stale];
 }

@@ -124,7 +124,7 @@ function StaleBody({ projectId, item, episode, busy, onDone, onError }: { item: 
       onError(e as ApiError);
     }
   };
-  const targets = [...new Set(item.reasons.map((r) => `${r.to.key} · ${STAGE_TITLE[r.to.facet]} v${r.pinnedV} → v${r.currentV}`))];
+  const targets = item.targets;
   return (
     <>
       <div className={`${s.why} ${s['why-warn']}`}>

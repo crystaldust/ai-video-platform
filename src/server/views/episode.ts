@@ -4,7 +4,7 @@ import { listOf } from '../../executor/recipe-kit.ts';
 import { pendingCells } from '../../orchestrate/review-matrix.ts';
 import type { Project } from '../../project.ts';
 import { HttpError } from '../http.ts';
-import { docOf, episodesIn, liveDoc, projectHead, STAGE_TITLES, type ProjectHead } from './common.ts';
+import { docOf, episodesIn, liveDoc, projectHead, STAGE_TITLES, staleReasonText, type ProjectHead } from './common.ts';
 
 export interface BeatView {
   readonly id: string;
@@ -140,7 +140,7 @@ export function episodeDetail(project: Project, id: string, episodeId: string): 
     project: projectHead(project, id),
     episode: { id: epId, ep, hook: str(o['hook']), synopsis: str(o['synopsis']) },
     nav: { prev: index > 0 ? str(all[index - 1]!['id']) : null, next: index < all.length - 1 ? str(all[index + 1]!['id']) : null, index: index + 1, total: all.length },
-    stale: cells.map((c) => ({ stage: c.stage, title: STAGE_TITLES[c.stage], reasons: c.reasons.map((r) => `${r.to.kind} ${r.to.key} 的${STAGE_TITLES[r.to.facet]}：v${r.pinnedV} → v${r.currentV}`) })),
+    stale: cells.map((c) => ({ stage: c.stage, title: STAGE_TITLES[c.stage], reasons: [...new Set(c.reasons.map(staleReasonText))] })),
     stats: { seconds: segViews.reduce((a, g) => a + g.seconds, 0), target: s ? num(s['targetSeconds']) || null : null, scenes: scenes.length, segments: segViews.length, cuts: segViews.reduce((a, g) => a + g.cuts.length, 0), hookBeat },
     scenes,
     draft: { script: liveScript.drafts.has(ep), storyboard: liveBoard.drafts.has(ep) },

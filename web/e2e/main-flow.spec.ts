@@ -80,6 +80,8 @@ test('新建 → 一键跑 → 付费确认并生成 → 看任务 → 打回单
   // 需复核：站位与分镜第 1 集
   await expect(page.getByText('第 01 集 · 需复核').first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId('stage-staging')).toContainText('需复核');
+  // 「为什么要复核」写明上游变了哪些字段（#38）
+  await expect(page.locator('small', { hasText: /· 剧本：.+（v\d+ → v\d+）/ }).first()).toBeVisible();
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'stale.png') });
 
   // 逐项保持现状：每点一次，「待你处理」减一，直到 0

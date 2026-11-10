@@ -135,6 +135,12 @@ test('全貌：6 张阶段卡（质量门来自 skill 的 checkup）、分集表
   assert.equal(o.episodes[2].staging.reason, '剧本已变');
   assert.equal(o.summary.pending, o.pending.length);
   assert.deepEqual(o.pending.map((p: { stage: string; ep: number }) => [p.stage, p.ep]), [['staging', 3]]);
+  // #38：待处理项带写好的原因，写明剧本里变了的是节拍；单集详情横条同一写法
+  const targets: string[] = o.pending[0].targets;
+  assert.ok(targets.length > 0 && targets.every((t) => /· 剧本：.*节拍.*（v\d+ → v\d+）$/.test(t)), JSON.stringify(targets));
+  assert.equal(new Set(targets).size, targets.length, '去重');
+  const ep3 = (await h.call('GET', encodeURI('/api/p/渡口/episodes/3'))).body.data;
+  assert.deepEqual([...new Set(ep3.stale.flatMap((s: { reasons: string[] }) => s.reasons))], targets);
   project.close();
 });
 
