@@ -9,11 +9,24 @@ import type { Fx } from '../../pricing/prices.ts';
 import { RUNS_DIR, type Project } from '../../project.ts';
 import { latestArtifact, latestArtifactDoc } from '../../repo/artifacts.ts';
 import { currentInput } from '../../repo/inputs.ts';
+import type { StaleRef } from '../../repo/lineage.ts';
 import { currentPresetName } from '../../repo/models.ts';
 import { runningRun, type RunStatus } from '../../repo/runs.ts';
 import { currentMount } from '../../repo/skills.ts';
 
 export const STAGE_TITLES: Readonly<Record<Stage, string>> = { outline: '大纲', cast: '角色', art: '美术', script: '剧本', staging: '站位', storyboard: '分镜' };
+
+/** 需复核原因里最多列几个字段，多的写「等 N 项」 */
+const FIELDS_SHOWN = 3;
+
+/** 一条需复核原因（backlog #38）：「沈知微 · 角色：外貌、别名（v3 → v4）」；上游删了写「已删除」。 */
+export function staleReasonText(r: Pick<StaleRef, 'to' | 'toName' | 'changed' | 'retired' | 'pinnedV' | 'currentV'>): string {
+  const who = `${r.toName ?? r.to.key} · ${STAGE_TITLES[r.to.facet]}`;
+  if (r.retired) return `${who}：已删除`;
+  const shown = r.changed.slice(0, FIELDS_SHOWN).join('、');
+  const what = !r.changed.length ? '内容有变' : r.changed.length > FIELDS_SHOWN ? `${shown}等 ${r.changed.length} 项` : shown;
+  return `${who}：${what}（v${r.pinnedV} → v${r.currentV}）`;
+}
 
 export type StageState = 'passed' | 'stale' | 'failed' | 'needs_human' | 'running' | 'waiting';
 

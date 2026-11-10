@@ -51,6 +51,9 @@ test('角色卡改了外貌描述：分镜第 1 集需复核，原因指向这�
   assert.deepEqual(cells(project), [`storyboard/${DUKO.ep1}`]);
   const [cell] = reviewMatrix(project.db);
   assert.ok(cell!.reasons.every((r) => r.to.kind === 'character' && r.to.key === 'C01' && r.to.facet === 'cast'));
+  // #38：原因写明是谁、变了哪个字段
+  assert.ok(cell!.reasons.every((r) => r.toName === '沈知微' && !r.retired));
+  assert.deepEqual([...new Set(cell!.reasons.flatMap((r) => r.changed))], ['外貌']);
   cleanup();
 });
 
@@ -58,6 +61,8 @@ test('角色卡加了别名：分镜需复核（分镜门要查提示词里的�
   const { project, cleanup } = fresh();
   editCard(project, (c) => ({ ...c, aliases: [...c['aliases'], '沈家姑娘'] }));
   assert.deepEqual(cells(project), [`storyboard/${DUKO.ep1}`]);
+  const [cell] = reviewMatrix(project.db);
+  assert.deepEqual([...new Set(cell!.reasons.flatMap((r) => r.changed))], ['别名']);
   cleanup();
 });
 
@@ -87,6 +92,12 @@ test('没声明字段的引用照旧看整份：剧本改一拍，站位和分�
   script.episodes[0].scenes[0].flow[0].text = '汽笛提前响了。';
   importArtifact(project, 'script', script);
   assert.deepEqual(cells(project).sort(), [`staging/${DUKO.ep1}`, `storyboard/${DUKO.ep1}`].sort());
+  const [cell] = reviewMatrix(project.db).filter((c) => c.stage === 'storyboard');
+  assert.ok(cell!.reasons.some((r) => r.to.facet === 'script' && r.changed.includes('节拍')), '分镜的原因写明剧本的节拍变了');
+  // 剧本场次没有名字：写成「第 N 集 场景名」，不露内部编号
+  const place = loadFixture('art').scenes.find((s: Card) => s['id'] === script.episodes[0].scenes[0].sceneId).name;
+  const scene = cell!.reasons.find((r) => r.to.kind === 'script_scene')!;
+  assert.equal(scene.toName, `第 1 集 ${place}`);
   cleanup();
 });
 
@@ -97,5 +108,9 @@ test('角色从角色卡里删掉了（当前版本已退役）：分镜第 1 �
   assert.ok(cells(project).includes(`storyboard/${DUKO.ep1}`));
   const [cell] = reviewMatrix(project.db).filter((c) => c.stage === 'storyboard');
   assert.ok(cell!.reasons.some((r) => r.to.key === 'C01' && r.to.facet === 'cast'));
+  const gone = cell!.reasons.find((r) => r.to.key === 'C01' && r.to.facet === 'cast')!;
+  assert.equal(gone.retired, true);
+  assert.equal(gone.toName, '沈知微', '删掉的角色用钉住版本的名字');
+  assert.deepEqual(gone.changed, []);
   cleanup();
 });
