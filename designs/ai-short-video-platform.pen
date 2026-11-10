@@ -77745,6 +77745,471 @@
           "fontWeight": "normal"
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "tHlly",
+      "x": 9740,
+      "y": 0,
+      "name": "#38 需复核原因写明变了哪些字段",
+      "width": 820,
+      "fill": "$surface",
+      "cornerRadius": 10,
+      "layout": "vertical",
+      "gap": 24,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "C89yZ",
+          "name": "Heading",
+          "fill": "$text-1",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "#38 需复核原因写明变了哪些字段",
+          "fontFamily": "$font",
+          "fontSize": 16,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "u7ruD",
+          "name": "Intro",
+          "fill": "$text-2",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "原因行从「编号 · 阶段 v旧 → v新」改成「名字 · 阶段：变了的字段（v旧 → v新）」。字段用中文名，超过 3 个写「等 N 项」；上游被删掉写「已删除」。只列下游实际读的字段（#34 的读取范围），没声明读取范围的引用列整份里变了的顶层字段。",
+          "lineHeight": 1.5,
+          "fontFamily": "$font",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "Zkn6T",
+          "name": "① 全貌 · 右侧详情「为什么要复核」",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "GIwTm",
+              "name": "Title",
+              "fill": "$text-1",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "① 全貌 · 右侧详情「为什么要复核」",
+              "fontFamily": "$font",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "QxeeN",
+              "name": "Before After",
+              "width": "fill_container",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "GDKfp",
+                  "name": "之前",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "bhRr0",
+                      "name": "Label",
+                      "fill": "$text-3",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "之前",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DOAld",
+                      "name": "Why 之前",
+                      "width": "fill_container",
+                      "fill": "$warn-soft",
+                      "cornerRadius": 8,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CBfxJ",
+                          "name": "为什么要复核",
+                          "fill": "$warn",
+                          "content": "为什么要复核",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "kVq85",
+                          "name": "剧本第 2 场在 10:",
+                          "fill": "$text-1",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "角色已变：3 处引用还钉着旧版本。",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "W2GmWz",
+                          "name": "sc_7Q2MK4XA ",
+                          "fill": "$text-2",
+                          "content": "C01 · 角色 v3 → v4",
+                          "fontFamily": "$mono",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "R39jC",
+                  "name": "之后",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LSw37",
+                      "name": "Label",
+                      "fill": "$text-3",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "之后",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "r5SXgo",
+                      "name": "Why 之后",
+                      "width": "fill_container",
+                      "fill": "$warn-soft",
+                      "cornerRadius": 8,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "gjAcz",
+                          "name": "为什么要复核",
+                          "fill": "$warn",
+                          "content": "为什么要复核",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "N3x2Tp",
+                          "name": "剧本第 2 场在 10:",
+                          "fill": "$text-1",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "角色已变：3 处引用还钉着旧版本。",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "xt3wi",
+                          "name": "sc_7Q2MK4XA ",
+                          "fill": "$text-2",
+                          "content": "沈知微 · 角色：外貌、别名（v3 → v4）",
+                          "fontFamily": "$mono",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "E25di",
+                          "name": "Target",
+                          "fill": "$text-2",
+                          "content": "周敬安 · 角色：已删除",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Q3Aog",
+                          "name": "Target",
+                          "fill": "$text-2",
+                          "content": "砚台 · 美术：外观锚点（v1 → v2）",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "bbhqX",
+          "name": "② 单集详情 · 顶部需复核横条",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "c1ILn",
+              "name": "Title",
+              "fill": "$text-1",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "② 单集详情 · 顶部需复核横条",
+              "fontFamily": "$font",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "u7Gmeg",
+              "name": "Before After",
+              "width": "fill_container",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Z3bRGL",
+                  "name": "之前",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "z6TNs0",
+                      "name": "Label",
+                      "fill": "$text-3",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "之前",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MPihs",
+                      "name": "Banner 之前",
+                      "width": "fill_container",
+                      "fill": "$warn-soft",
+                      "cornerRadius": 8,
+                      "gap": 10,
+                      "padding": [
+                        10,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "I8lNHB",
+                          "name": "Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "triangle-alert",
+                          "library": "lucide",
+                          "fill": "$warn"
+                        },
+                        {
+                          "type": "text",
+                          "id": "LP5ec",
+                          "name": "剧本第 2 场已改（v2",
+                          "fill": "$text-1",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "分镜需复核：character C01 的角色：v3 → v4 等 3 处。已生成素材：无。",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Dhnt4",
+                  "name": "之后",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "lojVY",
+                      "name": "Label",
+                      "fill": "$text-3",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "之后",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fTF7t",
+                      "name": "Banner 之后",
+                      "width": "fill_container",
+                      "fill": "$warn-soft",
+                      "cornerRadius": 8,
+                      "gap": 10,
+                      "padding": [
+                        10,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "G8sa8",
+                          "name": "Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "triangle-alert",
+                          "library": "lucide",
+                          "fill": "$warn"
+                        },
+                        {
+                          "type": "text",
+                          "id": "rk9ut",
+                          "name": "剧本第 2 场已改（v2",
+                          "fill": "$text-1",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "分镜需复核：沈知微 · 角色：外貌、别名（v3 → v4） 等 3 处。已生成素材：无。",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "NrPMl",
+          "name": "③ 写法规则",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "ej2SO",
+              "name": "Title",
+              "fill": "$text-1",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "③ 写法规则",
+              "fontFamily": "$font",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "PVHvR",
+              "name": "Rule",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "· 名字：角色、场景、道具用卡上的名字；剧本场次、分镜段等没有名字的用编号；集写「第 N 集」。",
+              "lineHeight": 1.5,
+              "fontFamily": "$font",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "t3vIP",
+              "name": "Rule",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "· 字段：人设下一层直接写中文名（外貌、身份…）；不认识的字段原样写英文键名。",
+              "lineHeight": 1.5,
+              "fontFamily": "$font",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "JK6rE",
+              "name": "Rule",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "· 超过 3 个字段：「外貌、别名、身份等 5 项」。",
+              "lineHeight": 1.5,
+              "fontFamily": "$font",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "g7OGF",
+              "name": "Rule",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "· 被删除：「周敬安 · 角色：已删除」，不写版本号。",
+              "lineHeight": 1.5,
+              "fontFamily": "$font",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "oF3sf",
+              "name": "Rule",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "· CLI `stale` 的 JSON 里同样多出 toName、changed、retired。",
+              "lineHeight": 1.5,
+              "fontFamily": "$font",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

@@ -45,7 +45,7 @@ PRD 里已经排好的阶段（Phase 5–8）不在这里，见 `prds/ai-short-d
 | 35 | 按钮因有任务在跑而置灰时说明原因 | 界面 | 2026-11-04 自由北美实测 | 已完成 | 分支 feat/disabled-reason |
 | 36 | 一次打回多集（同一条意见） | 功能 | 2026-11-04 自由北美实测 | 已完成 | [计划](plans/completed/text-rerun-controls.plan.md) |
 | 37 | 后台任务里的运行没通过时，页面弹一句提示 | 界面 | 2026-11-05 文本重跑审查 | 已完成 | [计划](plans/completed/run-not-passed-toast.plan.md) |
-| 38 | 需复核原因写明变了哪些字段 | 界面 | 2026-11-05 #34 评审 | 待规划 | — |
+| 38 | 需复核原因写明变了哪些字段 | 界面 | 2026-11-05 #34 评审 | 已完成 | [计划](plans/completed/stale-changed-fields.plan.md) |
 | 39 | 分镜对场景卡加引用（场景卡改了标分镜需复核） | 后端 | 2026-11-05 #34 评审 | 待决定 | — |
 
 ---
@@ -216,6 +216,8 @@ novel-outline 的 Step 3 要用户拍板快版骨架（砍了哪条线、合了�
 
 ---
 ### 38. 需复核原因写明变了哪些字段
+
+**已完成**（[计划](plans/completed/stale-changed-fields.plan.md)）：`StaleRef` 带 `toName`、`changed`、`retired`，原因统一由 `staleReasonText` 写成「沈知微 · 角色：外貌、别名（v3 → v4）」，上游删了写「已删除」，剧本场次写成「第 1 集 渡口栈桥」。全貌「为什么要复核」和单集详情横条都用它。
 
 2026-11-05 #34 评审时提出。#34 之后，标出来的需复核都是下游实际读的字段真变了，但原因只写「character C01 的角色卡：v3 → v4」（`src/server/views/episode.ts` 的 `stale.reasons`），看不出是外貌变了还是别名变了，要自己去翻两版角色卡对比。
 
