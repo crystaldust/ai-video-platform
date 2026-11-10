@@ -78149,7 +78149,7 @@
               "fill": "$text-2",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "· 名字：角色、场景、道具用卡上的名字；剧本场次、分镜段等没有名字的用编号；集写「第 N 集」。",
+              "content": "· 名字：角色、场景、道具用卡上的名字；集写「第 N 集」；剧本场次写「第 N 集 场景名」（如「第 1 集 渡口栈桥」）；其余没有名字的用编号。",
               "lineHeight": 1.5,
               "fontFamily": "$font",
               "fontSize": 12,
